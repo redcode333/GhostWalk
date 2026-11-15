@@ -173,14 +173,18 @@ def render_verdict(inc, top=3):
         if len(alerted) > 1 and alerted == [n for n in reversed(names) if n in alerted]:
             t.append(" · fired in path order")
     console.print(t)
+    if v.get("change_note"):
+        line(("      ",), (v["change_note"], VIOLET_TEXT))
 
 
 @app.command("why")
 def why(alerts_file: Optional[pathlib.Path] = typer.Option(None, "--alerts", exists=True, dir_okay=False, help="alerts json (Alertmanager, Grafana or {alerts:[{name,signal,t}]})"),
         incident: Optional[str] = typer.Option(None, "--incident", help="re-read a saved verdict, e.g. INC-1042"),
-        top: int = typer.Option(3, help="how many candidates to show")):
+        top: int = typer.Option(3, help="how many candidates to show"),
+        use_changes: bool = typer.Option(False, "--use-changes", help="weigh what changed shortly before the first alert")):
     """Rank the likely root causes of an alert storm and show the path."""
     ws = workspace()
+    ws.use_changes = use_changes or ws.use_changes
     if incident:
         prompt_line(f"gw why --incident {incident}")
         inc = ws.get(incident)
@@ -201,6 +205,27 @@ def why(alerts_file: Optional[pathlib.Path] = typer.Option(None, "--alerts", exi
         fail("none of the alerting names match services in the map. " + (f"Unknown: {', '.join(v['unresolved'][:5])}" if v["unresolved"] else ""))
     render_verdict(inc, top)
     line((f"{inc['id']} saved. Teach it: gw learn {inc['id']} --root {v['root_name']}", DIM))
+
+
+# ---- change -----------------------------------------------------------------------------
+change_app = typer.Typer(help="What changed: deploys and config changes the verdict can use.", no_args_is_help=True)
+app.add_typer(change_app, name="change")
+
+
+@change_app.command("add")
+def change_add(service: str = typer.Argument(..., help="service name or alias"),
+               kind: str = typer.Option("deploy", "--kind", help="deploy | config | release"),
+               ref: str = typer.Option("", "--ref", help="for example '#482' or a commit"),
+               ts: Optional[str] = typer.Option(None, "--ts", help="epoch seconds or ISO-8601 (default: now)")):
+    """Record a change. Used by `gw why --use-changes`."""
+    from .integrations.issues import parse_ts
+    ws = workspace()
+    try:
+        ev = ws.add_change(service, parse_ts(ts), kind, ref)
+    except ValueError as e:
+        fail(str(e))
+    prompt_line(f"gw change add {service}" + (f" --ref {ref}" if ref else ""))
+    ok(f"{ev['service']} · {ev['kind']} {ev['ref']}".rstrip())
 
 
 # ---- learn ------------------------------------------------------------------------------------

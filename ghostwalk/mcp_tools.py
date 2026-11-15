@@ -6,7 +6,7 @@ from __future__ import annotations
 import math
 from .api.alerts import normalize
 from .api.workspace import Workspace
-from .engine.walk import walk, resolve, explain, _limited_best
+from .engine.walk import walk, resolve, explain, _limited_best, changes_before, change_note, tuned_changes
 from .graph.state import W_TENTATIVE
 from .integrations.issues import resolve_name
 
@@ -31,7 +31,12 @@ def _alerts(raw):
 
 def why(ws: Workspace, alerts) -> dict:
     rows = _alerts(alerts)
-    v = walk(ws.g, rows)
+    import time
+    epochs = [a["epoch"] for a in rows if a.get("epoch")]
+    first = min(epochs) if epochs else time.time()
+    gamma, tau = tuned_changes()
+    ch = changes_before(ws.g, ws.changes, first) if ws.use_changes and ws.changes else None
+    v = walk(ws.g, rows, changes=ch, gamma=gamma, tau=tau)
     if not v.ranking:
         raise ToolError("none of the alerting names match services in the map" + (f": {', '.join(v.unresolved[:5])}" if v.unresolved else ""))
     top = v.ranking[0][1]
@@ -46,10 +51,13 @@ def why(ws: Workspace, alerts) -> dict:
     text = f"Root cause: {root} ({math.exp(0) / z:.2f} confidence). It explains {explained} of {len(A)} alerting services."
     if path:
         text += " Path: " + path[0]["from"] + "".join(f" {'⇢' if p['origin'] == 'learned' else '→'} {p['to']}" for p in path) + "."
+    note = change_note(ws.g, ws.changes, v.ranking[0][0], first) if ws.use_changes else None
+    if note:
+        text += f" {note[0].upper() + note[1:]}."
     if learned:
         text += f" {len(learned)} edge(s) on that path were learned from past postmortems and are not in the service catalog."
     return {"root": root, "confidence": round(1 / z, 4), "ranking": [{"service": name(c), "confidence": round(math.exp(s - top) / z, 4)} for c, s in v.ranking[:5]],
-            "path": path, "explains": explained, "of": len(A), "unresolved": v.unresolved, "explanation": text}
+            "path": path, "explains": explained, "of": len(A), "unresolved": v.unresolved, "change_note": note, "explanation": text}
 
 
 def path(ws: Workspace, root: str, service: str) -> dict:

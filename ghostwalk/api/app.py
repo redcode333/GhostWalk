@@ -118,6 +118,18 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
         inc = ws.ingest_alerts(alerts)
         return {"incident": inc["id"], "root": inc["verdict"]["root_name"], "confidence": inc["verdict"]["confidence"], "ms": inc["verdict"]["ms"]}
 
+    @app.post("/v1/changes")
+    async def post_change(request: Request):
+        """What changed: {service, ts (epoch s or ISO, default now), kind (deploy|config|release), ref}."""
+        check_token(request)
+        body = await request.json()
+        if "service" not in body:
+            raise HTTPException(422, "service is required")
+        try:
+            return ws.add_change(body["service"], issues.parse_ts(body.get("ts")), body.get("kind", "deploy"), body.get("ref", ""))
+        except ValueError as e:
+            raise HTTPException(422, str(e))
+
     # ---- app ------------------------------------------------------------------------------
     @app.get("/api/summary")
     def summary(u=user):
@@ -300,6 +312,14 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
         if event == "ping":
             return {"ok": True}
         payload = json.loads(raw)
+        if event in ("deployment", "deployment_status", "release"):
+            ch = issues.change_from_github(event, payload)
+            if ch is None:
+                return {"ignored": True}
+            try:
+                return {"recorded": ws.add_change(ch["service"], ch["ts"], ch["kind"], ch["ref"])}
+            except ValueError as e:
+                return {"ignored": True, "reason": str(e)}
         if event != "issues" or not issues.is_postmortem_event(payload):
             return {"ignored": True}
         issue = payload["issue"]

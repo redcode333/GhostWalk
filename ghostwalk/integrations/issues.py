@@ -86,3 +86,31 @@ def is_postmortem_event(payload: dict) -> bool:
     if payload.get("action") == "labeled" and (payload.get("label") or {}).get("name", "").lower() != "postmortem":
         return False
     return "postmortem" in labels
+
+
+def parse_ts(v):
+    """epoch seconds (number or numeric string) or an ISO-8601 string -> epoch seconds; None means 'now'."""
+    import datetime
+    if v is None or v == "":
+        return None
+    try:
+        return float(v)
+    except (TypeError, ValueError):
+        return datetime.datetime.fromisoformat(str(v).replace("Z", "+00:00")).timestamp()
+
+
+def change_from_github(event: str, payload: dict):
+    """deployment_status (success), deployment, or a published release -> {service, ts, kind, ref}, else None.
+    The service is deployment.payload.service when the workflow sets it, otherwise the repository name."""
+    repo = (payload.get("repository") or {}).get("name")
+    if event in ("deployment", "deployment_status"):
+        d = payload.get("deployment") or {}
+        if event == "deployment_status" and (payload.get("deployment_status") or {}).get("state") != "success":
+            return None
+        extra = d.get("payload") if isinstance(d.get("payload"), dict) else {}
+        ts = (payload.get("deployment_status") or {}).get("created_at") if event == "deployment_status" else d.get("created_at")
+        return {"service": extra.get("service") or repo, "ts": parse_ts(ts), "kind": "deploy", "ref": f"#{d.get('id')}" if d.get("id") else (d.get("sha") or "")[:7]}
+    if event == "release" and payload.get("action") == "published":
+        r = payload.get("release") or {}
+        return {"service": repo, "ts": parse_ts(r.get("published_at")), "kind": "release", "ref": r.get("tag_name", "")}
+    return None

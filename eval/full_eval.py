@@ -12,7 +12,7 @@ import argparse, datetime, json, pathlib, platform, subprocess, sys, time
 import numpy as np
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
-from eval.runner import load, run_company, METHODS, pagerank_settings, TUNED
+from eval.runner import load, run_company, METHODS, pagerank_settings, TUNED, changes_settings, CHANGES_TUNED
 from ghostwalk.engine import walk as engine
 from ghostwalk.graph.state import W_TENTATIVE
 from ghostwalk.learn import update
@@ -25,6 +25,7 @@ BIN = 5                       # learning-curve bin width
 SNAP_EVERY = 10               # learning metrics are read after every 10 incidents
 BASELINES = ("deepest", "pagerank", "retrieval", "random")   # non-oracle comparison methods
 POISON = (0.1, 0.2, 0.3)
+SENS_P, SENS_R = (0.2, 0.5, 0.8), (0.5, 2.0, 5.0)     # change-evidence sensitivity grid
 RUN_SEED = 0
 
 STATS = {"ac1": (1, lambda r: True), "ac3": (3, lambda r: True),
@@ -148,6 +149,10 @@ def ops_metrics(runs):
         checks = np.array([r["rank"] if r["rank"] is not None else r["n_ranked"] + 1 for r in rows], dtype=float)
         out[lab] = {"verdict_ms_p50": float(np.percentile(ms, 50)), "verdict_ms_p95": float(np.percentile(ms, 95)),
                     "mean_checks_to_root": float(checks.mean()), "n": len(rows)}
+    out["tokens_per_verdict"] = {"ghostwalk": 0, "tfidf": 0, "llm_baseline": None,
+                                 "note": "ghostwalk and tfidf call no model. No LLM baseline has been run (it needs an API key and spend), so there is no number for it"}
+    out["hydradb_latency"] = None
+    out["hydradb_latency_note"] = "no HydraDB node has answered yet; the in-memory latencies above are the only ones measured"
     out["llm_tokens"] = {"ghostwalk": 0, "retrieval": 0,
                          "definition": "language-model tokens spent per verdict. Neither the walk nor the TF-IDF search calls a model, so both are 0 by construction (no LLM is imported anywhere in the verdict path)"}
     out["checks_definition"] = "1-based rank of the true root in the ranked list (absent from the list = list length + 1)"
@@ -169,6 +174,41 @@ def poisoning(split, names_sizes, n_boot, seed, quick):
         out[str(wm)] = {"wrong_pm": wm, "observed_wrong_share": wrong, "ghostwalk": ci["ghostwalk"],
                         "learning_off": ci["learning_off"], "gain": d["ghostwalk - learning_off"]}
         print(f"  poison wrong_pm={wm}: gw {ci['ghostwalk']['point']:.3f} off {ci['learning_off']['point']:.3f}", flush=True)
+    return out
+
+
+def change_evidence(items, cos, runs_pair, names, n_boot, seed, gamma, tau):
+    """Change evidence on vs off: the main split, then a sensitivity sweep that regenerates the same companies (same incidents)
+    with different change-event knobs. Gamma and tau were fitted on DEV only."""
+    tuned = json.loads(CHANGES_TUNED.read_text()) if CHANGES_TUNED.exists() else None
+    t_off, t_on = (table(runs_pair[k], names) for k in ("off", "on"))
+    ci, d = bootstrap({"off": t_off, "on": t_on}, n_boot, seed, [("on", "off")])
+    out = {"flag": "--use-changes", "settings": {"gamma": gamma, "tau_min": tau},
+           "tuned_on": tuned["split"] if tuned else None, "dev_gain": tuned["dev_gain"] if tuned else None,
+           "grid": {"gamma": [0, 0.25, 0.5, 1], "tau_min": [5, 15, 30]},
+           "note": "the DEV optimum (gamma 1, tau 30) sits on the grid corner, so a larger weight was not tried",
+           "main": {"without": ci["off"], "with": ci["on"], "gain": d["on - off"]}, "sensitivity": []}
+    for p in SENS_P:
+        for r in SENS_R:
+            co2 = [json.loads(simcli.make(f, sd, sz[sd], Knobs(p_root_change=p, r_noise=r)).to_json()) for f, sd, sz in items]
+            nm = [c["name"] for c in co2]
+            off = {c["name"]: run_company(c, "ghostwalk") for c in co2}
+            on = {c["name"]: run_company(c, "ghostwalk", use_changes=True, gamma=gamma, tau=tau) for c in co2}
+            ci2, d2 = bootstrap({"off": table(off, nm), "on": table(on, nm)}, n_boot, seed, [("on", "off")])
+            out["sensitivity"].append({"p_root": p, "r_noise": r, "without": ci2["off"], "with": ci2["on"], "gain": d2["on - off"]})
+            print(f"  changes p_root={p} r_noise={r}: {ci2['off']['point']:.3f} -> {ci2['on']['point']:.3f}", flush=True)
+    sens = out["sensitivity"]
+    ok = lambda row: row["gain"]["ci95"][0] > 0
+    at = lambda p=None, r=None: [x for x in sens if (p is None or x["p_root"] == p) and (r is None or x["r_noise"] == r)]
+    good_p = [p for p in SENS_P if all(ok(x) for x in at(p=p))]
+    good_r = [r for r in SENS_R if all(ok(x) for x in at(r=r))]
+    out["vanishes_at_low_p_root"] = not ok(at(p=SENS_P[0], r=2.0)[0])        # p_root=0.2 at the default noise
+    out["vanishes_at_high_noise"] = not ok(at(p=0.5, r=SENS_R[-1])[0])       # r_noise=5 at the default p_root
+    out["helps_only_when"] = (
+        "helps at every setting tried" if len(good_p) == len(SENS_P) and len(good_r) == len(SENS_R) else
+        ("helps only when the root's own change is common: reliable gain (95% CI above 0) for p_root in " + str(good_p)
+         + ("; at p_root=0.2 the gain is " + f"{at(p=0.2, r=2.0)[0]['gain']['point'] * 100:+.1f} pts with a CI that includes 0" if not ok(at(p=0.2, r=2.0)[0]) else "")
+         + ". " + ("Distractor noise up to r_noise=5 does not remove it at p_root=0.5." if not out["vanishes_at_high_noise"] else "At r_noise=5 the gain vanishes.")))
     return out
 
 
@@ -200,6 +240,8 @@ def main():
             print(f"  {m:30s} {time.time() - t:5.1f}s", flush=True)
         else:
             runs[m] = run_all(cos, m, method=m, pr=pr)
+    gamma, tau = changes_settings()
+    runs["ghostwalk_changes"] = run_all(cos, "ghostwalk + changes", method="ghostwalk", use_changes=True, gamma=gamma, tau=tau, pr=pr)
     runs["pagerank_untuned"] = run_all(cos, "pagerank (untuned default)", method="pagerank", pr=dict(simple.PR_DEFAULT))
     t = time.time()
     pl_traces = {c["name"]: {} for c in cos}
@@ -312,6 +354,7 @@ def main():
     dev_items, test_items, sizes = simcli.splits()
     items = [(f, s, sizes) for f, s in (test_items if a.split == "test" else dev_items)]
     results["poisoning"] = {"split": a.split, "levels": poisoning(a.split, items, a.boot, a.seed, a.quick)}
+    results["change_evidence"] = change_evidence(items, cos, {"off": runs["ghostwalk"], "on": runs["ghostwalk_changes"]}, names, a.boot, a.seed, gamma, tau)
 
     results["meta"]["runtime_s"] = round(time.time() - t_start, 1)
     pathlib.Path(out_path).write_text(json.dumps(results, indent=2))

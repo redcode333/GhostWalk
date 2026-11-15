@@ -45,6 +45,6 @@ def normalize(payload):
         raise ValueError("no firing alerts with a service name in this payload")
     stamped = [r["t"] for r in rows if r["t"] is not None]
     base = min(stamped) if stamped else 0.0
-    out = [{"name": r["name"], "signal": r["signal"], "t": round((r["t"] - base) if r["t"] is not None and stamped else float(r["_i"]), 1)}
-           for r in rows]
+    out = [{"name": r["name"], "signal": r["signal"], "t": round((r["t"] - base) if r["t"] is not None and stamped else float(r["_i"]), 1),
+            **({"epoch": r["t"]} if r["t"] is not None and stamped and r["t"] > 1e9 else {})} for r in rows]
     return sorted(out, key=lambda r: r["t"])

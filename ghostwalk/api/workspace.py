@@ -6,7 +6,7 @@ State is saved to a JSON file after every change, so a restart keeps the learned
 """
 from __future__ import annotations
 import json, math, os, pathlib, random, secrets, threading, time
-from ..engine.walk import walk, resolve, _limited_best
+from ..engine.walk import walk, resolve, _limited_best, changes_before, change_note, tuned_changes
 from ..graph.state import GraphState, Edge, W0_OFFICIAL, W_TENTATIVE
 from ..learn import update
 from ..integrations import issues
@@ -21,7 +21,7 @@ def ui_kind(c):
 
 
 class Workspace:
-    def __init__(self, state_path=None, demo_incidents=30, seed=7777, demo=True):
+    def __init__(self, state_path=None, demo_incidents=30, seed=7777, demo=True, use_changes=None):
         self.lock = threading.RLock()
         self.path = pathlib.Path(state_path) if state_path else None
         self.rng = random.Random(seed)
@@ -38,6 +38,8 @@ class Workspace:
         self.installation = None
         self.repo_for_template = None
         self.log: list[str] = []
+        self.changes: list[dict] = []             # deploy/config events: {service, ts (epoch s), kind, ref}
+        self.use_changes = use_changes if use_changes is not None else os.environ.get("GW_USE_CHANGES") == "1"
         self.learned_by: dict[int, str] = {}      # graph revision -> the incident whose postmortem produced it
         if not (self.path and self.path.exists() and self._load()):
             if demo:
@@ -67,9 +69,25 @@ class Workspace:
     def _name(self, cid):
         return self.g.components[cid]["name"]
 
+    def add_change(self, service, ts=None, kind="deploy", ref=""):
+        """Record what changed (a deploy or config change). `service` may be an alias."""
+        with self.lock:
+            cid = self.g.names.get(service)
+            if cid is None:
+                raise ValueError(f"'{service}' is not in the map")
+            ev = {"service": self.g.components[cid]["name"], "ts": float(ts if ts is not None else time.time()), "kind": kind or "deploy", "ref": ref or ""}
+            self.changes.append(ev)
+            self.changes = self.changes[-5000:]
+            self.save()
+            return ev
+
     def _ingest(self, alerts, started=None, source="webhook"):
         t0 = time.perf_counter()
-        v = walk(self.g, alerts)
+        epochs = [a["epoch"] for a in alerts if a.get("epoch")]
+        first_epoch = min(epochs) if epochs else time.time() + (started or 0)
+        gamma, tau = tuned_changes()
+        ch = changes_before(self.g, self.changes, first_epoch) if self.use_changes and self.changes else None
+        v = walk(self.g, alerts, changes=ch, gamma=gamma, tau=tau)
         ms = (time.perf_counter() - t0) * 1000
         A, unresolved, onset = resolve(self.g, alerts)
         top = v.ranking[:5]
@@ -94,6 +112,7 @@ class Workspace:
                            "explains": len(explained), "of": len(A), "services": len(A),
                            "blast": [{"id": c, "name": self._name(c), "kind": ui_kind(self.g.components[c]),
                                       "alerting": c in A, "root": c == root, "onset": onset.get(c)} for c in blast],
+                           "change_note": change_note(self.g, self.changes, root, first_epoch) if self.use_changes and root is not None else None,
                            "learned_on_path": [{"u": u, "v": w, "confirmations": self.g.edges[(u, w)].confirmations,
                                                 "from": self.g.edges[(u, w)].learned_from,
                                                 "incident": self.learned_by.get(self.g.edges[(u, w)].learned_from)}
@@ -300,7 +319,7 @@ class Workspace:
     def dump(self):
         g = self.g
         return {"mode": self.mode, "revision": self.revision, "token": self.token, "next_sim": self.next_sim, "onboarding": self.onboarding,
-                "installation": self.installation, "repo_for_template": self.repo_for_template, "map_proposals": self.map_proposals,
+                "changes": self.changes, "installation": self.installation, "repo_for_template": self.repo_for_template, "map_proposals": self.map_proposals,
                 "components": {str(i): c for i, c in g.components.items()}, "names": g.names,
                 "edges": [[u, v, e.w, e.origin, e.confirmations, e.learned_from, e.created_seq] for (u, v), e in g.edges.items()],
                 "root_counts": g.root_counts, "affected": g.affected, "missed": g.missed, "seq": g.seq, "learned_by": self.learned_by,
@@ -328,6 +347,7 @@ class Workspace:
             g.seq = d["seq"]
             self.learned_by = {int(k): v for k, v in d.get("learned_by", {}).items()}
             self.g, self.mode, self.revision, self.token = g, d["mode"], d["revision"], d["token"]
+            self.changes = d.get("changes", [])
             self.next_sim, self.onboarding, self.installation = d["next_sim"], d["onboarding"], d.get("installation")
             self.repo_for_template, self.map_proposals = d.get("repo_for_template"), d.get("map_proposals")
             self.incidents, self.pending = d["incidents"], d["pending"]
