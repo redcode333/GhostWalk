@@ -3,10 +3,10 @@
     "split": "test",
     "companies": 30,
     "incidents": 1800,
-    "timestamp_utc": "2026-11-15T13:06:46+00:00",
+    "timestamp_utc": "2026-11-15T13:22:58+00:00",
     "git": {
-      "commit": "c23af7efb6757a8b6e7908c76912939389dcd90b",
-      "short": "c23af7e",
+      "commit": "f8bf9a869767a22662b5436c4b7a9efbc6a7630c",
+      "short": "f8bf9a8",
       "dirty": false
     },
     "command": "eval/full_eval.py --split test",
@@ -75,7 +75,7 @@
     "quick": false,
     "python": "3.12.4",
     "numpy": "2.5.4",
-    "runtime_s": 25.7
+    "runtime_s": 134.4
   },
   "methods": {
     "ghostwalk": {
@@ -481,6 +481,64 @@
         "ci95": [
           0.1921152709359606,
           0.24781138074424813
+        ]
+      }
+    },
+    "ghostwalk_changes": {
+      "ac1": {
+        "point": 0.7827777777777778,
+        "ci95": [
+          0.7627777777777778,
+          0.8038888888888889
+        ]
+      },
+      "ac3": {
+        "point": 0.9211111111111111,
+        "ci95": [
+          0.9055416666666667,
+          0.935
+        ]
+      },
+      "early": {
+        "point": 0.7288888888888889,
+        "ci95": [
+          0.6844444444444444,
+          0.7733333333333333
+        ]
+      },
+      "late": {
+        "point": 0.8333333333333334,
+        "ci95": [
+          0.7955,
+          0.8688888888888889
+        ]
+      },
+      "repeat_root": {
+        "point": 0.8408510638297872,
+        "ci95": [
+          0.8151516194224399,
+          0.8673571106538263
+        ]
+      },
+      "new_root": {
+        "point": 0.6736,
+        "ci95": [
+          0.6382241700279242,
+          0.7088081667146146
+        ]
+      },
+      "repeat_path": {
+        "point": 0.8613989637305699,
+        "ci95": [
+          0.8284483184083967,
+          0.8945889322352261
+        ]
+      },
+      "novel_path": {
+        "point": 0.7237354085603113,
+        "ci95": [
+          0.6955718193881446,
+          0.7522864733721745
         ]
       }
     },
@@ -1829,35 +1887,43 @@
     "hydradb": null,
     "note": "single-process wall-clock per verdict (graph snapshot + walk); HydraDB latency is measured by the store-swap run when a HydraDB node is reachable",
     "ghostwalk": {
-      "verdict_ms_p50": 0.29755000014120014,
-      "verdict_ms_p95": 1.4895599999363185,
+      "verdict_ms_p50": 0.33575000043128966,
+      "verdict_ms_p95": 1.6399749996708124,
       "mean_checks_to_root": 1.998888888888889,
       "n": 1800
     },
     "learning_off": {
-      "verdict_ms_p50": 0.24184999983845046,
-      "verdict_ms_p95": 1.2006949998749403,
+      "verdict_ms_p50": 0.2793499998006155,
+      "verdict_ms_p95": 1.5215949995763365,
       "mean_checks_to_root": 2.387777777777778,
       "n": 1800
     },
     "deepest": {
-      "verdict_ms_p50": 0.028299999939918052,
-      "verdict_ms_p95": 0.11570500014386198,
+      "verdict_ms_p50": 0.05534999991141376,
+      "verdict_ms_p95": 0.27877000029548066,
       "mean_checks_to_root": 2.487222222222222,
       "n": 1800
     },
     "pagerank": {
-      "verdict_ms_p50": 0.3159000000323431,
-      "verdict_ms_p95": 0.582930000291526,
+      "verdict_ms_p50": 1.2080999999852793,
+      "verdict_ms_p95": 2.5900800000272284,
       "mean_checks_to_root": 3.0388888888888888,
       "n": 1800
     },
     "retrieval": {
-      "verdict_ms_p50": 0.642799999923227,
-      "verdict_ms_p95": 1.5294500001118647,
+      "verdict_ms_p50": 1.846699999532575,
+      "verdict_ms_p95": 4.565829999864944,
       "mean_checks_to_root": 3.4194444444444443,
       "n": 1800
     },
+    "tokens_per_verdict": {
+      "ghostwalk": 0,
+      "tfidf": 0,
+      "llm_baseline": null,
+      "note": "ghostwalk and tfidf call no model. No LLM baseline has been run (it needs an API key and spend), so there is no number for it"
+    },
+    "hydradb_latency": null,
+    "hydradb_latency_note": "no HydraDB node has answered yet; the in-memory latencies above are the only ones measured",
     "llm_tokens": {
       "ghostwalk": 0,
       "retrieval": 0,
@@ -2431,6 +2497,292 @@
       }
     }
   },
+  "change_evidence": {
+    "flag": "--use-changes",
+    "settings": {
+      "gamma": 1.0,
+      "tau_min": 30.0
+    },
+    "tuned_on": "dev",
+    "dev_gain": 0.02833333333333332,
+    "grid": {
+      "gamma": [
+        0,
+        0.25,
+        0.5,
+        1
+      ],
+      "tau_min": [
+        5,
+        15,
+        30
+      ]
+    },
+    "note": "the DEV optimum (gamma 1, tau 30) sits on the grid corner, so a larger weight was not tried",
+    "main": {
+      "without": {
+        "point": 0.7661111111111111,
+        "ci95": [
+          0.7466666666666667,
+          0.7872222222222223
+        ]
+      },
+      "with": {
+        "point": 0.7827777777777778,
+        "ci95": [
+          0.7627777777777778,
+          0.8038888888888889
+        ]
+      },
+      "gain": {
+        "point": 0.01666666666666672,
+        "ci95": [
+          0.010000000000000009,
+          0.02388888888888896
+        ],
+        "p_le_0": 0.0
+      }
+    },
+    "sensitivity": [
+      {
+        "p_root": 0.2,
+        "r_noise": 0.5,
+        "without": {
+          "point": 0.7661111111111111,
+          "ci95": [
+            0.7461111111111111,
+            0.7877777777777778
+          ]
+        },
+        "with": {
+          "point": 0.7738888888888888,
+          "ci95": [
+            0.7549861111111111,
+            0.7944583333333333
+          ]
+        },
+        "gain": {
+          "point": 0.007777777777777772,
+          "ci95": [
+            0.0033333333333332993,
+            0.012777777777777777
+          ],
+          "p_le_0": 0.0005
+        }
+      },
+      {
+        "p_root": 0.2,
+        "r_noise": 2.0,
+        "without": {
+          "point": 0.7661111111111111,
+          "ci95": [
+            0.7461111111111111,
+            0.7877777777777778
+          ]
+        },
+        "with": {
+          "point": 0.7705555555555555,
+          "ci95": [
+            0.7499861111111111,
+            0.7927777777777778
+          ]
+        },
+        "gain": {
+          "point": 0.004444444444444473,
+          "ci95": [
+            -1.3888888888887495e-05,
+            0.009444444444444478
+          ],
+          "p_le_0": 0.0435
+        }
+      },
+      {
+        "p_root": 0.2,
+        "r_noise": 5.0,
+        "without": {
+          "point": 0.7661111111111111,
+          "ci95": [
+            0.7461111111111111,
+            0.7877777777777778
+          ]
+        },
+        "with": {
+          "point": 0.7683333333333333,
+          "ci95": [
+            0.7477777777777778,
+            0.7905555555555556
+          ]
+        },
+        "gain": {
+          "point": 0.0022222222222222365,
+          "ci95": [
+            -0.0033333333333334103,
+            0.007222222222222241
+          ],
+          "p_le_0": 0.225
+        }
+      },
+      {
+        "p_root": 0.5,
+        "r_noise": 0.5,
+        "without": {
+          "point": 0.7661111111111111,
+          "ci95": [
+            0.7461111111111111,
+            0.7877777777777778
+          ]
+        },
+        "with": {
+          "point": 0.785,
+          "ci95": [
+            0.7655555555555555,
+            0.8055555555555556
+          ]
+        },
+        "gain": {
+          "point": 0.018888888888888955,
+          "ci95": [
+            0.01166666666666671,
+            0.027222222222222148
+          ],
+          "p_le_0": 0.0
+        }
+      },
+      {
+        "p_root": 0.5,
+        "r_noise": 2.0,
+        "without": {
+          "point": 0.7661111111111111,
+          "ci95": [
+            0.7461111111111111,
+            0.7877777777777778
+          ]
+        },
+        "with": {
+          "point": 0.7827777777777778,
+          "ci95": [
+            0.7627777777777778,
+            0.8044444444444444
+          ]
+        },
+        "gain": {
+          "point": 0.01666666666666672,
+          "ci95": [
+            0.010000000000000009,
+            0.02444444444444438
+          ],
+          "p_le_0": 0.0
+        }
+      },
+      {
+        "p_root": 0.5,
+        "r_noise": 5.0,
+        "without": {
+          "point": 0.7661111111111111,
+          "ci95": [
+            0.7461111111111111,
+            0.7877777777777778
+          ]
+        },
+        "with": {
+          "point": 0.7766666666666666,
+          "ci95": [
+            0.7555555555555555,
+            0.7983333333333333
+          ]
+        },
+        "gain": {
+          "point": 0.01055555555555554,
+          "ci95": [
+            0.004444444444444473,
+            0.01666666666666672
+          ],
+          "p_le_0": 0.0
+        }
+      },
+      {
+        "p_root": 0.8,
+        "r_noise": 0.5,
+        "without": {
+          "point": 0.7661111111111111,
+          "ci95": [
+            0.7461111111111111,
+            0.7877777777777778
+          ]
+        },
+        "with": {
+          "point": 0.8,
+          "ci95": [
+            0.7799861111111112,
+            0.8222222222222222
+          ]
+        },
+        "gain": {
+          "point": 0.03388888888888897,
+          "ci95": [
+            0.025000000000000022,
+            0.0427777777777778
+          ],
+          "p_le_0": 0.0
+        }
+      },
+      {
+        "p_root": 0.8,
+        "r_noise": 2.0,
+        "without": {
+          "point": 0.7661111111111111,
+          "ci95": [
+            0.7461111111111111,
+            0.7877777777777778
+          ]
+        },
+        "with": {
+          "point": 0.7983333333333333,
+          "ci95": [
+            0.7777777777777778,
+            0.8211111111111111
+          ]
+        },
+        "gain": {
+          "point": 0.03222222222222226,
+          "ci95": [
+            0.02388888888888885,
+            0.0411111111111111
+          ],
+          "p_le_0": 0.0
+        }
+      },
+      {
+        "p_root": 0.8,
+        "r_noise": 5.0,
+        "without": {
+          "point": 0.7661111111111111,
+          "ci95": [
+            0.7461111111111111,
+            0.7877777777777778
+          ]
+        },
+        "with": {
+          "point": 0.7922222222222223,
+          "ci95": [
+            0.7716666666666666,
+            0.8138888888888889
+          ]
+        },
+        "gain": {
+          "point": 0.026111111111111196,
+          "ci95": [
+            0.020000000000000018,
+            0.03222222222222226
+          ],
+          "p_le_0": 0.0
+        }
+      }
+    ],
+    "vanishes_at_low_p_root": true,
+    "vanishes_at_high_noise": false,
+    "helps_only_when": "helps only when the root's own change is common: reliable gain (95% CI above 0) for p_root in [0.5, 0.8]; at p_root=0.2 the gain is +0.4 pts with a CI that includes 0. Distractor noise up to r_noise=5 does not remove it at p_root=0.5."
+  },
   "store_swap": {
     "split": "test",
     "reference": "inmemory",
@@ -2448,8 +2800,8 @@
           ]
         },
         "delta_vs_reference": null,
-        "verdict_ms_p50": 0.24056300003394426,
-        "verdict_ms_p95": 1.138472549882863
+        "verdict_ms_p50": 0.24444849999838425,
+        "verdict_ms_p95": 1.1809283500099355
       },
       "kv_1hop": {
         "description": "Redis hashes, 1-hop adjacency only (engine max_hops=1)",
@@ -2468,8 +2820,8 @@
           ],
           "p_le_0": 1.0
         },
-        "verdict_ms_p50": 19.45216949980022,
-        "verdict_ms_p95": 29.133762899982685
+        "verdict_ms_p50": 13.540076500007103,
+        "verdict_ms_p95": 21.620215200005077
       },
       "pg_cte": {
         "description": "Postgres tables, multi-hop reach by recursive CTE",
@@ -2488,28 +2840,28 @@
           ],
           "p_le_0": 1.0
         },
-        "verdict_ms_p50": 4.41740350015607,
-        "verdict_ms_p95": 15.382303049909751
+        "verdict_ms_p50": 6.83779599999923,
+        "verdict_ms_p95": 26.95648984999223
       },
       "pgvector": {
         "description": "pgvector: nearest embedded postmortem text names the root (no graph)",
         "ac1": {
-          "point": 0.3877777777777778,
+          "point": 0.3883333333333333,
           "ci95": [
-            0.34441666666666665,
-            0.43333333333333335
+            0.3449861111111111,
+            0.43444444444444447
           ]
         },
         "delta_vs_reference": {
-          "point": -0.3783333333333333,
+          "point": -0.37777777777777777,
           "ci95": [
-            -0.4266666666666667,
-            -0.3288888888888889
+            -0.4261111111111111,
+            -0.32776388888888897
           ],
           "p_le_0": 1.0
         },
-        "verdict_ms_p50": 0.6581109998933243,
-        "verdict_ms_p95": 1.1980959501897814
+        "verdict_ms_p50": 0.6738680000069053,
+        "verdict_ms_p95": 2.1929191999959126
       }
     },
     "note": "\u0394AC@1 is measured against the in-memory reference because no HydraDB result exists yet; see hydradb.status. Embeddings are feature-hashed bags of words (no model)."
