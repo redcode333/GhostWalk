@@ -96,3 +96,23 @@ Example comment (snapshot-tested): `+ fraud-check → config-svc · new dependen
 
 ### Agent benchmark (stretch): not run
 It needs an LLM API key and spend, and none is configured here, so there is no result and nothing is claimed about it.
+
+## Performance
+`make bench` (`python eval/bench.py --reference`) times the verdict on synthetic graphs of 100 / 1,000 / 5,000 services, 1,000 incidents each, with the
+same tier mix as the benchmark, and writes the `latency` section of `results.json` (in-memory engine, full online loop with learning).
+
+| services | p50 | p95 | p99 | previous walk loop p95 |
+|---|---|---|---|---|
+| 100 | 0.6 ms | 0.8 ms | 1.1 ms | 2.1 ms |
+| 1,000 | 15.0 ms | 22.0 ms | 30.4 ms | 59.1 ms |
+| 5,000 | 84.6 ms | 116.4 ms | 125.9 ms | 422.3 ms |
+
+Both gates are met without a rewrite: p95 at 1,000 services is under 100 ms, and p95 at 5,000 services is under 250 ms, so there is **no Rust port** and
+no `ghostwalk-fast` wheel. The hygiene that did it: adjacency built once per graph revision and cached (invalidated by every learner write), a per-verdict
+memo, hoisted constants, and a candidate loop that visits only the services a candidate can reach. A parity test keeps the old `walk()` as a reference and
+checks that every incident of every dev and TEST company ranks identically (scores equal to 1e-9) through the whole learning loop. The TEST accuracy numbers
+were therefore not re-run. Profiling also showed the limited Bellman-Ford was only about 15% of a 5,000-service verdict, so porting just that function
+would not have met the 250 ms line anyway.
+
+Not done: HydraDB-backed latency (no node, and the adapter's response parser is a stub) and UNWIND batching of HydraDB path queries, which cannot be
+written or tested without one. Path costs (-ln w) were already stored with w on every HydraDB write, and results.json is now parsed once per file version.
