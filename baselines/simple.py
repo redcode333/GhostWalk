@@ -2,6 +2,7 @@
 B3 (retrieval over past postmortems). Each exposes rank(g, alerts, history) -> [component ids]."""
 from __future__ import annotations
 import math, random
+import numpy as np
 from collections import Counter
 from ghostwalk.engine.walk import resolve, _limited_best
 
@@ -24,28 +25,63 @@ def rank_deepest(g, alerts, max_hops=5, **_):
     return sorted(A, key=lambda v: (has_alerting_dep(v), -g.components[v]["tier"], onset[v]))
 
 
-def rank_pagerank(g, alerts, alpha=0.85, iters=50, **_):
-    """Personalized PageRank: the walker restarts at alerting nodes and flows from a
-    service to what it depends on, so mass gathers on shared upstream causes."""
-    A, _, _ = resolve(g, alerts)
+# Tunable settings (fitted on DEV only, see eval/tune_pagerank.py -> eval/pagerank_tuned.json)
+PR_DEFAULT = {"restart": 0.15, "direction": "dep", "weighted": True, "onset": False}
+_PR_CACHE: dict = {}
+
+
+def _pr_matrix(g, direction, weighted):
+    """Row-stochastic transition matrix. direction: 'dep' (service -> what it depends on),
+    'rev' (dependency -> its dependents) or 'both'. Dangling nodes keep their mass (self loop)."""
+    key = (id(g), direction, weighted, len(g.edges))
+    hit = _PR_CACHE.get(key)
+    if hit is not None and hit[0] is g:      # the graph object is pinned in the cache, so its id cannot be reused
+        return hit[1:]
+    ids = sorted(g.components)
+    ix = {c: i for i, c in enumerate(ids)}
+    M = np.zeros((len(ids), len(ids)))
+    for (u, v), e in g.edges.items():
+        w = e.w if weighted else 1.0
+        if direction in ("dep", "both"):
+            M[ix[u], ix[v]] += w
+        if direction in ("rev", "both"):
+            M[ix[v], ix[u]] += w
+    tot = M.sum(1)
+    for i in range(len(ids)):
+        if tot[i] == 0:
+            M[i, i] = 1.0
+        else:
+            M[i] /= tot[i]
+    if len(_PR_CACHE) > 64:
+        _PR_CACHE.clear()
+    _PR_CACHE[key] = (g, ids, ix, M)
+    return ids, ix, M
+
+
+def rank_pagerank(g, alerts, restart=None, direction=None, weighted=None, onset=None, iters=60, **_):
+    """Personalized PageRank (MicroRCA-style): the walker restarts at alerting services.
+    Settings: restart probability, edge direction, edge weighting, and whether the restart
+    mass favours earlier alerts. The score is the stationary mass; ties break to the earliest alert."""
+    cfg = {**PR_DEFAULT, **{k: v for k, v in (("restart", restart), ("direction", direction),
+                                               ("weighted", weighted), ("onset", onset)) if v is not None}}
+    A, _, t = resolve(g, alerts)
     if not A:
         return []
-    out_adj = g.out_adj()
-    nodes = list(g.components)
-    pers = {v: (1.0 / len(A) if v in A else 0.0) for v in nodes}
-    pr = dict(pers)
+    ids, ix, M = _pr_matrix(g, cfg["direction"], cfg["weighted"])
+    p = np.zeros(len(ids))
+    if cfg["onset"]:
+        t0 = min(t.values())
+        for v in A:
+            p[ix[v]] = 1.0 / (1.0 + (t[v] - t0) / 30.0)
+    else:
+        for v in A:
+            p[ix[v]] = 1.0
+    p /= p.sum()
+    pr = p.copy()
     for _ in range(iters):
-        nxt = {v: (1 - alpha) * pers[v] for v in nodes}
-        for u in nodes:
-            outs = out_adj.get(u, [])
-            tot = sum(w for _, w in outs)
-            if tot == 0:
-                nxt[u] += alpha * pr[u]           # dangling: keep mass (sink = candidate root)
-                continue
-            for v, w in outs:
-                nxt[v] += alpha * pr[u] * w / tot
-        pr = nxt
-    return sorted(nodes, key=lambda v: -pr[v])
+        pr = cfg["restart"] * p + (1 - cfg["restart"]) * (pr @ M)
+    order = sorted(range(len(ids)), key=lambda i: (-round(pr[i], 12), t.get(ids[i], 1e9)))
+    return [ids[i] for i in order]
 
 
 def _tokens(alerts):

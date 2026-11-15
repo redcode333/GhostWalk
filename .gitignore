@@ -7,3 +7,6 @@ web/dist/
 .venv/
 .pytest_cache/
 dev_results.json
+dev_results.json
+*.log
+web/node_modules/

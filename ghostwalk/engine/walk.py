@@ -62,19 +62,23 @@ def resolve(g, alerts):
     return seen, unresolved, onset
 
 
-def walk(g, alerts, max_hops=5, eps=None, use_prior=True):
+def walk(g, alerts, max_hops=5, eps=None, use_prior=True, reach=None):
+    """reach(node, 'out'|'in', max_hops) -> (best, prev) lets a store answer the reachability itself
+    (e.g. a Postgres recursive CTE); the default is the in-process limited Bellman-Ford."""
     eps = EPS if eps is None else eps
     A, unresolved, onset = resolve(g, alerts)
     if not A:
         return Verdict([], 0.0, [], None, unresolved, 0)
     out_adj, in_adj = g.out_adj(), g.in_adj()
-    down = {v: _limited_best(out_adj, v, max_hops) for v in A}     # reach from each alerting service
+    if reach is None:
+        reach = lambda v, d, h: _limited_best(out_adj if d == "out" else in_adj, v, h)
+    down = {v: reach(v, "out", max_hops) for v in A}     # reach from each alerting service
     cands = set(A)
     for best, _ in down.values():
         cands.update(best)
     scores = []
     for c in cands:
-        up, _ = _limited_best(in_adj, c, max_hops)                 # everything that would feel c failing
+        up, _ = reach(c, "in", max_hops)                          # everything that would feel c failing
         s = 0.0
         for v in set(up) | A:
             if v == c:

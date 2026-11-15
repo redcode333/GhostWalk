@@ -1,0 +1,23 @@
+# Default profile: the app (api + web). `--profile eval`: real stores + the store-swap run.
+name: ghostwalk
+services:
+  redis:
+    image: redis:7-alpine
+    profiles: [eval]
+    ports: ["6380:6379"]
+    healthcheck: {test: ["CMD", "redis-cli", "ping"], interval: 2s, timeout: 2s, retries: 20}
+  postgres:
+    image: pgvector/pgvector:pg16
+    profiles: [eval]
+    environment: {POSTGRES_USER: gw, POSTGRES_PASSWORD: gw, POSTGRES_DB: gw}
+    ports: ["5433:5432"]
+    healthcheck: {test: ["CMD-SHELL", "pg_isready -U gw -d gw"], interval: 2s, timeout: 2s, retries: 30}
+  eval:
+    profiles: [eval]
+    build: {context: ., dockerfile: Dockerfile.eval}
+    depends_on:
+      redis: {condition: service_healthy}
+      postgres: {condition: service_healthy}
+    environment: {REDIS_URL: "redis://redis:6379/0", PG_URL: "postgresql://gw:gw@postgres:5432/gw"}
+    volumes: [".:/app"]
+    command: ["python", "eval/store_swap.py", "--split", "test"]

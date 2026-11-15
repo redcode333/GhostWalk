@@ -3,7 +3,7 @@ from eval.full_eval import pooled, bootstrap, summarize
 
 
 def rows(ranks, seq0=0):
-    return [{"rank": r, "seq": seq0 + i, "repeat": False} for i, r in enumerate(ranks)]
+    return [{"rank": r, "seq": seq0 + i, "repeat": False, "repeat_path": False} for i, r in enumerate(ranks)]
 
 
 def test_pooled_counts_hits_over_companies():
