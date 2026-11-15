@@ -1,6 +1,6 @@
 """Online evaluation: predict incident i on the graph after postmortems 1..i-1."""
 from __future__ import annotations
-import copy, json, pathlib, random
+import copy, json, pathlib, random, zlib
 from gwsim.world import official_view
 from ghostwalk.graph.state import GraphState
 from ghostwalk.engine.walk import walk
@@ -29,7 +29,7 @@ def placebo_pm(co, inc, rng):
 
 def run_company(co, method, max_hops=5, steps=update.ALL_STEPS, placebo=False, seed=0, backend=None):
     """Returns per-incident rows: seq, truth, rank of truth (1-based, None if absent), top, confidence."""
-    rng = random.Random(seed * 7919 + hash(co["name"]) % 10007)
+    rng = random.Random(seed * 7919 + zlib.crc32(co["name"].encode()) % 10007)
     if method == "oracle":
         g = GraphState.from_truth(co)
     else:
