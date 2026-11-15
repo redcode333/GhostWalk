@@ -50,8 +50,8 @@ for i in $(seq 1 90); do
   if curl -fsS "https://$API_DOMAIN/api/health" >/dev/null 2>&1; then break; fi
   sleep 4
 done
-python3 -m pip install --quiet httpx 2>/dev/null || true
-python3 "$DEPLOY/smoke.py" --api "https://$API_DOMAIN" ${GW_CORS_ORIGINS:+--frontend "$GW_CORS_ORIGINS"}
+# the smoke test runs in a throwaway container: the VM needs no Python packages
+docker run --rm --network host -v "$PWD/$DEPLOY:/d:ro" python:3.12-slim sh -c 'pip install -q httpx >/dev/null 2>&1 && python /d/smoke.py "$@"' sh --api "https://$API_DOMAIN" ${GW_CORS_ORIGINS:+--frontend "$GW_CORS_ORIGINS"}
 echo
 echo "API:      https://$API_DOMAIN   (status: https://$API_DOMAIN/api/health)"
 echo "Frontend: set VITE_API_URL=https://$API_DOMAIN in the Vercel project, then: cd web && vercel --prod"
