@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ghostwalk"
+version = "0.1.0"
+description = "Root cause analysis that learns the dependencies nobody drew."
+requires-python = ">=3.11"
+dependencies = ["numpy", "httpx", "click", "rich", "pyyaml", "fastapi", "uvicorn", "pyjwt[crypto]"]
+
+[project.optional-dependencies]
+eval = ["redis", "psycopg[binary]", "scipy", "networkx"]
+dev = ["pytest"]
+
+[project.scripts]
+gw = "ghostwalk.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["ghostwalk*", "gwsim*", "baselines*", "eval*"]
