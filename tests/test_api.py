@@ -149,3 +149,28 @@ def test_state_survives_restart(tmp_path):
     a.test_alert()
     b = Workspace(p)
     assert len(b.incidents) == len(a.incidents) and b.token == a.token and b.g.edges.keys() == a.g.edges.keys()
+
+
+def test_inside_demo_is_computed_by_the_engine(client):
+    d = client.get("/api/demo/inside").json()
+    assert d["before"]["ranking"][0]["name"] != d["after"]["ranking"][0]["name"] == "config-svc"
+    assert any(e["origin"] == "learned" for e in d["after"]["path"]) and d["learned_edges"] and d["changes"]
+
+
+def test_plan_limit_returns_402_only_when_sign_in_is_on(monkeypatch):
+    from ghostwalk.api.app import clerk_user
+    w = Workspace(None, demo_incidents=2)
+    app = create_app(workspace=w, results_path="nope.json")
+    app.dependency_overrides[clerk_user] = lambda: {"id": "u1"}
+    c = TestClient(app)
+    big = {"services": [{"name": f"s{i}", "kind": "service"} for i in range(30)],
+           "edges": [{"id": f"s{i}>s{i+1}", "src": f"s{i}", "dst": f"s{i+1}"} for i in range(29)]}
+    ids = [e["id"] for e in big["edges"]]
+    w.map_proposals = big
+    monkeypatch.setenv("AUTH_MODE", "none")
+    assert c.post("/api/onboarding/accept", json={"edge_ids": ids}).status_code == 200       # demo mode has no plan limit
+    w.map_proposals = big
+    monkeypatch.setenv("AUTH_MODE", "clerk")
+    r = c.post("/api/onboarding/accept", json={"edge_ids": ids})
+    assert r.status_code == 402 and r.json()["detail"]["code"] == "plan_limit" and r.json()["detail"]["limit"] == 25
+    assert c.post("/api/onboarding/accept", json={"edge_ids": ids[:10]}).status_code == 200   # 11 services fit

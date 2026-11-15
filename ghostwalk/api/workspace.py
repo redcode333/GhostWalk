@@ -7,7 +7,7 @@ State is saved to a JSON file after every change, so a restart keeps the learned
 from __future__ import annotations
 import json, math, os, pathlib, random, secrets, threading, time
 from ..engine.walk import walk, resolve, _limited_best
-from ..graph.state import GraphState, Edge, W0_OFFICIAL
+from ..graph.state import GraphState, Edge, W0_OFFICIAL, W_TENTATIVE
 from ..learn import update
 from ..integrations import issues
 
@@ -194,6 +194,19 @@ class Workspace:
                     "created": time.time(), "pm": pm, **p}
             self.pending.append(item)
             self.onboarding["postmortem"] = True
+            self.save()
+            return item
+
+    def queue_edge(self, u, v, incident_id=None, reason=""):
+        """A suggested dependency (u depends on v) from a person or an MCP client. PENDING only: nothing touches the graph."""
+        with self.lock:
+            e = self.g.edges.get((u, v))
+            ops = [] if e else [{"op": "add_edge", "u": u, "v": v, "w": W_TENTATIVE, "seq": self.g.seq}]
+            row = {"index": 0, "symbol": "+", "text": f"{self._name(u)} ⇢ {self._name(v)}",
+                   "detail": "already in the map" if e else f"new · tentative {W_TENTATIVE:.2f}"}
+            item = {"id": secrets.token_hex(4), "incident": None, "ref": incident_id, "source": "MCP client" + (f" · {reason}" if reason else ""),
+                    "created": time.time(), "pm": None, "ops": ops, "shown": [row] if ops else [], "unresolved": [], "root_name": None}
+            self.pending.append(item)
             self.save()
             return item
 

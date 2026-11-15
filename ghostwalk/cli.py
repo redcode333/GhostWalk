@@ -1,25 +1,38 @@
-"""gw: the GhostWalk CLI. Output follows design/CLI.dc.html (rich for colours and bars).
+"""gw: the GhostWalk CLI (typer + rich). Output follows the spec: muted labels, violet for root and learned edges, teal check marks,
+20-wide confidence bars, tier-coloured dots, and an "apply N changes? [Y/n]" prompt for learn.
 
-    gw map import ./acme            scan repos, save the proposed map
-    gw why --alerts alerts.json     rank root causes for an alert storm
-    gw learn INC-1042 --root X      turn a postmortem into reviewed graph changes
-    gw eval --split test            print the held-out numbers from results.json (--run recomputes them)
-    gw demo                         a demo workspace + the next outage as alerts.json, to try the above
+    gw map import [PATH | --from github --repo owner/name]
+    gw why --alerts alerts.json | --incident INC-1042
+    gw learn INC-1042 --root config-svc [--path 'config-svc -> fraud-check -> checkout-api']
+    gw eval --split dev|test [--run]
+    gw mcp                            MCP server on stdio (Claude Code, Cursor, ...)
+    gw demo                           a demo workspace + the next outage as alerts.json, to try the above
 """
 from __future__ import annotations
 import json, os, pathlib, subprocess, sys
-import click
+from typing import List, Optional
+import typer
 from rich.console import Console
 from rich.text import Text
 
-from .api.workspace import Workspace, ui_kind
-from .discover.scan import scan_directory, proposals
-from .integrations import issues
+from .api.workspace import Workspace
+from .discover.scan import scan_directory, scan_texts, proposals
 
-VIOLET, VIOLET_TEXT, TEAL, AMBER, DIM, INK, MUTED_BAR, EMPTY = "#8E76FF", "#AC9BFF", "#12B5A0", "#F5B83F", "#8F8E9A", "#F6F5F1", "#4A4955", "#3A3A44"
+VIOLET, VIOLET_TEXT, TEAL, AMBER, RED, DIM, INK, MUTED_BAR, EMPTY = "#8E76FF", "#AC9BFF", "#12B5A0", "#F5B83F", "#D9534F", "#8F8E9A", "#F6F5F1", "#4A4955", "#3A3A44"
 TIER = {"edge": "#3D7DFF", "service": "#12B5A0", "data": "#E2549A", "infra": "#7FB800"}
 BAR = 20
 console = Console(highlight=False, soft_wrap=False)
+
+app = typer.Typer(help="GhostWalk: why is it broken, and what should the map have said?", add_completion=False, no_args_is_help=True,
+                  context_settings={"help_option_names": ["-h", "--help"]})
+map_app = typer.Typer(help="The dependency map.", no_args_is_help=True)
+app.add_typer(map_app, name="map")
+main = app
+
+
+def fail(msg: str):
+    console.print(Text("  " + msg, style=RED))
+    raise typer.Exit(1)
 
 
 def bar(value, color, width=BAR, pad=True):
@@ -46,6 +59,13 @@ def prompt_line(cmd):
     console.print()
 
 
+def ok(msg):
+    t = Text("  ")
+    t.append("✓ ", style=TEAL)
+    t.append(msg)
+    console.print(t)
+
+
 def state_path():
     return pathlib.Path(os.environ.get("GW_HOME", ".gw")) / "state.json"
 
@@ -53,63 +73,62 @@ def state_path():
 def workspace(create=False) -> Workspace:
     p = state_path()
     if not p.exists() and not create:
-        raise click.ClickException("no map yet. Run `gw map import ./your-repos` (or `gw demo` to try it).")
+        fail("no map yet. Run `gw map import ./your-repos` (or `gw demo` to try it).")
     return Workspace(p, demo=False)
 
 
-@click.group(context_settings={"help_option_names": ["-h", "--help"]})
-def main():
-    """GhostWalk: why is it broken, and what should the map have said?"""
-
-
-@main.group("map")
-def map_():
-    """The dependency map."""
-
-
-@map_.command("import")
-@click.argument("path", type=click.Path(exists=True, file_okay=False))
-@click.option("--all", "take_all", is_flag=True, help="also accept low-confidence edges")
-def map_import(path, take_all):
-    """Scan PATH (each subfolder is a repo) for compose, k8s, Helm and *_URL evidence."""
-    root = pathlib.Path(path)
-    repos = [d for d in root.iterdir() if d.is_dir() and not d.name.startswith(".")] or [root]
-    prompt_line(f"gw map import {path}")
-    line((f"scanning {len(repos)} repo{'s' if len(repos) != 1 else ''} …", DIM))
+# ---- map --------------------------------------------------------------------------------------
+@map_app.command("import")
+def map_import(path: Optional[pathlib.Path] = typer.Argument(None, exists=True, file_okay=False, help="folder of repos (each subfolder is a repo)"),
+               from_: Optional[str] = typer.Option(None, "--from", help="'github' reads repos through a token (GITHUB_TOKEN, read-only is enough)"),
+               repo: List[str] = typer.Option([], "--repo", help="owner/name, repeatable (with --from github)"),
+               take_all: bool = typer.Option(False, "--all", help="also accept low-confidence edges")):
+    """Scan compose, k8s, Helm and *_URL evidence and save the proposed map."""
+    if from_ == "github":
+        from .integrations.github import GitHub, GitHubError
+        token = os.environ.get("GITHUB_TOKEN")
+        if not token:
+            fail("set GITHUB_TOKEN (read access to contents is enough)")
+        prompt_line("gw map import --from github " + " ".join(f"--repo {r}" for r in repo))
+        line((f"scanning {len(repo) or 'your'} repo{'s' if len(repo) != 1 else ''} …", DIM))
+        try:
+            found = scan_texts(GitHub(token).scan(repo or None))
+        except GitHubError as e:
+            fail(str(e))
+    elif path is not None:
+        repos = [d for d in path.iterdir() if d.is_dir() and not d.name.startswith(".")] or [path]
+        prompt_line(f"gw map import {path}")
+        line((f"scanning {len(repos)} repo{'s' if len(repos) != 1 else ''} …", DIM))
+        found = scan_directory(path)
+    else:
+        fail("give a PATH, or --from github --repo owner/name")
     console.print()
-    found = scan_directory(root)
     out = proposals(found)
     s = out["summary"]
-    for label in ("docker-compose", "k8s manifests", "Helm values", "env vars"):
+    names = {"docker-compose": "docker-compose.yml", "k8s manifests": "k8s/*.yaml", "Helm values": "Helm values", "env vars": "env vars  *_URL"}
+    for label, shown in names.items():
         if s["by_source"].get(label):
-            shown = {"docker-compose": "docker-compose.yml", "k8s manifests": "k8s/*.yaml", "Helm values": "Helm values", "env vars": "env vars  *_URL"}[label]
             line(f"{shown:<26}{s['by_source'][label]:>3} edges")
     console.print()
     ws = workspace(create=True)
     ids = [e["id"] for e in out["edges"] if take_all or e["accepted"]]
     ws.set_proposals(out)
     r = ws.accept_map(ids)
-    t = Text("  ")
-    t.append("✓ ", style=TEAL)
-    t.append(f"{r['services']} services · {r['dependencies']} dependencies")
-    console.print(t)
+    ok(f"{r['services']} services · {r['dependencies']} dependencies")
     console.print()
     legend = Text("    ")
     for k in ("edge", "service", "data", "infra"):
-        n = s["by_kind"].get(k, 0)
-        legend.append("●", style=TIER[k]).append(f" {k} {n}   ")
+        legend.append("●", style=TIER[k]).append(f" {k} {s['by_kind'].get(k, 0)}   ")
     console.print(legend)
     skipped = len(out["edges"]) - len(ids)
     if skipped:
         line((f"{skipped} low-confidence edge{'s' if skipped != 1 else ''} left out (use --all to include)", DIM))
 
 
-@main.command("demo")
-@click.option("--alerts", "alerts_out", default="alerts.json", show_default=True)
-def demo(alerts_out):
+@app.command("demo")
+def demo(alerts_out: str = typer.Option("alerts.json", "--alerts", help="where to write the next outage")):
     """Create the simulated acme-demo workspace and write the next outage to alerts.json."""
-    p = state_path()
-    ws = Workspace(p, demo=True)
+    ws = Workspace(state_path(), demo=True)
     nxt = ws.company["incidents"][ws.next_sim]["alerts"]
     pathlib.Path(alerts_out).write_text(json.dumps({"alerts": nxt}, indent=1))
     ws.save()
@@ -117,27 +136,10 @@ def demo(alerts_out):
     line((f"wrote {alerts_out} ({len(nxt)} alerts). Now: gw why --alerts {alerts_out}", DIM))
 
 
-def _load_alerts(path):
-    from .api.alerts import normalize
-    try:
-        return normalize(json.loads(pathlib.Path(path).read_text(encoding="utf8")))
-    except ValueError as e:
-        raise click.ClickException(str(e))
-
-
-@main.command("why")
-@click.option("--alerts", "alerts_file", required=True, type=click.Path(exists=True, dir_okay=False))
-@click.option("--top", default=3, show_default=True)
-def why(alerts_file, top):
-    """Rank the likely root causes of an alert storm and show the path."""
-    ws = workspace()
-    alerts = _load_alerts(alerts_file)
-    prompt_line(f"gw why --alerts {alerts_file}")
-    inc = ws.ingest_alerts(alerts, source="cli")
+# ---- why --------------------------------------------------------------------------------------
+def render_verdict(inc, top=3):
     v = inc["verdict"]
-    if v["root"] is None:
-        raise click.ClickException("none of the alerting names match services in the map. " + (f"Unknown: {', '.join(v['unresolved'][:5])}" if v["unresolved"] else ""))
-    line((f"{len(alerts)} alerts · {v['services']} services · walked {v['edges_walked']} edges in {v['ms']:.0f} ms", DIM))
+    line((f"{len(inc['alerts'])} alerts · {v['services']} services · walked {v['edges_walked']} edges in {v['ms']:.0f} ms", DIM))
     console.print()
     line(("rank  service            confidence", DIM))
     for i, r in enumerate(v["ranking"][:top], 1):
@@ -152,52 +154,79 @@ def why(alerts_file, top):
         t.append("path  ", style=DIM)
         t.append(v["path"][0]["u_name"])
         for hop in v["path"]:
-            t.append(" ⇢ " if hop["origin"] == "learned" else " → ", style=VIOLET_TEXT if hop["origin"] == "learned" else None)
+            learned = hop["origin"] == "learned"
+            t.append(" ⇢ " if learned else " → ", style=VIOLET_TEXT if learned else None)
             t.append(hop["v_name"])
         console.print(t)
         for l in v["learned_on_path"]:
             n = l["confirmations"]
             src = f"learned from {l['incident']}" if l.get("incident") else "learned"
-            line(("        ", ), (f"⇢ {src}, confirmed {'twice' if n == 2 else str(n) + '×' if n > 2 else 'once'}", VIOLET_TEXT))
+            line(("        ",), (f"⇢ {src}, confirmed {'twice' if n == 2 else str(n) + '×' if n > 2 else 'once'}", VIOLET_TEXT))
         console.print()
-    order = [b["name"] for b in sorted((b for b in v["blast"] if b["alerting"]), key=lambda b: b["onset"] or 0)]
+    onset = sorted((b for b in v["blast"] if b["alerting"]), key=lambda b: b["onset"] or 0)
     t = Text("  ")
     t.append("why   ", style=DIM)
     t.append(f"explains {v['explains']} of {v['of']} alerts")
     if v["path"]:
         names = [v["path"][0]["u_name"]] + [h["v_name"] for h in v["path"]]
-        alerted = [n for n in order if n in names]
-        in_order = alerted == [n for n in reversed(names) if n in alerted]
-        t.append(" · fired in path order" if in_order and len(alerted) > 1 else "")
+        alerted = [b["name"] for b in onset if b["name"] in names]
+        if len(alerted) > 1 and alerted == [n for n in reversed(names) if n in alerted]:
+            t.append(" · fired in path order")
     console.print(t)
+
+
+@app.command("why")
+def why(alerts_file: Optional[pathlib.Path] = typer.Option(None, "--alerts", exists=True, dir_okay=False, help="alerts json (Alertmanager, Grafana or {alerts:[{name,signal,t}]})"),
+        incident: Optional[str] = typer.Option(None, "--incident", help="re-read a saved verdict, e.g. INC-1042"),
+        top: int = typer.Option(3, help="how many candidates to show")):
+    """Rank the likely root causes of an alert storm and show the path."""
+    ws = workspace()
+    if incident:
+        prompt_line(f"gw why --incident {incident}")
+        inc = ws.get(incident)
+        if inc is None:
+            fail(f"no incident {incident}")
+    elif alerts_file:
+        from .api.alerts import normalize
+        try:
+            alerts = normalize(json.loads(alerts_file.read_text(encoding="utf8")))
+        except ValueError as e:
+            fail(str(e))
+        prompt_line(f"gw why --alerts {alerts_file}")
+        inc = ws.ingest_alerts(alerts, source="cli")
+    else:
+        fail("give --alerts FILE or --incident ID")
+    v = inc["verdict"]
+    if v["root"] is None:
+        fail("none of the alerting names match services in the map. " + (f"Unknown: {', '.join(v['unresolved'][:5])}" if v["unresolved"] else ""))
+    render_verdict(inc, top)
     line((f"{inc['id']} saved. Teach it: gw learn {inc['id']} --root {v['root_name']}", DIM))
 
 
-@main.command("learn")
-@click.argument("incident")
-@click.option("--root", required=True, help="the service that actually broke")
-@click.option("--path", "path_", default="", help="root first, e.g. 'config-svc -> fraud-check -> checkout-api'")
-@click.option("--missed", default="", help="what the map got wrong (optional)")
-@click.option("--yes", "-y", is_flag=True)
-def learn(incident, root, path_, missed, yes):
+# ---- learn ------------------------------------------------------------------------------------
+@app.command("learn")
+def learn(incident: str = typer.Argument(...),
+          root: str = typer.Option(..., "--root", help="the service that actually broke"),
+          path_: str = typer.Option("", "--path", help="root first, e.g. 'config-svc -> fraud-check -> checkout-api'"),
+          missed: str = typer.Option("", "--missed", help="what the map got wrong (optional)"),
+          yes: bool = typer.Option(False, "--yes", "-y")):
     """Turn a postmortem into graph changes, review them, apply."""
     ws = workspace()
     inc = ws.get(incident)
     if inc is None:
-        raise click.ClickException(f"no incident {incident}. Run `gw why` first.")
+        fail(f"no incident {incident}. Run `gw why` first.")
     prompt_line(f"gw learn {incident} --root {root}")
-    line((f"reading postmortem · 3 fields", DIM))
+    line(("reading postmortem · 3 fields", DIM))
     console.print()
-    fields = {"root": root, "path": path_ or f"{root} -> {inc['verdict']['entry_name']}", "missed": missed}
-    pm = ws.make_pm(fields)
+    pm = ws.make_pm({"root": root, "path": path_ or f"{root} -> {inc['verdict']['entry_name']}", "missed": missed})
     if pm["root"] is None:
-        raise click.ClickException(f"'{root}' is not in the map")
+        fail(f"'{root}' is not in the map")
     for u in pm["unresolved"]:
         line(("? ", AMBER), f"{u} ", ("not in the map; ignored", DIM))
     pv = ws.preview(inc, pm)
     if not pv["shown"]:
         line((f"nothing to change: the map already explains {incident}", DIM))
-    color = {"+": VIOLET_TEXT, "~": AMBER, "=": "#A6A5B1", "−": "#D9534F"}
+    color = {"+": VIOLET_TEXT, "~": AMBER, "=": "#A6A5B1", "−": RED}
     for r in pv["shown"]:
         t = Text("  ")
         t.append(r["symbol"] + " ", style=color[r["symbol"]])
@@ -205,35 +234,33 @@ def learn(incident, root, path_, missed, yes):
         t.append(r["detail"], style=DIM)
         console.print(t)
     console.print()
-    if pv["shown"] and not yes and not click.confirm(f"  apply {len(pv['shown'])} changes?", default=True):
+    if pv["shown"] and not yes and not typer.confirm(f"  apply {len(pv['shown'])} changes?", default=True):
         line(("nothing applied", DIM))
         return
-    item = ws.queue(inc, pm, "cli")
-    r = ws.apply_pending(item["id"])
-    t = Text("  ")
-    t.append("✓ ", style=TEAL)
-    t.append(f"graph updated · revision {r['revision']}")
-    console.print(t)
+    r = ws.apply_pending(ws.queue(inc, pm, "cli")["id"])
+    ok(f"graph updated · revision {r['revision']}")
 
 
+# ---- eval -------------------------------------------------------------------------------------
 METHOD_LABEL = [("oracle", "perfect map"), ("ghostwalk", "ghostwalk"), ("pagerank", "pagerank (tuned)"), ("placebo", "placebo"),
                 ("learning_off", "learning off"), ("deepest", "deepest alert"), ("retrieval", "tf-idf retrieval"), ("random", "random")]
 
 
-@main.command("eval")
-@click.option("--split", default="test", type=click.Choice(["dev", "test"]), show_default=True)
-@click.option("--run", is_flag=True, help="recompute instead of reading the stored results (dev: quick; test: full, ~1 min plus the store swap)")
-@click.option("--results", default=None, type=click.Path(), help="path to results json")
-def eval_(split, run, results):
+@app.command("eval")
+def eval_(split: str = typer.Option("test", "--split", help="dev or test"),
+          run: bool = typer.Option(False, "--run", help="recompute instead of reading the stored results"),
+          results: Optional[pathlib.Path] = typer.Option(None, "--results", help="path to a results json")):
     """The held-out numbers: AC@1 with 95% bootstrap intervals, the gain over the best baseline, the gap closed."""
-    path = pathlib.Path(results or ("results.json" if split == "test" else "dev_results.json"))
+    if split not in ("dev", "test"):
+        fail("--split must be dev or test")
+    path = results or pathlib.Path("results.json" if split == "test" else "dev_results.json")
     prompt_line(f"gw eval --split {split}" + (" --run" if run else ""))
     if run:
         cmd = [sys.executable, "eval/full_eval.py", "--split", split] + (["--quick"] if split == "dev" else [])
         if subprocess.call(cmd, stdout=subprocess.DEVNULL) != 0:
-            raise click.ClickException("eval failed; run it directly to see why: " + " ".join(cmd))
+            fail("eval failed; run it directly to see why: " + " ".join(cmd))
     if not path.exists():
-        raise click.ClickException(f"{path} not found. Run `make {'eval' if split == 'test' else 'eval-quick'}` or pass --run.")
+        fail(f"{path} not found. Run `make {'eval' if split == 'test' else 'eval-quick'}` or pass --run.")
     r = json.loads(path.read_text(encoding="utf8"))
     m = r["methods"]
     line((f"{r['meta']['companies']} {'held-out' if r['meta']['split'] == 'test' else 'development'} companies · 95% bootstrap CI", DIM))
@@ -243,16 +270,15 @@ def eval_(split, run, results):
         if key not in m:
             continue
         a = m[key]["ac1"]
-        t = Text("  ")
         mine = key == "ghostwalk"
+        t = Text("  ")
         t.append(f"{label:<17}", style=VIOLET_TEXT if mine else None)
         t.append(f"{a['point']:.3f}", style=INK if mine else None)
         t.append(f"  {a['ci95'][0]:.3f}–{a['ci95'][1]:.3f}  ")
         t.append_text(bar(a["point"], VIOLET if mine else ("#DAD9E2" if key == "oracle" else MUTED_BAR), pad=False))
         console.print(t)
     console.print()
-    h = r["headline"]
-    g, c = h["gain_vs_best"], h["gap_closed"]
+    g, c = r["headline"]["gain_vs_best"], r["headline"]["gap_closed"]
     t = Text("  ")
     t.append("✓ ", style=TEAL)
     t.append("gain vs best baseline ")
@@ -260,11 +286,16 @@ def eval_(split, run, results):
     t.append(f" ({g['baseline']})   gap closed ")
     t.append(f"{c['point'] * 100:.0f}%", style=INK)
     console.print(t)
-    t = Text("  ")
-    t.append("✓ ", style=TEAL)
-    t.append(f"{path.name} {'written' if run else 'read'} · {r['meta']['git']['short']} · {r['meta']['timestamp_utc'][:10]}")
-    console.print(t)
+    ok(f"{path.name} {'written' if run else 'read'} · {r['meta']['git']['short']} · {r['meta']['timestamp_utc'][:10]}")
+
+
+# ---- mcp --------------------------------------------------------------------------------------
+@app.command("mcp")
+def mcp_cmd():
+    """Run the MCP server on stdio (tools: why, path, blast_radius, propose_edge). Read-only; GW_URL + GW_TOKEN for hosted mode."""
+    from .mcp_server import main as serve
+    serve()
 
 
 if __name__ == "__main__":
-    main()
+    app()

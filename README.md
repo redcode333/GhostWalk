@@ -26,3 +26,19 @@ Read-only: repository contents + issues, subscribe to the Issues event, webhook 
 Env: `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_SLUG`, `GITHUB_WEBHOOK_SECRET`.
 A read-only App cannot open a pull request, so the postmortem-template PR uses `GITHUB_PR_TOKEN` (a token you control);
 without it the UI offers a prefilled "new file" link.
+
+## MCP server
+`gw mcp` runs a stdio MCP server with four tools: `why(alerts)`, `path(root, service)`, `blast_radius(service, hops=3)` and
+`propose_edge(src, dst, incident_id, reason)`. The first three are read-only. `propose_edge` only creates a pending proposal
+that a person approves in Learn. GhostWalk never calls an LLM; the assistant asks and the graph answers.
+
+Claude Code:
+```
+claude mcp add ghostwalk -- gw mcp
+```
+Cursor (`.cursor/mcp.json`) and other clients:
+```json
+{ "mcpServers": { "ghostwalk": { "command": "gw", "args": ["mcp"] } } }
+```
+Local mode reads the map saved by `gw` (`GW_HOME`, default `./.gw`). Hosted mode: set `GW_URL` and `GW_TOKEN`
+(the API token from Settings) and each call is forwarded to that server.

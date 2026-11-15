@@ -148,6 +148,8 @@ def ops_metrics(runs):
         checks = np.array([r["rank"] if r["rank"] is not None else r["n_ranked"] + 1 for r in rows], dtype=float)
         out[lab] = {"verdict_ms_p50": float(np.percentile(ms, 50)), "verdict_ms_p95": float(np.percentile(ms, 95)),
                     "mean_checks_to_root": float(checks.mean()), "n": len(rows)}
+    out["llm_tokens"] = {"ghostwalk": 0, "retrieval": 0,
+                         "definition": "language-model tokens spent per verdict. Neither the walk nor the TF-IDF search calls a model, so both are 0 by construction (no LLM is imported anywhere in the verdict path)"}
     out["checks_definition"] = "1-based rank of the true root in the ranked list (absent from the list = list length + 1)"
     return out
 

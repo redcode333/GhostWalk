@@ -7,7 +7,7 @@ name = "ghostwalk"
 version = "0.1.0"
 description = "Root cause analysis that learns the dependencies nobody drew."
 requires-python = ">=3.11"
-dependencies = ["numpy", "httpx", "click", "rich", "pyyaml", "fastapi", "uvicorn", "pyjwt[crypto]"]
+dependencies = ["numpy", "httpx", "typer", "rich", "mcp", "pyyaml", "fastapi", "uvicorn", "pyjwt[crypto]"]
 
 [project.optional-dependencies]
 eval = ["redis", "psycopg[binary]", "scipy", "networkx"]

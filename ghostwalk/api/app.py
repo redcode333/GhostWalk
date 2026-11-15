@@ -12,11 +12,14 @@ from fastapi.staticfiles import StaticFiles
 from .alerts import normalize
 from .samples import SAMPLE_FILES
 from .workspace import Workspace
+from .demo import demo_inside
+from .. import mcp_tools
 from ..discover.scan import scan_texts, proposals
 from ..integrations import github as gh, issues
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 AUTH_MODE = lambda: os.environ.get("AUTH_MODE", "none")
+FREE_SERVICES = 25
 
 
 def clerk_user(request: Request):
@@ -71,6 +74,28 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
         if not results_file.exists():
             raise HTTPException(404, "results.json not found")
         return FileResponse(results_file, media_type="application/json", filename="results.json")
+
+    @app.get("/api/demo/inside")
+    def inside():
+        return demo_inside()
+
+    # ---- hosted MCP (the same four tools over HTTP; `gw mcp` with GW_URL + GW_TOKEN proxies here) --------------------------
+    def check_mcp_token(request: Request):
+        got = (request.headers.get("authorization") or "").removeprefix("Bearer ").strip()
+        if not got or not secrets.compare_digest(got, ws.token):
+            raise HTTPException(401, "bad or missing GW_TOKEN")
+
+    @app.post("/api/mcp/{tool}")
+    async def mcp_call(tool: str, request: Request):
+        check_mcp_token(request)
+        args = await request.json()
+        fn = {"why": mcp_tools.why, "path": mcp_tools.path, "blast_radius": mcp_tools.blast_radius, "propose_edge": mcp_tools.propose_edge}.get(tool)
+        if fn is None:
+            raise HTTPException(404, f"no tool {tool}")
+        try:
+            return fn(ws, **args)
+        except (mcp_tools.ToolError, TypeError, ValueError) as e:
+            raise HTTPException(422, str(e))
 
     # ---- alert webhook (own token, not Clerk) -----------------------------------------------
     def check_token(request: Request):
@@ -239,6 +264,12 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
     @app.post("/api/onboarding/accept")
     async def accept(request: Request, u=user):
         body = await request.json()
+        if AUTH_MODE() == "clerk" and ws.map_proposals:
+            ids = set(body.get("edge_ids", []))
+            names = {n for e in ws.map_proposals["edges"] if e["id"] in ids for n in (e["src"], e["dst"])}
+            if len(names) > FREE_SERVICES:
+                raise HTTPException(402, {"code": "plan_limit", "plan": "free", "limit": FREE_SERVICES, "services": len(names),
+                                          "message": f"The free plan covers {FREE_SERVICES} services; this map has {len(names)}."})
         try:
             return ws.accept_map(body.get("edge_ids", []))
         except ValueError as e:

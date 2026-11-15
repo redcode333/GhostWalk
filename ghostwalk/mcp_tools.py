@@ -1,0 +1,81 @@
+"""The four MCP tools as plain functions over a Workspace, so the stdio server, the hosted HTTP API and the tests share one implementation.
+
+Read-only: why / path / blast_radius never change the graph. propose_edge only creates a PENDING proposal for a human to review.
+GhostWalk never calls an LLM; the model on the other end asks, the graph answers."""
+from __future__ import annotations
+import math
+from .api.alerts import normalize
+from .api.workspace import Workspace
+from .engine.walk import walk, resolve, explain, _limited_best
+from .graph.state import W_TENTATIVE
+from .integrations.issues import resolve_name
+
+
+class ToolError(ValueError):
+    pass
+
+
+def _id(ws: Workspace, name: str) -> int:
+    cid, _ = resolve_name(str(name), ws.g.names)
+    if cid is None:
+        close = [n for n in ws.g.names if str(name).lower() in n.lower()][:5]
+        raise ToolError(f"'{name}' is not in the map" + (f". Did you mean: {', '.join(close)}?" if close else ""))
+    return cid
+
+
+def _alerts(raw):
+    if isinstance(raw, list) and raw and all(isinstance(a, str) for a in raw):
+        raw = [{"name": a, "t": float(i)} for i, a in enumerate(raw)]
+    return normalize(raw)
+
+
+def why(ws: Workspace, alerts) -> dict:
+    rows = _alerts(alerts)
+    v = walk(ws.g, rows)
+    if not v.ranking:
+        raise ToolError("none of the alerting names match services in the map" + (f": {', '.join(v.unresolved[:5])}" if v.unresolved else ""))
+    top = v.ranking[0][1]
+    z = sum(math.exp(s - top) for _, s in v.ranking)
+    name = lambda c: ws.g.components[c]["name"]
+    A, _, _ = resolve(ws.g, rows)
+    in_best, _ = _limited_best(ws.g.in_adj(), v.ranking[0][0], 5)
+    explained = sum(1 for a in A if a in in_best)
+    path = [{"from": name(u), "to": name(w), "origin": o} for u, w, o in v.path]
+    root = name(v.ranking[0][0])
+    learned = [p for p in path if p["origin"] == "learned"]
+    text = f"Root cause: {root} ({math.exp(0) / z:.2f} confidence). It explains {explained} of {len(A)} alerting services."
+    if path:
+        text += " Path: " + path[0]["from"] + "".join(f" {'⇢' if p['origin'] == 'learned' else '→'} {p['to']}" for p in path) + "."
+    if learned:
+        text += f" {len(learned)} edge(s) on that path were learned from past postmortems and are not in the service catalog."
+    return {"root": root, "confidence": round(1 / z, 4), "ranking": [{"service": name(c), "confidence": round(math.exp(s - top) / z, 4)} for c, s in v.ranking[:5]],
+            "path": path, "explains": explained, "of": len(A), "unresolved": v.unresolved, "explanation": text}
+
+
+def path(ws: Workspace, root: str, service: str) -> dict:
+    r, s = _id(ws, root), _id(ws, service)
+    p = explain(ws.g, s, r, 5)
+    if not p:
+        return {"root": root, "service": service, "reachable": False, "path": [], "explanation": f"No dependency path from {service} to {root} within 5 hops."}
+    hops = [{"from": ws.g.components[u]["name"], "to": ws.g.components[w]["name"], "origin": o, "weight": round(ws.g.edges[(u, w)].w, 3)} for u, w, o in p]
+    return {"root": root, "service": service, "reachable": True, "path": hops,
+            "explanation": f"{service} reaches {root} through " + " → ".join([hops[0]["from"]] + [h["to"] for h in hops]) + "."}
+
+
+def blast_radius(ws: Workspace, service: str, hops: int = 3) -> dict:
+    s = _id(ws, service)
+    hops = max(1, min(int(hops), 6))
+    best, _ = _limited_best(ws.g.in_adj(), s, hops)
+    rows = sorted(((ws.g.components[c]["name"], round(p, 3)) for c, p in best.items() if c != s), key=lambda t: -t[1])
+    return {"service": service, "hops": hops, "affected": [{"service": n, "likelihood": p} for n, p in rows], "count": len(rows),
+            "explanation": f"If {service} fails, {len(rows)} services within {hops} hops depend on it, directly or not."}
+
+
+def propose_edge(ws: Workspace, src: str, dst: str, incident_id: str | None = None, reason: str = "") -> dict:
+    """src depends on dst. Creates a PENDING proposal only; a human applies it in Learn."""
+    u, v = _id(ws, src), _id(ws, dst)
+    if u == v:
+        raise ToolError("src and dst are the same service")
+    item = ws.queue_edge(u, v, incident_id, reason)
+    return {"proposal": item["id"], "status": "pending", "applied": False,
+            "message": f"Proposed {src} ⇢ {dst} at tentative weight {W_TENTATIVE}. It is not in the graph until a person approves it in Learn."}
