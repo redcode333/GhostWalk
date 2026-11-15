@@ -49,8 +49,9 @@ def tfidf_top(query, past, k=K):
     return [s for _, s in sorted(sims, key=lambda t: (-t[0], -t[1]))[:k]]
 
 
-def run(cos, hg, store, limit_rows=None):
+def run(cos, hg, store, compare=False):
     rows = {arm: [] for arm in ARMS}
+    cmp = {"ms_traversal": [], "checked": 0}
     ac, loop_rows = {}, {}
     for co in cos:
         store.fresh(co)
@@ -73,6 +74,12 @@ def run(cos, hg, store, limit_rows=None):
             t = time.perf_counter()
             out["graph"] = [s for s, _ in backend.similar_incidents(alerts, K)]
             ms = {"graph": (time.perf_counter() - t) * 1000}
+            if compare:                                                   # the first implementation (every step a HydraDB query) must return the identical list
+                t = time.perf_counter()
+                old = [s for s, _ in backend.similar_incidents_traversal(alerts, K)]
+                cmp["ms_traversal"].append((time.perf_counter() - t) * 1000)
+                assert old == out["graph"], (co["name"], inc["seq"], old, out["graph"])
+                cmp["checked"] += 1
             t = time.perf_counter()
             q = stores._vec(stores.embed(text))
             out["vector"] = [r[0] for r in store.db.execute("SELECT seq FROM gw_pm WHERE co=%s ORDER BY emb <=> %s::vector, seq DESC LIMIT %s", (store.co, q, K)).fetchall()]
@@ -93,7 +100,7 @@ def run(cos, hg, store, limit_rows=None):
         loop_rows[co["name"]] = res
         ac[co["name"]] = [sum(1 for r in res if r["rank"] == 1), len(res)]
         print(f"  {co['name']:22s} AC@1 {ac[co['name']][0]}/{ac[co['name']][1]}  retrieval incidents {len(recs['graph'])}", flush=True)
-    return rows, ac, loop_rows
+    return rows, ac, loop_rows, cmp
 
 
 def tab(rows_arm, sel, val):
@@ -107,6 +114,7 @@ def main():
     ap.add_argument("--boot", type=int, default=2000)
     ap.add_argument("--seed", type=int, default=20261116)
     ap.add_argument("--results", default=None)
+    ap.add_argument("--latency-only", action="store_true", help="re-measure graph-retrieval latency only: asserts the faster implementation returns identical lists, changes no accuracy number")
     a = ap.parse_args()
     cos = load(a.split)
     if a.limit:
@@ -115,7 +123,28 @@ def main():
     hg = HydraGraph(HYDRA_URL, HYDRA_TOKEN, run_id=int(time.time()) % 900 + 1)
     store = stores.PgVectorStore(PG)
     t0 = time.time()
-    rows, ac, loop_rows = run(cos, hg, store)
+    rows, ac, loop_rows, cmp = run(cos, hg, store, compare=a.latency_only)
+    if a.latency_only:
+        doc = json.loads(out.read_text(encoding="utf8"))
+        mr = doc["memory_retrieval"]
+        assert [sum(v[0] for v in ac.values()), sum(v[1] for v in ac.values())] == [mr["learner_ac1_in_this_run"]["top1"], mr["learner_ac1_in_this_run"]["of"]], "learner accuracy moved"
+        pct = lambda xs: {"p50": float(np.percentile(xs, 50)), "p95": float(np.percentile(xs, 95))}
+        new = pct([r["ms"] for rs in rows["graph"] for r in rs])
+        lat = mr.get("latency", {})
+        lat.setdefault("graph_hydradb_traversal_before", mr["arms"]["graph"]["latency_ms"])      # the first measurement, kept
+        lat["graph_hydradb_traversal_remeasured"] = pct(cmp["ms_traversal"])
+        lat["graph"] = new
+        lat["vector"], lat["keyword"] = (pct([r["ms"] for rs in rows[arm] for r in rs]) for arm in ("vector", "keyword"))
+        lat["identical_lists_checked"] = cmp["checked"]
+        lat["index_rebuilds"] = hg.index_rebuilds
+        lat["note"] = ("graph = neighbourhood expanded on the cached in-memory graph (revision-checked), past incidents from a per-revision service->incidents index kept by the write-through path, "
+                       "winners' details fetched from HydraDB by id in one batch. Every retrieved list was asserted identical to the first implementation (a HydraDB traversal per step). "
+                       "Latency only: no accuracy number was changed.")
+        mr["latency"], mr["arms"]["graph"]["latency_ms"] = lat, new
+        doc["memory_retrieval"] = mr
+        out.write_text(json.dumps(doc, indent=2), encoding="utf8")
+        print(f"checked {cmp['checked']} lists identical; graph before p50/p95 {lat['graph_hydradb_traversal_before']['p50']:.1f}/{lat['graph_hydradb_traversal_before']['p95']:.1f} ms -> now {new['p50']:.2f}/{new['p95']:.2f} ms; index rebuilds {hg.index_rebuilds}")
+        return
     print(f"  {len(cos)} companies in {time.time() - t0:.0f} s", flush=True)
     rep, nov, anyr = (lambda r: r["repeat"]), (lambda r: not r["repeat"]), (lambda r: True)
     metrics = {"hit5_repeat": (rep, lambda r: r["hit"]), "mrr_repeat": (rep, lambda r: r["rr"]),

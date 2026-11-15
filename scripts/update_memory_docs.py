@@ -27,6 +27,11 @@ inc = mr["incidents"]
 why = mg["why_edge_example"]
 per = mg["persistence"]
 
+L = mr.get("latency")
+lat_note = (f"Graph retrieval first took {L['graph_hydradb_traversal_before']['p50']:.0f} ms p50 / {L['graph_hydradb_traversal_before']['p95']:.0f} ms p95 (a HydraDB query per step); it now expands the neighbourhood on the revision-checked cached graph, "
+            f"keeps a per-revision service-to-incidents index current through the write-through path, and fetches only the winners from HydraDB by id: {L['graph']['p50']:.1f} / {L['graph']['p95']:.1f} ms, "
+            f"with all {L['identical_lists_checked']:,} retrieved lists identical to the first implementation's (accuracy numbers unchanged)." ) if L else ""
+
 sec = f"""<!-- memory:begin -->
 ## The memory is the graph
 **GhostWalk's learning loop lives in HydraDB: every lesson is a node linked to the postmortems that taught it and the incidents that confirmed it.**
@@ -67,8 +72,29 @@ The graph arm uses no alert text: it traverses HydraDB from the alerting service
 On repeat incidents, hit@5: {verdict('hit5_repeat', 'graph', 'vector')}; {verdict('hit5_repeat', 'graph', 'keyword')}. MRR: {verdict('mrr_repeat', 'graph', 'vector')}.
 On novel incidents (no past incident shares the root, so hit@5 cannot exist), related@5 asks whether a retrieved incident's true causal chain shares a dependency with the current one: {verdict('related5_novel', 'graph', 'vector')}.
 hit@5 needs a past incident with the same root; {inc['repeat_root']} of {inc['with_a_past_incident']} incidents have one, and the first incident of each company has nothing to retrieve from.
+{lat_note}
 The LLM arms were not run (no API key), so there is no `llm_graph_memory` number. Full definitions and CIs: `results.json` `memory_retrieval`.
 <!-- memory:end -->
+"""
+M = r["methods"]
+sw = r["store_swap"]["backends"]
+notwin = f"""<!-- notwin:begin -->
+## What didn't win
+**Graph memory did not beat ordinary retrieval at finding similar past incidents.** On the {mr['companies']} held-out companies, retrieving the 5 most relevant past incidents
+(hit@5: a retrieved incident has the same root cause, repeat incidents only, n={A['graph']['hit5_repeat']['n']:,}; 95% CIs in brackets):
+
+| | hit@5 | MRR | latency p50 / p95 |
+|---|---|---|---|
+| keyword (TF-IDF) | {pc(A['keyword']['hit5_repeat'])} {cis(A['keyword']['hit5_repeat'])} | {A['keyword']['mrr_repeat']['point']:.3f} | {lat('keyword')} |
+| vector (pgvector) | {pc(A['vector']['hit5_repeat'])} {cis(A['vector']['hit5_repeat'])} | {A['vector']['mrr_repeat']['point']:.3f} | {lat('vector')} |
+| graph (HydraDB memory) | {pc(A['graph']['hit5_repeat'])} {cis(A['graph']['hit5_repeat'])} | {A['graph']['mrr_repeat']['point']:.3f} | {lat('graph')} |
+
+{verdict('hit5_repeat', 'graph', 'keyword')}; {verdict('hit5_repeat', 'graph', 'vector')}. Looking up similar past incidents is easy in this setting: a repeat incident usually alerts on the same
+services, so a bag-of-words match on the alert text finds it, and nothing about the graph helps. **The graph matters for root-cause ranking, which is a different job.** On the same held-out
+incidents the multi-hop walk gets top-1 accuracy {M['ghostwalk']['ac1']['point']:.3f}, against {M['retrieval']['ac1']['point']:.3f} for TF-IDF retrieval of past postmortems and {sw['pgvector']['ac1']['point']:.3f} for vector search over them,
+and replacing the graph with a 1-hop key-value store drops it to {sw['kv_1hop']['ac1']['point']:.3f} (the store swap, below). HydraDB is where the graph and its memory live and it answers path queries in a few
+milliseconds, but Postgres with recursive queries gets the same accuracy and answers faster: we do not claim HydraDB or graph retrieval beats vector search or Postgres.
+<!-- notwin:end -->
 """
 rd = ROOT / "README.md"
 t = rd.read_text(encoding="utf8")
@@ -78,5 +104,11 @@ if "<!-- memory:begin -->" in t:
 else:
     i = t.index("\n## HydraDB (live)")
     t = t[:i] + "\n" + sec + t[i:]
+if "<!-- notwin:begin -->" in t:
+    a, z = t.index("<!-- notwin:begin -->"), t.index("<!-- notwin:end -->") + len("<!-- notwin:end -->")
+    t = t[:a] + notwin.rstrip(chr(10)) + t[z:]
+else:
+    k = t.index("<!-- memory:end -->") + len("<!-- memory:end -->")
+    t = t[:k] + chr(10) * 2 + notwin.rstrip(chr(10)) + t[k:]
 rd.write_text(t, encoding="utf8")
 print("README memory section written")

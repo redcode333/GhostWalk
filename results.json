@@ -3865,8 +3865,8 @@
           "n": 1770
         },
         "latency_ms": {
-          "p50": 164.2253999998502,
-          "p95": 424.2909350019545
+          "p50": 3.9246499982255045,
+          "p95": 7.5071600018418385
         }
       },
       "vector": {
@@ -4116,7 +4116,32 @@
       "status": "not run",
       "why": "the LLM baseline (B4) was never run: it needs an API key and spend, so there is no llm_memory arm to put an llm_graph_memory arm next to"
     },
-    "measured_utc": "2026-11-15T21:07:48Z"
+    "measured_utc": "2026-11-15T21:07:48Z",
+    "latency": {
+      "graph_hydradb_traversal_before": {
+        "p50": 164.2253999998502,
+        "p95": 424.2909350019545
+      },
+      "graph_hydradb_traversal_remeasured": {
+        "p50": 175.13795000195387,
+        "p95": 436.42734999739326
+      },
+      "graph": {
+        "p50": 3.9246499982255045,
+        "p95": 7.5071600018418385
+      },
+      "vector": {
+        "p50": 1.58844999896246,
+        "p95": 2.8757399999449262
+      },
+      "keyword": {
+        "p50": 0.7167500007199124,
+        "p95": 2.3750450010993513
+      },
+      "identical_lists_checked": 1770,
+      "index_rebuilds": 0,
+      "note": "graph = neighbourhood expanded on the cached in-memory graph (revision-checked), past incidents from a per-revision service->incidents index kept by the write-through path, winners' details fetched from HydraDB by id in one batch. Every retrieved list was asserted identical to the first implementation (a HydraDB traversal per step). Latency only: no accuracy number was changed."
+    }
   },
   "memory_graph": {
     "store": "HydraDB v0.4.0",

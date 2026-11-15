@@ -90,3 +90,9 @@ def test_graph_retrieval_finds_past_incidents_by_neighbourhood(make_hydra):
     scores = [sc for _, sc in got]
     assert scores == sorted(scores, reverse=True) and 5 in [seq for seq, _ in got]      # the incident with exactly these alerts overlaps fully
     assert hg.similar_incidents([{"name": "no-such-service", "t": 0.0}]) == []
+    assert hg.index_rebuilds == 0                                   # the index followed the write-through path; nothing was scanned
+    for inc in co["incidents"]:                                     # the fast path returns exactly what the HydraDB traversal returns
+        assert hg.similar_incidents(inc["alerts"]) == hg.similar_incidents_traversal(inc["alerts"])
+    cold = HydraGraph(run_id=hg.run_id, mode="cached")              # a new process: the index is rebuilt once from HydraDB, same answers
+    cold.attach(hg.co)
+    assert cold.similar_incidents(cur) == got and cold.index_rebuilds == 1

@@ -26,6 +26,7 @@ A Lesson is a learned DEPENDS_ON edge made into a node; its w follows the edge's
 from __future__ import annotations
 import copy
 import math
+import threading
 import types
 from concurrent.futures import ThreadPoolExecutor
 import httpx
@@ -115,6 +116,7 @@ class _Memory:
         self.hg, self.base, self.names, self.inc = hg, base, names, incident
         self.lesson_of = {}                  # (u, v) -> global Lesson id, for lessons that are not decayed
         self.new, self.upd, self.taught, self.confirmed_by = {}, {}, [], []
+        self.alert_svcs, self.stored = set(), False        # the services this incident's alerts are ON (global ids), and whether the incident was written
 
     def _lid(self, ordinal):
         return self.base + LESSON_BASE + ordinal if 0 <= ordinal < 32_000 else None
@@ -185,11 +187,13 @@ class _Memory:
             sid = self.names.get(a["name"])
             if sid is not None:
                 q("MERGE (a:Alert {id: $a})-[:ON]->(b:Service {id: $b})", a=aid, b=b + sid)
+                self.alert_svcs.add(b + sid)
         q("MERGE (a:Postmortem {id: $a})-[:ABOUT]->(b:Incident {id: $b})", a=pid, b=iid)
         for lid in self.taught:
             q("MERGE (a:Lesson {id: $a})-[:TAUGHT_BY]->(b:Postmortem {id: $b})", a=lid, b=pid)
         for lid in dict.fromkeys(self.confirmed_by):
             q("MERGE (a:Lesson {id: $a})-[:CONFIRMED_BY]->(b:Incident {id: $b})", a=lid, b=iid)
+        self.stored = True
         return mo + len(alerts)
 
 
@@ -208,10 +212,13 @@ class HydraGraph:
         self._cache = None
         self.hits = self.misses = 0
         self.full_reads = 0            # full graph re-reads done by snapshot() (the write-through cache should make this 0 while learning)
+        self._midx = None              # per-revision memory index: service -> past incidents (kept current by apply())
+        self.index_rebuilds = 0        # times it was rebuilt from HydraDB (startup, or after the cache was dropped)
         self.timeouts = 0              # requests that stalled past the timeout and were re-sent
         self.disagreements = 0         # writes after which HydraDB's revision was not the one the cache expected
         self.mspaths_requests = 0
         self._pool = None
+        self._wlock = threading.RLock()   # one writer at a time; verdicts (the revision check) never take it
         self.run_id = run_id
         self.cell_id = cell_id
         self.batch = min(batch, BATCH)
@@ -225,8 +232,8 @@ class HydraGraph:
 
     # ---- plumbing -------------------------------------------------------------------------
     # ---- memory queries: answered by traversal of the graph the learner wrote -----------------
-    def similar_incidents(self, alerts, k=5, hops=2):
-        """Graph memory: past incidents with an alert on a service within `hops` of the current alerting services, ranked by neighbourhood overlap.
+    def similar_incidents_traversal(self, alerts, k=5, hops=2):
+        """The first implementation, kept as the reference: every step is a HydraDB query. Graph memory: past incidents with an alert on a service within `hops` of the current alerting services, ranked by neighbourhood overlap.
         The neighbourhood N is found by traversal (DEPENDS_ON in both directions; HydraDB's variable-length match needs a fixed source, so the reverse
         direction is walked one level per query). The past incidents come from Incident-[:RAISED]->Alert-[:ON]->Service.
         score = |alerting services of the past incident that lie in N| / |its alerting services + the current ones|, ties to the more recent incident."""
@@ -248,6 +255,40 @@ class HydraGraph:
             past.setdefault((iid, seq), set()).add(sid)
         scored = [((len(a & N) / len(a | S)), seq) for (iid, seq), a in past.items() if a & N]
         return [(seq, round(sc, 6)) for sc, seq in sorted(scored, key=lambda t: (-t[0], -t[1]))[:k]]
+    def similar_incidents(self, alerts, k=5, hops=2):
+        """Same answer as similar_incidents_traversal, without scanning HydraDB per call:
+        the neighbourhood is expanded on the cached in-memory graph (revision-checked), the past incidents come from the per-revision index
+        (service -> incidents, updated by the write-through path), and only the winners' details are fetched from HydraDB, by id, in one batch."""
+        base = self._need_co()
+        g = self.snapshot()                                     # revision-checked: never behind HydraDB
+        S = {names for names in (g.names.get(a["name"]) for a in alerts) if names is not None}
+        if not S:
+            return []
+        out_adj, in_adj = g.out_adj(), g.in_adj()
+        N, fwd = set(S), set()
+        level = set(S)
+        for _ in range(hops):                                   # forward: what the alerting services depend on, up to `hops` away
+            level = {v for u in level for v, _w in out_adj.get(u, ())}
+            fwd |= level
+        N |= fwd
+        frontier = set(S)
+        for _ in range(hops):                                   # reverse: who depends on them (levels start from S; nodes already in N are not expanded again)
+            frontier = {u for x in frontier for u, _w in in_adj.get(x, ())} - N
+            N |= frontier
+        m = self._index(g.seq)
+        Sg = {base + x for x in S}
+        Ng = {base + x for x in N}
+        cands = set()
+        for sv in Ng:
+            cands |= m["by_svc"].get(sv, set())
+        scored = [(len(m["by_inc"][q] & Ng) / len(m["by_inc"][q] | Sg), q) for q in cands]
+        top = [(q, sc) for sc, q in sorted(scored, key=lambda t: (-t[0], -t[1]))[:k]]
+        if top:                                                 # details by id, batched
+            ids = [base + INC_BASE + q for q, _ in top]
+            got = {r[0]: r[1] for r in self._rows("MATCH (i:Incident) WHERE i.id IN $ids RETURN i.id AS id, i.seq AS seq", ids=ids)}
+            top = [(got[base + INC_BASE + q], sc) for q, sc in top if base + INC_BASE + q in got]
+        return [(seq, round(sc, 6)) for seq, sc in top]
+
     def lessons(self, src=None, dst=None):
         """Lessons (learned edges as nodes), optionally filtered to one edge by service name; newest first."""
         base = self._need_co()
@@ -377,6 +418,7 @@ class HydraGraph:
         self._write_meta(0, len(g.edges), 0)
         if self.mode == "cached":
             self._cache = ((base, 0), self._copy(g))          # we just wrote exactly this graph at revision 0
+            self._midx = {"co": base, "rev": 0, "by_inc": {}, "by_svc": {}}      # and no incident has been remembered yet
         return g
 
     def _write_meta(self, seq, eo, ao, mo=0):
@@ -387,6 +429,7 @@ class HydraGraph:
         """Re-attach to a company already in HydraDB (a restarted process): True when its GwMeta node exists. Nothing is written; the next snapshot() reads it back."""
         self.co = base
         self._cache = None
+        self._midx = None
         if not self._rows("MATCH (m {id: $id}) RETURN m.seq AS seq", id=base + META_LOCAL):
             self.co = None
             return False
@@ -401,11 +444,16 @@ class HydraGraph:
         if self._cache is not None and self._cache[0] == (self.co, rev):
             self.hits += 1
             return self._cache[1]
-        g = self._read_graph()
-        self.misses += 1
-        self.full_reads += 1
-        self._cache = ((self.co, g.seq), g)
-        return g
+        with self._wlock:                                     # a full read must not interleave with a write
+            rev = self.revision()
+            if self._cache is not None and self._cache[0] == (self.co, rev):
+                self.hits += 1
+                return self._cache[1]
+            g = self._read_graph()
+            self.misses += 1
+            self.full_reads += 1
+            self._cache = ((self.co, g.seq), g)
+            return g
 
     @staticmethod
     def _copy(g: GraphState) -> GraphState:
@@ -523,6 +571,10 @@ class HydraGraph:
     remembers = True      # apply(ops, incident=...) also writes the learner's memory (incident, alerts, postmortem, lessons)
 
     def apply(self, ops, incident=None):
+        with self._wlock:
+            return self._apply(ops, incident)
+
+    def _apply(self, ops, incident=None):
         """Translate learner ops into Cypher. Mirrors ghostwalk.learn.update.apply() op by op.
         incident (optional): {"seq", "name", "alerts", "postmortem"}; when given, the memory graph is written in the same step (before the revision is bumped)."""
         base = self._need_co()
@@ -547,6 +599,17 @@ class HydraGraph:
         counters = {r[0] - base: {"rc": r[1], "aff": r[2], "miss": r[3]} for r in got.get("counters", [])}
         existing = {(r[0] - base, r[1] - base): {"conf": r[2], "o": r[3]} for r in got.get("edges", [])}
         shortcuts = {(r[0] - base, r[1] - base): r[2] for r in got.get("shortcuts", [])}
+        # Replay safety: a write that died half-way left some of its changes in HydraDB but did not bump the revision. Counters, confirmations and shortcut
+        # counts are increments, so they are taken from the COMMITTED graph (the cache at this revision) instead of from what the half-written run left behind.
+        c = self._cache[1] if self._cache is not None and self._cache[0] == (base, seq) else None
+        if c is not None:
+            if "counters" in got:
+                counters = {i: {"rc": c.root_counts.get(i, 0), "aff": c.affected.get(i, 0), "miss": c.missed.get(i, 0)} for i in c.components}
+            for k, e in existing.items():
+                if k in c.edges:
+                    e["conf"] = c.edges[k].confirmations
+            if "shortcuts" in got:
+                shortcuts = dict(c.shortcuts)
 
         dirty_counters = set()
         for o in ops:  # sequential, so repeated keys behave exactly like the in-memory loop
@@ -559,7 +622,7 @@ class HydraGraph:
                 key = (o["u"], o["v"])
                 prev = existing.get(key)
                 ordinal = prev["o"] if prev else eo
-                eo += 0 if prev else 1
+                eo = max(eo, ordinal + 1)            # (an edge left by an interrupted write keeps its ordinal and still counts)
                 existing[key] = {"conf": 1, "o": ordinal}
                 props = dict(w=o["w"], cost=cost_of(o["w"]), origin="learned", conf=1, lf=o["seq"], cs=o["seq"], o=ordinal)
                 if prev:
@@ -569,7 +632,7 @@ class HydraGraph:
                 mem.proposed(o, ordinal)
             elif k == "confirm":
                 prev = existing[(o["u"], o["v"])]
-                prev["conf"] += 1
+                prev["conf"] = o["conf"] if "conf" in o else prev["conf"] + 1        # "conf" is the journalled absolute target (replay-safe)
                 self._set_edge(o["u"], o["v"], w=o["w"], cost=cost_of(o["w"]), conf=prev["conf"])
                 mem.confirmed(o, prev["conf"])
             elif k == "reweight":
@@ -580,20 +643,20 @@ class HydraGraph:
                 existing.pop((o["u"], o["v"]), None)
                 mem.decayed(o)
             elif k == "root":
-                counters[o["id"]]["rc"] += 1
+                counters[o["id"]]["rc"] = o["rc"] if "rc" in o else counters[o["id"]]["rc"] + 1
                 dirty_counters.add(o["id"])
             elif k == "shortcut":
                 key = (o["entry"], o["root"])
                 if key in shortcuts:
-                    shortcuts[key] += 1
+                    shortcuts[key] = o["n"] if "n" in o else shortcuts[key] + 1
                     self._q("MATCH (a {id: $u})-[s:SHORTCUT]->(b {id: $v}) SET s.n = $n", u=gid(key[0]), v=gid(key[1]), n=shortcuts[key])
                 else:
-                    shortcuts[key] = 1
-                    self._q("MERGE (a:Component {id: $u})-[:SHORTCUT {n: $n}]->(b:Component {id: $v})", u=gid(key[0]), v=gid(key[1]), n=1)
+                    shortcuts[key] = o.get("n", 1)
+                    self._q("MERGE (a:Component {id: $u})-[:SHORTCUT {n: $n}]->(b:Component {id: $v})", u=gid(key[0]), v=gid(key[1]), n=shortcuts[key])
             elif k == "observe":
                 c = counters[o["id"]]
-                c["aff"] += 1
-                c["miss"] += 1 if o["silent"] else 0
+                c["aff"] = o["aff"] if "aff" in o else c["aff"] + 1
+                c["miss"] = o["miss"] if "miss" in o else c["miss"] + (1 if o["silent"] else 0)
                 dirty_counters.add(o["id"])
         if dirty_counters:
             rows = [{"id": gid(i), **counters[i]} for i in sorted(dirty_counters)]
@@ -602,6 +665,34 @@ class HydraGraph:
         mo = mem.write(ops, mo)                # the learner's memory, before the revision bump (the bump stays the last write)
         self._write_meta(seq + 1, eo, ao, mo)
         self._write_through(ops, seq)
+        self._index_advance(seq, incident, mem)
+
+    def _index_advance(self, seq_before, incident, mem):
+        """Keep the memory index in step with the write-through cache: add this incident's alert services and move to the new revision.
+        Anything out of step (no cache, another writer, a different revision) drops the index; the next retrieval rebuilds it from HydraDB."""
+        m = self._midx
+        if m is None or self._cache is None or m["co"] != self.co or m["rev"] != seq_before:
+            self._midx = None
+            return
+        if incident is not None and mem.stored:
+            seq = incident["seq"]
+            m["by_inc"][seq] = set(mem.alert_svcs)
+            for sv in mem.alert_svcs:
+                m["by_svc"].setdefault(sv, set()).add(seq)
+        m["rev"] = self._cache[0][1]
+
+    def _index(self, rev):
+        """The memory index at revision `rev`. Built from HydraDB only at startup or after it was dropped (one scan), never per retrieval."""
+        m = self._midx
+        if m is not None and m["co"] == self.co and m["rev"] == rev:
+            return m
+        by_inc, by_svc = {}, {}
+        for seq, sid in self._rows("MATCH (i:Incident {co: $co})-[:RAISED]->(a:Alert)-[:ON]->(s:Service) RETURN i.seq AS seq, s.id AS s", co=self.co):
+            by_inc.setdefault(seq, set()).add(sid)
+            by_svc.setdefault(sid, set()).add(seq)
+        self.index_rebuilds += 1
+        self._midx = {"co": self.co, "rev": rev, "by_inc": by_inc, "by_svc": by_svc}
+        return self._midx
 
     def _write_through(self, ops, seq_before):
         """Apply the identical change to the cached graph, then check the revision HydraDB reports. Anything unexpected drops the cache (a full re-read follows)."""
@@ -631,6 +722,7 @@ class HydraGraph:
         if self.co is None:
             return
         self._cache = None                      # the revision cache must not outlive the data it describes
+        self._midx = None
         ids = [r[0] for r in self._rows("MATCH (n:Component {co: $co}) RETURN n.id AS id", co=self.co)]
         ids += [r[0] for r in self._rows("MATCH (n:Alias {co: $co}) RETURN n.id AS id", co=self.co)]
         ids += [r[0] for r in self._rows("MATCH (n:GwMeta {co: $co}) RETURN n.id AS id", co=self.co)]
