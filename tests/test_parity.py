@@ -122,19 +122,65 @@ def test_in_db_verdict_matches_in_memory(make_hydra):
     assert n == 25
 
 
-def test_cached_mode_rereads_only_when_the_revision_changes(make_hydra):
+def test_cached_mode_is_write_through_and_checks_the_revision(make_hydra):
     co = dev_picks()[0]
     hg = make_hydra()
-    hg.fresh(co)
+    hg.fresh(co)                                                              # seeds the cache with the graph it just wrote (revision 0)
     a = hg.snapshot()
-    assert hg.snapshot() is a and (hg.hits, hg.misses) == (1, 1)             # same revision: no re-read, same object
+    assert hg.snapshot() is a and hg.full_reads == 0 and hg.hits == 2         # same revision: served from the cache, never re-read
     from ghostwalk.learn import update
     inc = co["incidents"][0]
     ops = update.propose(a, inc["postmortem"], None, inc["alerts"], a.seq)
-    hg.apply(ops)                                                             # a learner write bumps the revision ...
+    hg.apply(ops)                                                             # the write bumps the revision AND is applied to the cached graph
     b = hg.snapshot()
-    assert b is not a and b.seq == a.seq + 1 and hg.misses == 2               # ... so the next snapshot re-reads
+    assert b is not a and b.seq == a.seq + 1 and hg.full_reads == 0           # a new graph object (callers' copies are untouched), still no re-read
+    assert a.seq == 0                                                         # the graph the caller held was not mutated
     cold = make_hydra()
     cold.mode = "cold"
     cold.co = hg.co
     assert cold.snapshot() is not cold.snapshot()                             # cold mode never caches
+    state_equal(cold.snapshot(), b)                                           # ... and what HydraDB holds equals the write-through graph
+
+
+def test_write_through_cache_60_incidents_rankings_equal_in_memory_and_no_full_reread(make_hydra):
+    """While learning, every write is also applied to the cached graph, so every verdict is served from the cache (a revision check only):
+    identical rankings and final state vs the in-memory engine, and no full graph re-read at all."""
+    co = dev_picks()[1]
+    assert len(co["incidents"]) >= 60
+    tm, th = {}, {}
+    mem = run_company(co, "ghostwalk", trace=tm)
+    hg = make_hydra()
+    hy = run_company(co, "ghostwalk", backend=hg, trace=th)
+    for rm, rh, km, kh in zip(mem, hy, tm["rankings"], th["rankings"]):
+        assert [c for c, _ in km] == [c for c, _ in kh], rm["seq"]
+        assert max(abs(x - y) for (_, x), (_, y) in zip(km, kh)) <= CONF_TOL if km else True
+        assert abs(rm["confidence"] - rh["confidence"]) <= CONF_TOL and rm["rank"] == rh["rank"]
+    assert len(hy) >= 60
+    assert hg.full_reads == 0 and hg.disagreements == 0, (hg.full_reads, hg.disagreements)      # no re-read, not even at startup: fresh() seeded the cache
+    assert hg.hits >= len(hy)                                                                     # every verdict was a revision-checked cache hit
+    cached = hg.snapshot()
+    state_equal(cached, tm["final"])
+    cold = make_hydra()
+    cold.mode, cold.co = "cold", hg.co
+    state_equal(cold.snapshot(), cached)                                                          # the write-through graph equals what HydraDB really holds
+
+
+def test_cache_is_never_served_when_hydradb_is_ahead(make_hydra):
+    """Another writer bumps the revision: the next verdict must re-read the whole graph instead of serving the stale cache."""
+    from ghostwalk.learn import update
+    co = dev_picks()[0]
+    a = make_hydra()
+    a.fresh(co)
+    base_graph = a.snapshot()
+    b = make_hydra()
+    b.co, b.mode = a.co, "cached"                                   # a second client on the same company
+    inc = co["incidents"][0]
+    b.apply(update.propose(b.snapshot(), inc["postmortem"], None, inc["alerts"], inc["seq"]))
+    assert a.full_reads == 0
+    fresh_view = a.snapshot()                                       # a's cache is behind HydraDB's revision
+    assert a.full_reads == 1 and fresh_view.seq == base_graph.seq + 1
+    state_equal(fresh_view, b.snapshot())
+    # a write whose revision HydraDB does not confirm drops the cache rather than extending it
+    a._cache = ((a.co, 0), a._copy(base_graph))                     # pretend a cache stuck at an old revision
+    a.apply(update.propose(fresh_view, co["incidents"][1]["postmortem"], None, co["incidents"][1]["alerts"], 1))
+    assert a._cache is None

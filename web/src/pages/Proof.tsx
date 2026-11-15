@@ -62,6 +62,7 @@ export default function Proof() {
   const pgFaster = scaleRows.length > 0 && scaleRows.every(([, e]) => ["hops_3", "hops_5"].every((h) => e.path_query[h].postgres.p50 < e.path_query[h].hydradb.p50))
   const beforeFix = (r as any).scale_before_transport_fix?.path_query?.sizes?.["1000"]?.path_query?.hops_3?.hydradb?.p50 as number | undefined
   const warm = (r.ops as any)?.hydradb_latency?.warm as any
+  const loop = (r.ops as any)?.hydradb_online_loop_test as any
   return (
     <Page>
       <H1 title="Proof" sub={`Held-out ${r.meta.split} split: ${r.meta.companies} companies, ${r.meta.incidents.toLocaleString()} incidents. 95% bootstrap intervals.`}
@@ -180,7 +181,16 @@ export default function Proof() {
               <tr style={{ borderTop: "1px solid var(--line)" }}><td style={{ padding: "8px 14px 8px 0", fontFamily: "Geist" }}>Verdict, two batched CTEs</td><td /><td>{ms(warm.postgres_per_verdict.p50)} / {ms(warm.postgres_per_verdict.p95)}</td></tr>
             </tbody>
           </table>
-          <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--text-3)" }}>HydraDB's verdict is under 20 ms only on a cache hit. HydraDB writes cost about {ms(warm.per_query.edge_write.hydradb.p50)} ms each (server-side commit).</p>
+          <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--text-3)" }}>
+            Verdicts read from HydraDB through a revision-checked write-through cache; path computation runs in the engine. HydraDB in-DB path mode is slower at these sizes (measured), so it is not used.
+            HydraDB writes cost about {ms(warm.per_query.edge_write.hydradb.p50)} ms each (server-side commit).
+          </p>
+          {loop && (
+            <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--text-3)" }}>
+              On the {r.meta.companies} held-out companies, learning on: verdict <b>{ms(loop.verdict_ms_p50)} ms p50 / {ms(loop.verdict_ms_p95)} ms p95</b>
+              {loop.before_write_through_cache ? ` (was ${ms(loop.before_write_through_cache.verdict_ms_p50)} / ${ms(loop.before_write_through_cache.verdict_ms_p95)} ms before the write-through cache)` : ""}.
+              The learning write, off the verdict path: {ms(loop.learning_write_ms_p50)} ms p50 / {ms(loop.learning_write_ms_p95)} ms p95.
+            </p>)}
         </section>
       )}
       {scaleRows.length > 0 && (

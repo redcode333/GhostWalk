@@ -97,7 +97,9 @@ def run_company(co, method, max_hops=5, steps=update.ALL_STEPS, placebo=False, s
         if method == "ghostwalk":
             pm = placebo_pm(co, inc, rng) if placebo else inc["postmortem"]
             ops = update.propose(snap if backend else g, pm, verdict, alerts, inc["seq"], steps)
+            t_apply = time.perf_counter()
             backend.apply(ops) if backend else update.apply(g, ops)
+            rows[-1]["apply_ms"] = (time.perf_counter() - t_apply) * 1000       # the learning write, off the verdict path
             if trace is not None:
                 trace["ops"].append(ops)
                 if (inc["seq"] + 1) % snap_every == 0:

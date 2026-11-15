@@ -17,12 +17,14 @@ Layout (one HydraDB graph shared by all companies and runs; ids are offsets: id 
   (:GwMeta {id, co, seq, eo, ao})                              graph generation + id allocators
 """
 from __future__ import annotations
+import copy
 import math
 import types
 from concurrent.futures import ThreadPoolExecutor
 import httpx
 from gwsim.world import official_view
 from ..engine.walk import walk, resolve
+from ..learn import update as learner
 from .state import GraphState, Edge, W0_OFFICIAL
 from .fasthttp import FastClient
 
@@ -99,7 +101,9 @@ def _lit(names):
 class HydraGraph:
     """Read modes (HydraDB is always the source of truth):
       cold    snapshot() reads the whole graph back every time
-      cached  snapshot() reads one number (the revision, GwMeta.seq) and re-reads the graph only when it changed; every learner write bumps it
+      cached  a revision-checked WRITE-THROUGH cache. snapshot() reads one number (the revision, GwMeta.seq) and serves the cached graph only if it equals HydraDB's;
+              apply() writes to HydraDB and applies the identical change to the cached graph in the same step (the learner's own update.apply), then confirms
+              the revision HydraDB reports. The graph is re-read in full only when the revisions disagree (another writer, a failed write) or when nothing is cached yet.
       in_db   verdict_in_db(): the walk's reach comes from two algo.MSpaths queries, the graph's edges are never read back
     """
     def __init__(self, base_url="http://127.0.0.1:8443", token="local-development-token-32-bytes",
@@ -108,6 +112,8 @@ class HydraGraph:
         self.mode = mode
         self._cache = None
         self.hits = self.misses = 0
+        self.full_reads = 0            # full graph re-reads done by snapshot() (the write-through cache should make this 0 while learning)
+        self.disagreements = 0         # writes after which HydraDB's revision was not the one the cache expected
         self.mspaths_requests = 0
         self._pool = None
         self.run_id = run_id
@@ -187,6 +193,8 @@ class HydraGraph:
             self._q(f"MERGE (a:Component {{id: $u}})-[:DEPENDS_ON {EDGE_PROPS}]->(b:Component {{id: $v}})",
                     u=base + u, v=base + v, w=e.w, cost=cost_of(e.w), origin="official", conf=0, lf=-1, cs=-1, o=o)
         self._write_meta(0, len(g.edges), 0)
+        if self.mode == "cached":
+            self._cache = ((base, 0), self._copy(g))          # we just wrote exactly this graph at revision 0
         return g
 
     def _write_meta(self, seq, eo, ao):
@@ -203,8 +211,16 @@ class HydraGraph:
             return self._cache[1]
         g = self._read_graph()
         self.misses += 1
+        self.full_reads += 1
         self._cache = ((self.co, g.seq), g)
         return g
+
+    @staticmethod
+    def _copy(g: GraphState) -> GraphState:
+        """A copy the learner may mutate without touching what callers hold (components are never mutated, so they are shared)."""
+        c = GraphState(components=g.components, edges={k: copy.copy(e) for k, e in g.edges.items()}, names=dict(g.names), root_counts=dict(g.root_counts),
+                       shortcuts=dict(g.shortcuts), affected=dict(g.affected), missed=dict(g.missed), seq=g.seq)
+        return c
 
     def _par(self, jobs):
         """Run independent reads at the same time (one connection per worker thread). {name: (query, params)} -> {name: rows}."""
@@ -377,6 +393,24 @@ class HydraGraph:
             for chunk in self._batches(rows):
                 self._q("UNWIND $rows AS row MERGE (n {id: row.id}) SET n:Component, n.rc = row.rc, n.aff = row.aff, n.miss = row.miss", rows=chunk)
         self._write_meta(seq + 1, eo, ao)
+        self._write_through(ops, seq)
+
+    def _write_through(self, ops, seq_before):
+        """Apply the identical change to the cached graph, then check the revision HydraDB reports. Anything unexpected drops the cache (a full re-read follows)."""
+        if self.mode != "cached" or self._cache is None:
+            return
+        (co, rev), cached = self._cache
+        if co != self.co or rev != seq_before:                   # the cache was not at the revision this write started from: do not extend it
+            self._cache = None
+            return
+        g = self._copy(cached)
+        learner.apply(g, ops)                                    # the learner's own semantics; bumps seq by one
+        reported = self.revision()                               # the revision HydraDB now holds
+        if reported == g.seq:
+            self._cache = ((co, reported), g)
+        else:
+            self.disagreements += 1
+            self._cache = None
 
     def _set_edge(self, u, v, **props):
         base = self._need_co()

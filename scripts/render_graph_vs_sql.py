@@ -29,6 +29,7 @@ sc = r["scale"]["path_query"]["sizes"]
 pv = r["scale"]["postgres_verdict"]["sizes"]
 hl = r["ops"]["hydradb_latency"]
 w = hl["warm"]
+ol = r["ops"]["hydradb_online_loop_test"]
 before_sc = r["scale_before_transport_fix"]["path_query"]["sizes"]
 diag = hl["diagnosis"]
 
@@ -126,6 +127,9 @@ The cause was not HydraDB and not graph work: {diag['cause']}
 Evidence and raw data: `docs/measurements/`. The adapter now keeps one connection and writes each request in one segment (`ghostwalk/graph/fasthttp.py`).
 
 ## Reading it honestly
+- **How GhostWalk uses HydraDB:** Verdicts read from HydraDB through a revision-checked write-through cache; path computation runs in the engine. HydraDB in-DB path mode is slower at these sizes (measured), so it is not used. While learning, each write to HydraDB is also applied to the cached graph in the same step, and the revision
+  HydraDB reports is checked, so on the 30 TEST companies the verdict took {fmt(ol['verdict_ms_p50'])} ms p50 / {fmt(ol['verdict_ms_p95'])} ms p95 with no full re-read. The learning write ({fmt(ol['learning_write_ms_p50'])} ms p50 /
+  {fmt(ol['learning_write_ms_p95'])} ms p95) happens off the verdict path.
 - **Postgres still wins on latency here, by a smaller margin than first measured.** With the transport fixed, HydraDB's `SPpaths` takes a few milliseconds
   (about 0.5 ms on a 75-service company, 2 ms at 100 services, 3 to 5 ms at 1,000 to 5,000 services) and a recursive CTE under 1 ms, both with identical costs. Whole verdicts: Postgres' two
   batched CTEs are faster than a HydraDB read-back or an in-DB verdict at every size, and a Postgres write is about 0.8 ms against about 22 ms for HydraDB (server-side commit).

@@ -28,6 +28,7 @@ We use HydraDB for its native weighted path algorithms. In our latency measureme
 <!-- proof:end -->"""
 
 hl = r["ops"]["hydradb_latency"]
+ol = r["ops"]["hydradb_online_loop_test"]
 w = hl["warm"]
 before_sc = r["scale_before_transport_fix"]["path_query"]["sizes"]
 sc = r["scale"]["path_query"]["sizes"]
@@ -58,6 +59,12 @@ the cost it reports, and `algo.MSpaths` selects by a property shared across comp
 
 - **Parity:** the HydraDB-vs-in-memory tests (`tests/test_parity.py`, 8) check identical rankings and scores, identical final graph state, path costs equal to the in-memory best path,
   the cache re-reading only when the revision changes, and in-DB verdicts matching in-memory rankings.
+- **How HydraDB is used:** Verdicts read from HydraDB through a revision-checked write-through cache; path computation runs in the engine. HydraDB in-DB path mode is slower at these sizes (measured), so it is not used.
+  The cache is write-through: when the learner writes to HydraDB the identical change (the learner's own `update.apply`) is applied to the cached graph in the same step, and the revision
+  HydraDB reports is checked; a verdict is never served from a cache whose revision is behind HydraDB's, and the whole graph is re-read only if the revisions disagree. On the 30 TEST companies
+  (1,800 incidents, learning on) that was **{f(ol['verdict_ms_p50'])} ms p50 / {f(ol['verdict_ms_p95'])} ms p95 per verdict with {b['hydradb']['cache']['full_graph_rereads']} full re-reads**, against
+  {f(ol['before_write_through_cache']['verdict_ms_p50'])} / {f(ol['before_write_through_cache']['verdict_ms_p95'])} ms before the cache; accuracy unchanged. The learning write itself (about 5 to 15 sequential HydraDB writes) takes
+  {f(ol['learning_write_ms_p50'])} ms p50 / {f(ol['learning_write_ms_p95'])} ms p95, off the verdict path.
 - **Why it was 48 ms per request, and the fix:** HydraDB answers in 0.1 to 0.9 ms (its own `/metrics` histogram) and its response arrives in one read. Clients that write the request headers
   and body separately (httpx, http.client, HTTP/2) took ~45 ms through Docker Desktop's published port on Windows, the same clients inside the docker network took 0.3 to 1.5 ms, and a client
   that sends headers and body in one write took 0.4 ms through the same port (so did Bolt). Client-side `TCP_NODELAY` did not help. The adapter now uses a persistent connection with one write per request

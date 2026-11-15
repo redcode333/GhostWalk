@@ -2226,11 +2226,17 @@
     },
     "checks_definition": "1-based rank of the true root in the ranked list (absent from the list = list length + 1)",
     "hydradb_online_loop_test": {
-      "verdict_ms_p50": 49.16054999921471,
-      "verdict_ms_p95": 88.65408500096237,
+      "verdict_ms_p50": 2.3109499998099636,
+      "verdict_ms_p95": 3.922699998474854,
       "n": 1800,
       "split": "test",
-      "backend": "HydraDB v0.4.0, local node in docker (loopback)"
+      "learning_write_ms_p50": 111.3818000012543,
+      "learning_write_ms_p95": 191.1363600005643,
+      "backend": "HydraDB v0.4.0, local node in docker (loopback), write-through cache",
+      "before_write_through_cache": {
+        "verdict_ms_p50": 49.16054999921471,
+        "verdict_ms_p95": 88.65408500096237
+      }
     }
   },
   "learning_curve": {
@@ -3116,7 +3122,7 @@
         "verdict_ms_p95": 0.735469997380278
       },
       "hydradb": {
-        "description": "HydraDB v0.4.0 (published image): graph in HydraDB, weighted paths and counters read back every verdict",
+        "description": "HydraDB v0.4.0 (published image): the graph lives in HydraDB; verdicts read it through a revision-checked write-through cache",
         "ac1": {
           "point": 0.7644444444444445,
           "ci95": [
@@ -3125,8 +3131,21 @@
           ]
         },
         "delta_vs_reference": null,
-        "verdict_ms_p50": 49.16054999921471,
-        "verdict_ms_p95": 88.65408500096237
+        "verdict_ms_p50": 2.3109499998099636,
+        "verdict_ms_p95": 3.922699998474854,
+        "verdict_ms_before_write_through_cache": {
+          "verdict_ms_p50": 49.16054999921471,
+          "verdict_ms_p95": 88.65408500096237
+        },
+        "learning_write_ms_p50": 111.3818000012543,
+        "learning_write_ms_p95": 191.1363600005643,
+        "learning_write_note": "the learner's writes to HydraDB (alias/add/confirm/reweight/decay/counters), measured separately: they happen after the verdict, off the verdict path",
+        "cache": {
+          "kind": "revision-checked write-through",
+          "full_graph_rereads": 0,
+          "cache_hits": 1800,
+          "disagreements": 0
+        }
       },
       "kv_1hop": {
         "description": "Redis hashes, 1-hop adjacency only (engine max_hops=1)",
@@ -3191,7 +3210,7 @@
     },
     "note": "\u0394AC@1 is measured against HydraDB. Latency is the whole verdict (snapshot read + walk) per incident. Embeddings are feature-hashed bags of words (no model).",
     "engine": {
-      "commit": "2d49aec281cc40d624f8b451e147808fcccbba86",
+      "commit": "e215c9a06d6f336ca114bbae77ef63896769759a",
       "note": "store swap run with the final engine; HydraDB, in-memory and Postgres-CTE give the identical top-1 count"
     }
   },
