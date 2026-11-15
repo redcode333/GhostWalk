@@ -314,6 +314,72 @@ def eval_(split: str = typer.Option("test", "--split", help="dev or test"),
     ok(f"{path.name} {'written' if run else 'read'} · {r['meta']['git']['short']} · {r['meta']['timestamp_utc'][:10]}")
 
 
+# ---- export / diff ----------------------------------------------------------------------
+@app.command("export")
+def export_cmd(out: Optional[pathlib.Path] = typer.Option(None, "--out", help="write to a file instead of stdout")):
+    """The graph (official + learned) and incident roots as JSON: the input `gw diff` needs in CI. `gw export > graph.json`."""
+    from .diff import export_graph
+    text = json.dumps(export_graph(workspace()), indent=1)
+    if out:
+        out.write_text(text, encoding="utf8")
+    else:
+        typer.echo(text)
+
+
+@app.command("diff")
+def diff_cmd(base: str = typer.Option("main", "--base", help="git ref to compare from"),
+             head: str = typer.Option("HEAD", "--head", help="git ref to compare to"),
+             repo: pathlib.Path = typer.Option(pathlib.Path("."), "--repo", exists=True, file_okay=False),
+             graph: Optional[pathlib.Path] = typer.Option(None, "--graph", exists=True, dir_okay=False, help="graph export (gw export). Default: the local workspace if there is one"),
+             fmt: str = typer.Option("text", "--format", help="text | markdown | json"),
+             hops: int = typer.Option(3, "--hops", help="blast radius depth"),
+             low: bool = typer.Option(False, "--low", help="also count low-confidence edges (Helm values)")):
+    """Pre-deploy blast radius: dependencies this change adds or removes, and what hangs off them. Read-only, works offline."""
+    from . import diff as D
+    g = None
+    if graph:
+        g = json.loads(graph.read_text(encoding="utf8"))
+    elif state_path().exists():
+        g = D.export_graph(Workspace(state_path(), demo=False))
+    try:
+        rep = D.build_report(repo, base, head, g, "low" if low else "medium", hops)
+    except D.GitError as e:
+        fail(str(e))
+    if fmt == "markdown":
+        typer.echo(D.to_markdown(rep), nl=False)
+        return
+    if fmt == "json":
+        typer.echo(D.to_json(rep))
+        return
+    prompt_line(f"gw diff --base {base} --head {head}")
+    line((f"{len(rep['added'])} added · {len(rep['removed'])} removed dependencies", DIM))
+    console.print()
+    for a in rep["added"]:
+        t = Text("  ")
+        t.append("+ ", style=VIOLET_TEXT)
+        t.append(f"{a['src']} → {a['dst']}")
+        console.print(t)
+        if a["known"] is None:
+            line(("    no graph export: run `gw export > graph.json` for blast radius", DIM))
+        elif not a["known"]:
+            line((f"    {a['dst']} is not in the graph yet", DIM))
+        else:
+            n = len(a["blast"])
+            line(("    blast radius ", DIM), (f"{n} service{'s' if n != 1 else ''}", INK), (f"  {D._names(a['blast'], 5)}", DIM))
+            for l in a["touches_learned"][:3]:
+                line(("    ", ), (f"⇢ learned edge touches it: {l}", VIOLET_TEXT))
+            if a["incidents"]:
+                line(("    ", ), (f"{a['dst']} caused {', '.join(a['incidents'][:3])}", AMBER))
+    for r in rep["removed"]:
+        t = Text("  ")
+        t.append("− ", style=RED)
+        t.append(f"{r['src']} → {r['dst']}")
+        t.append(f"  removed ({r['file']})", style=DIM)
+        console.print(t)
+    if not rep["added"] and not rep["removed"]:
+        line(("no dependency changes", DIM))
+
+
 # ---- mcp --------------------------------------------------------------------------------------
 @app.command("mcp")
 def mcp_cmd():
