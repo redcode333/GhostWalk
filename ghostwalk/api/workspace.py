@@ -267,6 +267,7 @@ class Workspace:
                 del self.g.edges[k]
             self.g.root_counts, self.g.shortcuts, self.g.affected, self.g.missed = {}, {}, {}, {}
             self.g.names = {c["name"]: i for i, c in self.g.components.items()}
+            self.g.invalidate()
             self.revision += 1
             self.save()
 

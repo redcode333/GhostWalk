@@ -32,6 +32,11 @@ class GraphState:
     affected: dict = field(default_factory=dict)       # id -> times on a causal chain
     missed: dict = field(default_factory=dict)         # id -> times it stayed silent while on a chain
     seq: int = 0
+    _adj: tuple = field(default=None, repr=False, compare=False)       # (edge-count, out_adj, in_adj) cached per graph revision
+
+    def invalidate(self):
+        """Call after changing edges or weights. The learner, reset and map import do; a changed edge COUNT is also noticed."""
+        self._adj = None
 
     @classmethod
     def from_official(cls, view):
@@ -54,17 +59,21 @@ class GraphState:
             g.edges[(e["u"], e["v"])] = Edge(e["w"])
         return g
 
+    def _adjacency(self):
+        """Adjacency lists are built once per graph revision (not once per verdict) and reused until invalidate() or an edge-count change."""
+        if self._adj is None or self._adj[0] != len(self.edges):
+            out, inn = {}, {}
+            for (u, v), e in self.edges.items():
+                out.setdefault(u, []).append((v, e.w))
+                inn.setdefault(v, []).append((u, e.w))
+            self._adj = (len(self.edges), out, inn)
+        return self._adj
+
     def out_adj(self):
-        adj = {}
-        for (u, v), e in self.edges.items():
-            adj.setdefault(u, []).append((v, e.w))
-        return adj
+        return self._adjacency()[1]
 
     def in_adj(self):
-        adj = {}
-        for (u, v), e in self.edges.items():
-            adj.setdefault(v, []).append((u, e.w))
-        return adj
+        return self._adjacency()[2]
 
     def miss_rate(self, cid, prior=0.15, strength=10.0):
         return (self.missed.get(cid, 0) + prior * strength) / (self.affected.get(cid, 0) + strength)

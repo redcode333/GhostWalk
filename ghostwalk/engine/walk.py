@@ -76,25 +76,45 @@ def walk(g, alerts, max_hops=5, eps=None, use_prior=True, reach=None, changes=No
     out_adj, in_adj = g.out_adj(), g.in_adj()
     if reach is None:
         reach = lambda v, d, h: _limited_best(out_adj if d == "out" else in_adj, v, h)
+    keep_memo = {}
+    def keep(v):                       # 1 - miss rate: looked up for every (candidate, service) pair, so memoised per verdict
+        k = keep_memo.get(v)
+        if k is None:
+            k = keep_memo[v] = 1.0 - g.miss_rate(v)
+        return k
     down = {v: reach(v, "out", max_hops) for v in A}     # reach from each alerting service
     cands = set(A)
     for best, _ in down.values():
         cands.update(best)
+    # Constants hoisted out of the candidate loop. The maths is unchanged; the loop now walks only the services a candidate can
+    # reach (up) and charges every alerting service OUTSIDE that reach the same closed-form term ln(eps), instead of visiting all of A.
+    om, ln = 1.0 - eps, math.log
+    ln_eps = ln(max(eps, 1e-12))
+    silent_p = 1.0 - om * SILENT_ROOT
+    ln_silent, ln_not_silent = ln(max(silent_p, 1e-12)), ln(max(1.0 - silent_p, 1e-12))
+    l_late, l_early, l_half = ln(0.9), ln(0.1), ln(0.5)
+    nA = len(A)
     scores = []
     for c in cands:
         up, _ = reach(c, "in", max_hops)                          # everything that would feel c failing
+        c_alerts = c in A
+        oc = onset.get(c)
         s = 0.0
-        for v in set(up) | A:
+        in_reach = 0
+        for v, q in up.items():
             if v == c:
-                p_alert = 1 - (1 - eps) * SILENT_ROOT
+                continue
+            pa = 1.0 - om * (1.0 - q * keep(v))
+            if v in A:
+                in_reach += 1
+                s += ln(pa if pa > 1e-12 else 1e-12)
+                if BETA and q > 0:      # failures spread in time order: dependents alert after the root
+                    s += BETA * ((l_late if onset[v] >= oc else l_early) if c_alerts else l_half)
             else:
-                q = up.get(v, 0.0)
-                p_alert = 1 - (1 - eps) * (1 - q * (1 - g.miss_rate(v)))
-            s += math.log(max(p_alert, 1e-12)) if v in A else LAM * math.log(max(1 - p_alert, 1e-12))
-        if BETA:  # failures spread in time order: dependents alert after the root
-            for v in A:
-                if v != c and up.get(v, 0.0) > 0:
-                    s += BETA * (math.log(0.9 if onset[v] >= onset[c] else 0.1) if c in A else math.log(0.5))
+                r = 1.0 - pa
+                s += LAM * ln(r if r > 1e-12 else 1e-12)
+        s += ln_silent if c_alerts else LAM * ln_not_silent               # the candidate itself
+        s += (nA - in_reach - (1 if c_alerts else 0)) * ln_eps           # alerting services c cannot reach (q = 0)
         if changes and gamma and c in changes:       # what changed shortly before the first alert is a likelier cause
             s += gamma * math.exp(-changes[c] / tau)
         if use_prior:

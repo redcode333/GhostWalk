@@ -47,11 +47,24 @@ def _pick(rng, pool_ids, weights, k):
     return list(rng.choice(pool_ids, size=k, replace=False, p=p))
 
 
+def _extend(pool, need):
+    """Beyond the built-in name pools (only for the scale benchmark, n > 120): repeat the pool with numeric suffixes."""
+    out = list(pool)
+    k = 2
+    while len(out) < need:
+        out += [(f"{x[0]}-{k}", *x[1:]) if isinstance(x, tuple) else f"{x}-{k}" for x in pool]
+        k += 1
+    return out[:need]
+
+
 def generate(family: str, n: int, rng: np.random.Generator):
     """family: 'layered' or 'hub'. n = total components (30..120)."""
     hub_power = 1.0 if family == "layered" else 2.2
     n_gw, n_api = 2, max(3, round(0.16 * n))
-    n_infra = max(8, min(len(INFRA), round(0.28 * n)))
+    big = n > 120                                   # the 30-120 service benchmark path is untouched
+    APIS_L = _extend(APIS, n_api) if big else APIS
+    INFRA_L = _extend(INFRA, round(0.28 * n)) if big else INFRA
+    n_infra = max(8, min(len(INFRA_L), round(0.28 * n)))
     n_dom = max(5, n - n_gw - n_api - n_infra)
     comps, edges = [], []
 
@@ -60,11 +73,11 @@ def generate(family: str, n: int, rng: np.random.Generator):
         return len(comps) - 1
 
     gws = [add(nm, "service", 0) for nm in GATEWAYS[:n_gw]]
-    apis = [add(nm, "service", 1) for nm in rng.permutation(APIS)[:n_api]]
+    apis = [add(nm, "service", 1) for nm in rng.permutation(APIS_L)[:n_api]]
     nouns = list(rng.permutation(NOUNS))
     doms = [add(f"{nouns[i % len(nouns)]}-svc" + ("" if i < len(nouns) else f"-{i // len(nouns) + 1}"),
                 "service", 2) for i in range(n_dom)]
-    infra_sorted = sorted(INFRA, key=lambda t: -t[2])
+    infra_sorted = sorted(INFRA_L, key=lambda t: -t[2])
     chosen = infra_sorted[:6] + list(rng.permutation(np.array(infra_sorted[6:], dtype=object))[: n_infra - 6])
     infra = [add(nm, kind, 3) for nm, kind, _ in chosen]
     hub = {c: float(h) ** hub_power for c, (_, _, h) in zip(infra, chosen)}

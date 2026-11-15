@@ -73,4 +73,5 @@ def apply(g, ops):
             if o["silent"]:
                 g.missed[o["id"]] = g.missed.get(o["id"], 0) + 1
     g.seq += 1
+    g.invalidate()                      # weights/edges changed: rebuild adjacency lazily on the next verdict
     return g

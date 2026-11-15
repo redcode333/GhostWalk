@@ -140,6 +140,23 @@ export default function Proof() {
           </table>
         </section>
       )}
+      {r.latency && (
+        <section className="card" style={{ padding: 18, overflowX: "auto" }}>
+          <h2 style={{ margin: 0, fontSize: 16 }}>Speed at scale</h2>
+          <p style={{ margin: "2px 0 10px", fontSize: 13, color: "var(--text-4)" }}>
+            Verdict latency on synthetic graphs with the same tier mix, {r.latency.incidents_per_size.toLocaleString()} incidents each, in-memory engine on {r.latency.meta.cpus} CPUs.
+            {r.latency.gate.p95_1000_ms != null && r.latency.gate.stopped_at_1000 && <> At 1,000 services the p95 is <b>{ms(r.latency.gate.p95_1000_ms)} ms</b>, under the 100 ms target, so the engine stays in Python.</>}
+            {r.latency.gate.p95_5000_ms != null && <> At 5,000 services it is {ms(r.latency.gate.p95_5000_ms)} ms{r.latency.gate.rust_port === "not needed" ? ", under the 250 ms line that would justify a Rust port." : "."}</>}
+          </p>
+          <table className="mono" style={{ fontSize: 13, borderCollapse: "collapse", minWidth: 480 }}>
+            <thead><tr style={{ color: "var(--text-4)", textAlign: "left" }}>{["Services", "p50", "p95", "p99", "HydraDB"].map((h) => <th key={h} style={{ padding: "6px 14px 6px 0", fontFamily: "Geist", fontWeight: 500 }}>{h}</th>)}</tr></thead>
+            <tbody>{Object.entries(r.latency.sizes).sort((a, b) => +a[0] - +b[0]).map(([n, v]) => (
+              <tr key={n} style={{ borderTop: "1px solid var(--line)" }}><td style={{ padding: "8px 14px 8px 0" }}>{(+n).toLocaleString()}</td><td style={{ paddingRight: 14 }}>{ms(v.in_memory_ms.p50)} ms</td>
+                <td style={{ paddingRight: 14 }}>{ms(v.in_memory_ms.p95)} ms</td><td style={{ paddingRight: 14 }}>{ms(v.in_memory_ms.p99)} ms</td><td style={{ color: "var(--text-4)", fontFamily: "Geist" }}>not measured</td></tr>))}</tbody>
+          </table>
+          <p style={{ margin: "8px 0 0", fontSize: 12, color: "var(--text-4)" }}>HydraDB: {r.latency.hydradb.status}. Reproduce: <span className="mono">$ make bench</span></p>
+        </section>
+      )}
       {r.change_evidence && r.change_evidence.main.gain.ci95[0] > 0 && (
         <section className="card" style={{ padding: 18, overflowX: "auto" }}>
           <h2 style={{ margin: 0, fontSize: 16 }}>What changed recently <span className="mono" style={{ fontSize: 11, color: "var(--text-4)" }}>--use-changes</span></h2>

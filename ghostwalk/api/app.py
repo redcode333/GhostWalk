@@ -63,11 +63,16 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
         return {"auth_mode": AUTH_MODE(), "clerk_publishable_key": os.environ.get("CLERK_PUBLISHABLE_KEY"),
                 "github": {"configured": bool(c["app_id"] and c["private_key"]), "slug": c["slug"], "pr_token": bool(c["pr_token"])}}
 
+    results_cache = {"mtime": None, "doc": None}
+
     @app.get("/api/proof")
     def proof():
         if not results_file.exists():
             raise HTTPException(404, "results.json not found: run `make eval`")
-        return JSONResponse(json.loads(results_file.read_text(encoding="utf8")), headers={"Cache-Control": "no-cache"})
+        mt = results_file.stat().st_mtime_ns
+        if results_cache["mtime"] != mt:                       # parsed once per file version, not once per request
+            results_cache["doc"], results_cache["mtime"] = json.loads(results_file.read_text(encoding="utf8")), mt
+        return JSONResponse(results_cache["doc"], headers={"Cache-Control": "no-cache"})
 
     @app.get("/results.json")
     def results_download():
@@ -75,9 +80,13 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
             raise HTTPException(404, "results.json not found")
         return FileResponse(results_file, media_type="application/json", filename="results.json")
 
+    demo_cache = {}
+
     @app.get("/api/demo/inside")
     def inside():
-        return demo_inside()
+        if "d" not in demo_cache:                              # a deterministic scenario: computed once per process
+            demo_cache["d"] = demo_inside()
+        return demo_cache["d"]
 
     # ---- hosted MCP (the same four tools over HTTP; `gw mcp` with GW_URL + GW_TOKEN proxies here) --------------------------
     def check_mcp_token(request: Request):

@@ -1,7 +1,7 @@
 PY ?= python
 COMPOSE ?= docker compose
 
-.PHONY: data eval eval-quick eval-stores test up down web
+.PHONY: data eval eval-quick eval-stores test up down web bench
 
 data:
 	$(PY) -m gwsim.cli --out data
@@ -32,3 +32,7 @@ down:
 
 web:
 	cd web && npm ci && npm run build
+
+# Scale benchmark: p50/p95/p99 verdict latency at 100 / 1,000 / 5,000 services, 1,000 incidents each -> results.json "latency".
+bench:
+	$(PY) eval/bench.py --reference

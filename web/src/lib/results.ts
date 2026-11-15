@@ -24,6 +24,13 @@ export type Results = {
     main: { without: CI; with: CI; gain: CI & { p_le_0: number } }
     sensitivity: { p_root: number; r_noise: number; without: CI; with: CI; gain: CI }[]
   }
+  latency?: {
+    incidents_per_size: number
+    sizes: Record<string, { services: number; edges: number; in_memory_ms: { p50: number; p95: number; p99: number }; reference_walk_ms?: { p95: number }; hydradb_ms: unknown }>
+    hydradb: { status: string }
+    gate: { p95_1000_ms: number | null; p95_5000_ms: number | null; stopped_at_1000: boolean; rust_port: string }
+    meta: { git: string | null; cpus: number }
+  }
   baseline_fairness?: { pagerank: { settings: Record<string, unknown>; grid_budget: number | null; dev_ac1_tuned: number | null; dev_ac1_untuned_default: number | null } }
 }
 
