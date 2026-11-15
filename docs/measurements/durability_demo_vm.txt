@@ -1,0 +1,6 @@
+# python deploy/durability_demo.py --api https://api.13-51-194-36.sslip.io --ssh ubuntu@13.51.194.36   (VM: Xeon 8488C, 2 vCPU, 7.6 GB; STORAGE=minio)
+before: store=hydradb revision=33 ranking [('transcode-svc', 0.9423), ('consent-svc', 0.0176), ('ledger-db', 0.0155)] why-edge ['edge-gateway', 'catalog-api']
+stop the stack, delete ONLY ghostwalk-prod_hydradb-data (keep ghostwalk-prod_minio-data)
+after:  store=hydradb revision=33 ranking [('transcode-svc', 0.9423), ('consent-svc', 0.0176), ('ledger-db', 0.0155)] why-edge ['edge-gateway', 'catalog-api']
+identical ranking and why-edge after deleting HydraDB's local data: True
+# a learn after the wipe (smoke.py): PASS, revision 33 -> 34

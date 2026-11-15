@@ -201,8 +201,12 @@ milliseconds, but Postgres with recursive queries gets the same accuracy and ans
 <!-- notwin:end -->
 
 ## Deploy
-Backend (HydraDB + API + HTTPS) on a Linux VM, frontend on Vercel: see [docs/deploy.md](docs/deploy.md). `deploy/setup.sh` brings the backend up and runs `deploy/smoke.py`;
-`gw doctor` checks a running stack. Not deployed yet: there is no live URL to link here.
+**Live:** frontend https://ghostwalk-henna.vercel.app (open the demo at `/demo`), API https://api.13-51-194-36.sslip.io, status https://api.13-51-194-36.sslip.io/api/health.
+
+HydraDB stores GhostWalk's graph on S3-compatible object storage (MinIO). Delete HydraDB's local data and the graph comes back from object storage (`make durability-demo`, run on the VM: identical ranking and `why-edge`).
+Backend (HydraDB + MinIO + API + HTTPS) on a Linux VM, frontend on Vercel: see [docs/deploy.md](docs/deploy.md). `deploy/setup.sh` brings the backend up and runs `deploy/smoke.py`; `gw doctor` checks a running stack.
+The public demo is a sandbox that resets nightly; settings, onboarding and webhooks are read-only there. A restart bug in HydraDB 0.4.0 that broke writes was found and worked around: [docs/hydradb-issue.md](docs/hydradb-issue.md).
+
 
 ## HydraDB (live)
 GhostWalk runs against HydraDB's own published image, `ghcr.io/hydra-db/hydradb:0.4.0` (the one `charts/hydradb` references): `docker compose up -d hydradb`.

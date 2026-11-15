@@ -2237,6 +2237,126 @@
         "verdict_ms_p50": 49.16054999921471,
         "verdict_ms_p95": 88.65408500096237
       }
+    },
+    "vm": {
+      "minio": {
+        "measured_utc": "2026-11-15T23:41:03Z",
+        "machine": {
+          "label": "VM",
+          "cpu": "Intel(R) Xeon(R) Platinum 8488C",
+          "logical_cpus": 2,
+          "ram_gb": 7.6,
+          "kernel": "7.0.0-1016-aws",
+          "platform": "Linux-7.0.0-1016-aws-x86_64-with-glibc2.41",
+          "python": "3.12.16",
+          "hydradb_url": "http://hydradb:8443",
+          "note": "client (the API container) and HydraDB are containers on one docker network: no published-port proxy hop"
+        },
+        "hydradb_image": null,
+        "companies": [
+          {
+            "name": "hub-31",
+            "services": 60,
+            "incidents": 60
+          },
+          {
+            "name": "layered-32",
+            "services": 90,
+            "incidents": 60
+          },
+          {
+            "name": "hub-33",
+            "services": 120,
+            "incidents": 60
+          }
+        ],
+        "online_loop": {
+          "verdict_ms": {
+            "p50": 1.246411000010994,
+            "p95": 1.8556038997303403,
+            "n": 180
+          },
+          "learning_write_ms": {
+            "p50": 560.9038599995984,
+            "p95": 1379.4596093004636,
+            "n": 180
+          },
+          "full_graph_rereads": 0,
+          "cache_hits": 1239
+        },
+        "warm": {
+          "one_hop_query_ms": {
+            "p50": 2.98089300031279,
+            "p95": 3.5149998994711495,
+            "n": 600
+          },
+          "verdict_cached_hit_ms": {
+            "p50": 0.8318000004692294,
+            "p95": 1.1655701996460264,
+            "n": 600
+          }
+        },
+        "note": "generated companies (hub and layered, 60 to 120 services), learning on, HydraDB write-through cache; not the DEV/TEST splits"
+      },
+      "local": {
+        "measured_utc": "2026-11-15T23:44:09Z",
+        "machine": {
+          "label": "VM",
+          "cpu": "Intel(R) Xeon(R) Platinum 8488C",
+          "logical_cpus": 2,
+          "ram_gb": 7.6,
+          "kernel": "7.0.0-1016-aws",
+          "platform": "Linux-7.0.0-1016-aws-x86_64-with-glibc2.41",
+          "python": "3.12.16",
+          "hydradb_url": "http://hydradb:8443",
+          "note": "client (the API container) and HydraDB are containers on one docker network: no published-port proxy hop"
+        },
+        "hydradb_image": null,
+        "companies": [
+          {
+            "name": "hub-31",
+            "services": 60,
+            "incidents": 60
+          },
+          {
+            "name": "layered-32",
+            "services": 90,
+            "incidents": 60
+          },
+          {
+            "name": "hub-33",
+            "services": 120,
+            "incidents": 60
+          }
+        ],
+        "online_loop": {
+          "verdict_ms": {
+            "p50": 1.2657154998123588,
+            "p95": 1.7592560498087546,
+            "n": 180
+          },
+          "learning_write_ms": {
+            "p50": 550.1239605000592,
+            "p95": 1379.650455699446,
+            "n": 180
+          },
+          "full_graph_rereads": 0,
+          "cache_hits": 1239
+        },
+        "warm": {
+          "one_hop_query_ms": {
+            "p50": 2.919359500083374,
+            "p95": 4.266402650546297,
+            "n": 600
+          },
+          "verdict_cached_hit_ms": {
+            "p50": 0.8574419998694793,
+            "p95": 1.1350361495715333,
+            "n": 600
+          }
+        },
+        "note": "generated companies (hub and layered, 60 to 120 services), learning on, HydraDB write-through cache; not the DEV/TEST splits"
+      }
     }
   },
   "learning_curve": {
