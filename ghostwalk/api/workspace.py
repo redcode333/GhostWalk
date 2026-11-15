@@ -9,7 +9,7 @@ first (hydra.apply), the in-memory GraphState is a cache that is rebuilt from Hy
 re-attaches to HydraDB and reads the learned graph back (the state file is not needed for it).
 """
 from __future__ import annotations
-import json, math, os, pathlib, random, secrets, threading, time
+import json, math, os, pathlib, queue, random, secrets, threading, time
 from ..engine.walk import walk, resolve, _limited_best, changes_before, change_note, tuned_changes
 from ..graph.state import GraphState, Edge, W0_OFFICIAL, W_TENTATIVE
 from ..learn import update
@@ -25,8 +25,13 @@ def ui_kind(c):
 
 
 class Workspace:
-    def __init__(self, state_path=None, demo_incidents=30, seed=7777, demo=True, use_changes=None, store=None, hydra=None):
+    def __init__(self, state_path=None, demo_incidents=30, seed=7777, demo=True, use_changes=None, store=None, hydra=None, worker=True):
         self.lock = threading.RLock()
+        self.jobs: list[dict] = []                # learning writes accepted but not yet in HydraDB (journalled in the state file, replayed on restart)
+        self._q: queue.Queue = queue.Queue()
+        self._worker = None
+        self._seeding = False
+        self.worker_error = None
         self.store = store or os.environ.get("GW_STORE", "memory")
         self.hy = None
         if self.store == "hydradb":
@@ -63,11 +68,14 @@ class Workspace:
                 self.log.append("state restored from HydraDB (no state file)")
             self.save()
         elif not loaded or self.hy is not None:
+            self.jobs = []                                              # nothing in HydraDB to replay them onto
             if demo:
                 self._seed_demo(seed, demo_incidents)
             else:
                 self.g, self.mode = GraphState(components={}), "imported"
             self.save()
+        if self.hy is not None and worker:
+            self.start_worker()
 
     # ---- demo seed -------------------------------------------------------------------------
     # ---- HydraDB as the store --------------------------------------------------------------
@@ -93,6 +101,107 @@ class Workspace:
         self.hy.drop()
         self.hy.fresh(co, index=0)
         self._pull()
+
+    # ---- the learning queue: accept now, write to HydraDB in order, bump the revision when done ------------
+    @staticmethod
+    def _absolute(g, ops):
+        """Give every increment in `ops` its absolute target value, computed from the committed graph `g` BEFORE anything is written.
+        A job that dies half-way and is replayed then writes the same values again instead of counting twice."""
+        conf = {k: e.confirmations for k, e in g.edges.items()}
+        rc, aff, miss, sc = dict(g.root_counts), dict(g.affected), dict(g.missed), dict(g.shortcuts)
+        for o in ops:
+            k = o["op"]
+            if k == "confirm":
+                conf[(o["u"], o["v"])] = o["conf"] = conf.get((o["u"], o["v"]), 0) + 1
+            elif k == "add_edge":
+                conf[(o["u"], o["v"])] = 1
+            elif k == "root":
+                rc[o["id"]] = o["rc"] = rc.get(o["id"], 0) + 1
+            elif k == "shortcut":
+                key = (o["entry"], o["root"])
+                sc[key] = o["n"] = sc.get(key, 0) + 1
+            elif k == "observe":
+                aff[o["id"]] = o["aff"] = aff.get(o["id"], 0) + 1
+                miss[o["id"]] = o["miss"] = miss.get(o["id"], 0) + (1 if o["silent"] else 0)
+        return ops
+
+    def start_worker(self):
+        for j in list(self.jobs):                                       # journalled jobs from before a restart are finished BEFORE the API serves anything
+            try:
+                self._run_job(j)
+            except Exception as e:                                      # noqa: BLE001
+                self.worker_error = f"{type(e).__name__}: {e}"
+                self.log.append(f"replay stopped: {self.worker_error}")
+                return
+        self._worker = threading.Thread(target=self._work, name="gw-learn-writer", daemon=True)
+        self._worker.start()
+
+    def _work(self):
+        while True:
+            jid = self._q.get()
+            if jid is None:
+                return
+            job = next((j for j in self.jobs if j["id"] == jid), None)
+            if job is None:
+                continue
+            try:
+                self._run_job(job)
+            except Exception as e:                                      # leave the job journalled: the next start replays it
+                self.worker_error = f"{type(e).__name__}: {e}"
+                self.log.append(f"learning writer stopped: {self.worker_error}")
+                return
+
+    def _run_job(self, job):
+        with self.lock:
+            rev = self.hy.revision()
+            if job["expect_rev"] < rev:                                 # already in HydraDB (the process died after the revision bump)
+                self.jobs.remove(job)
+                self._pull()
+                self.save()
+                return
+            if self.g.seq != rev:
+                self._pull()
+            inc = self.get(job["incident"]) if job["incident"] else None
+            if "started" in job:                                        # a replay: the operations (with absolute values) were fixed before the first write
+                keep, seq = job["started"]["ops"], job["started"]["seq"]
+            else:
+                keep = self._pm_ops(inc, job["pm"], job["reject"]) if inc is not None else job["ops"]
+                keep = self._absolute(self.g, keep)
+                seq = self.g.seq
+                job["started"] = {"ops": keep, "seq": seq}
+                self.save()                                             # journalled before the first HydraDB write
+            payload = {"seq": seq, "name": inc["id"], "alerts": inc["alerts"], "postmortem": job["pm"]} if inc is not None else None
+        self.hy.apply(keep, incident=payload)                           # the slow part, outside the workspace lock; verdicts keep reading the committed graph
+        with self.lock:
+            self._pull()                                                # the write-through cache already holds the new revision
+            self.revision += 1
+            if inc is not None:
+                self.learned_by[seq] = inc["id"]
+                self._pm_done(inc, job["pm"], keep)
+            self.jobs.remove(job)
+            self.save()
+
+    def wait_saved(self, timeout=60.0):
+        """Block until every accepted learning write is in HydraDB (tests, scripts)."""
+        end = time.time() + timeout
+        while self.jobs and time.time() < end:
+            if self.worker_error:
+                raise RuntimeError(self.worker_error)
+            time.sleep(0.05)
+        return not self.jobs
+
+    def enqueue_learning(self, item, reject):
+        inc = self.get(item["incident"]) if item["incident"] else None
+        job = {"id": secrets.token_hex(4), "incident": inc["id"] if inc else None, "pm": item["pm"], "reject": list(reject),
+               "ops": None if inc else [o for i, o in enumerate(item["ops"]) if i not in set(reject)],
+               "expect_rev": self.g.seq + len(self.jobs)}              # the revision this write starts from
+        self.jobs.append(job)
+        if inc is not None:
+            inc["saving"] = True
+        self.save()                                                     # journalled before we answer
+        if self._worker is not None:
+            self._q.put(job["id"])
+        return job
 
     def _hy_apply(self, ops, inc=None, pm=None):
         if self.hy is None:
@@ -123,11 +232,13 @@ class Workspace:
         self.incidents, self.pending, self.next_sim, self.revision = [], [], 0, 0
         if self.hy is not None:
             self._hy_reload(co)
+        self._seeding = True
         for _ in range(n_history):                # history: past incidents whose postmortems were applied
             inc = self._ingest(co["incidents"][self.next_sim]["alerts"], started=-(n_history - self.next_sim) * 86400 * 0.4)
             pm = co["incidents"][self.next_sim]["postmortem"]
             self._apply_pm(inc, pm)
             self.next_sim += 1
+        self._seeding = False
         self.incidents[-1]["status"], self.incidents[-1]["postmortem_applied"] = "Needs postmortem", False
 
     # ---- incidents -------------------------------------------------------------------------
@@ -295,19 +406,26 @@ class Workspace:
             self.save()
             return item
 
-    def _apply_pm(self, inc, pm, reject=()):
+    def _pm_ops(self, inc, pm, reject=()):
         ops = update.propose(self.g, pm, walk(self.g, inc["alerts"]), inc["alerts"], self.g.seq)
-        keep = [o for i, o in enumerate(ops) if i not in set(reject)]
+        return [o for i, o in enumerate(ops) if i not in set(reject)]
+
+    def _apply_pm(self, inc, pm, reject=()):
+        keep = self._pm_ops(inc, pm, reject)
         self.learned_by[self.g.seq] = inc["id"]
         self._hy_apply(keep, inc, pm)
         update.apply(self.g, keep)
         self.revision += 1
+        self._pm_done(inc, pm, keep)
+        return keep
+
+    def _pm_done(self, inc, pm, keep):
+        inc.pop("saving", None)
         inc["status"], inc["postmortem_applied"] = "Resolved", True
         inc["confirmed_root"] = self._name(pm["root"]) if pm.get("root") is not None else None
         rk = [r["id"] for r in inc["verdict"]["ranking"]]
         inc["checks_to_root"] = rk.index(pm["root"]) + 1 if pm.get("root") in rk else None
         inc["learned_changes"] = len([o for o in keep if self._label_safe(o)])
-        return keep
 
     def _label_safe(self, o):
         return o["op"] in VISIBLE_OPS
@@ -317,6 +435,10 @@ class Workspace:
             item = next((p for p in self.pending if p["id"] == pid), None)
             if item is None:
                 raise KeyError(pid)
+            if self.hy is not None and not self._seeding:             # HydraDB store: accept now, write in the background, bump the revision when done
+                self.pending.remove(item)
+                job = self.enqueue_learning(item, reject)
+                return {"applied": max(0, len(item.get("ops") or []) - len(reject)), "revision": self.revision, "saving": True, "job": job["id"]}
             inc = self.get(item["incident"]) if item["incident"] else None
             if inc is not None:
                 keep = self._apply_pm(inc, item["pm"], reject)
@@ -329,7 +451,16 @@ class Workspace:
             self.save()
             return {"applied": len(keep), "revision": self.revision}
 
+    def reset_demo(self):
+        """Throw away everything done in the public sandbox and rebuild the seeded demo workspace (nightly)."""
+        self.wait_saved()
+        with self.lock:
+            self.jobs, self.pending, self.changes, self.log = [], [], [], []
+            self._seed_demo(7777, int(os.environ.get("GW_DEMO_INCIDENTS", "30")))
+            self.save()
+
     def reset_learned(self):
+        self.wait_saved()                          # queued learning writes land first
         with self.lock:
             for k in [k for k, e in self.g.edges.items() if e.origin == "learned"]:
                 del self.g.edges[k]
@@ -349,6 +480,7 @@ class Workspace:
 
     def accept_map(self, edge_ids):
         """The accepted edges become the OFFICIAL map: a fresh graph at w=0.7, replacing whatever was there."""
+        self.wait_saved()                          # queued learning writes land first
         with self.lock:
             if not self.map_proposals:
                 raise ValueError("nothing scanned yet")
@@ -386,7 +518,7 @@ class Workspace:
                 "top1_last_30": (sum(1 for i in done if i["checks_to_root"] == 1) / len(done)) if done else None, "scored": len(done),
                 "median_ms": ms[len(ms) // 2] if ms else None, "revision": self.revision,
                 "store": {"name": self.store, "label": "HydraDB graph (memory in the graph)" if self.hy is not None else "In-memory graph"},
-                "pending": len(self.pending), "onboarding": self.onboarding, "demo_outages_left": (len(self.company["incidents"]) - self.next_sim) if self.company else 0}
+                "pending": len(self.pending), "saving": len(self.jobs), "onboarding": self.onboarding, "demo_outages_left": (len(self.company["incidents"]) - self.next_sim) if self.company else 0}
 
     # ---- persistence -----------------------------------------------------------------------
     def dump(self):
@@ -396,7 +528,7 @@ class Workspace:
                 "components": {str(i): c for i, c in g.components.items()}, "names": g.names,
                 "edges": [[u, v, e.w, e.origin, e.confirmations, e.learned_from, e.created_seq] for (u, v), e in g.edges.items()],
                 "root_counts": g.root_counts, "affected": g.affected, "missed": g.missed, "seq": g.seq, "learned_by": self.learned_by,
-                "shortcuts": [[a, b, n] for (a, b), n in g.shortcuts.items()], "incidents": self.incidents, "pending": self.pending}
+                "shortcuts": [[a, b, n] for (a, b), n in g.shortcuts.items()], "incidents": self.incidents, "pending": self.pending, "jobs": self.jobs}
 
     def save(self):
         if not self.path:
@@ -424,6 +556,7 @@ class Workspace:
             self.next_sim, self.onboarding, self.installation = d["next_sim"], d["onboarding"], d.get("installation")
             self.repo_for_template, self.map_proposals = d.get("repo_for_template"), d.get("map_proposals")
             self.incidents, self.pending = d["incidents"], d["pending"]
+            self.jobs = d.get("jobs", [])
             if self.mode == "demo":
                 from gwsim.cli import make
                 self.company = json.loads(make("hub", 7777, 80).to_json())

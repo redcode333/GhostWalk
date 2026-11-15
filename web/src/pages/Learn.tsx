@@ -45,7 +45,15 @@ export default function Learn() {
     try {
       const q = await api(`/api/learn/${id}/queue`, { method: "POST", json: f })
       const r = await api(`/api/learn/pending/${q.id}/apply`, { method: "POST", json: { reject: [...rej] } })
-      setDone(`Graph updated · revision ${r.revision}`); setPv(null)
+      setPv(null)
+      if (r.saving) {                                     // HydraDB writes run in the background: show "saving…" until the revision moves
+        setDone("Saving…")
+        for (let i = 0; i < 240; i++) {
+          await new Promise((res) => setTimeout(res, 500))
+          const sm = await api("/api/summary")
+          if (!sm.saving) { setDone(`Graph updated · revision ${sm.revision}`); break }
+        }
+      } else setDone(`Graph updated · revision ${r.revision}`)
     } catch (e: any) { setErr(e.message) } finally { setBusy(false) }
   }
   const toggle = (set: Set<number>, i: number) => { const n = new Set(set); n.has(i) ? n.delete(i) : n.add(i); return n }

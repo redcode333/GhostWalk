@@ -72,6 +72,8 @@ def state_path():
 
 def workspace(create=False) -> Workspace:
     p = state_path()
+    if os.environ.get("GW_STORE") == "hydradb":          # the map lives in HydraDB: no local state file needed
+        return Workspace(p if p.exists() else None, demo=False)
     if not p.exists() and not create:
         fail("no map yet. Run `gw map import ./your-repos` (or `gw demo` to try it).")
     return Workspace(p, demo=False)
@@ -207,6 +209,56 @@ def why(alerts_file: Optional[pathlib.Path] = typer.Option(None, "--alerts", exi
     line((f"{inc['id']} saved. Teach it: gw learn {inc['id']} --root {v['root_name']}", DIM))
 
 
+@app.command("doctor")
+def doctor(url: Optional[str] = typer.Option(None, "--url", help="the GhostWalk API (default: GW_URL, else http://127.0.0.1:8000)")):
+    """Check the stack: the API, the store it uses, HydraDB, the learning queue and the stored results."""
+    import httpx
+    url = (url or os.environ.get("GW_URL") or "http://127.0.0.1:8000").rstrip("/")
+    prompt_line("gw doctor")
+    bad = []
+
+    def check(label, fn):
+        try:
+            detail = fn()
+            t = Text("  ")
+            t.append("✓ ", style=TEAL)
+            t.append(f"{label:<22}")
+            t.append(str(detail or ""), style=DIM)
+            console.print(t)
+            return True
+        except Exception as e:                        # noqa: BLE001  (a doctor reports everything)
+            t = Text("  ")
+            t.append("✗ ", style=RED)
+            t.append(f"{label:<22}")
+            t.append(str(e)[:120], style=RED)
+            console.print(t)
+            bad.append(label)
+            return False
+
+    def get(path):
+        r = httpx.get(url + path, timeout=15)
+        r.raise_for_status()
+        return r.json()
+    check("api", lambda: f"{url} " + str(get("/api/health")))
+    holder = {}
+
+    def summary():
+        holder["s"] = get("/api/summary")
+        s = holder["s"]
+        return f"{s['services']} services, {s['learned_edges']} learned edges, revision {s['revision']}"
+    check("workspace", summary)
+    check("store", lambda: holder["s"]["store"]["label"] + (" (hydradb)" if holder["s"]["store"]["name"] == "hydradb" else ""))
+    check("learning queue", lambda: "saving " + str(holder["s"].get("saving", 0)) if holder["s"].get("saving", 0) == 0 else (_ for _ in ()).throw(RuntimeError(f"{holder['s']['saving']} write(s) still saving")))
+    if holder.get("s", {}).get("store", {}).get("name") == "hydradb":
+        ready = os.environ.get("HYDRA_READY", "http://127.0.0.1:9090/readyz")
+        check("hydradb", lambda: f"ready ({ready})" if httpx.get(ready, timeout=5).status_code == 200 else (_ for _ in ()).throw(RuntimeError("not ready: " + ready)))
+    check("results.json", lambda: f"{get('/api/proof')['meta']['companies']} held-out companies")
+    console.print()
+    if bad:
+        fail(f"{len(bad)} check(s) failed: {', '.join(bad)}")
+    ok("all checks passed")
+
+
 @app.command("why-edge")
 def why_edge_cmd(src: str = typer.Argument(..., help="the service that depends on another, e.g. config-svc"),
                  dst: str = typer.Argument(..., help="what it depends on, e.g. fraud-check")):
@@ -221,10 +273,7 @@ def why_edge_cmd(src: str = typer.Argument(..., help="the service that depends o
             fail(r.json().get("detail", r.text))
         res = r.json()
     else:
-        if os.environ.get("GW_STORE") == "hydradb":
-            ws = Workspace(None, demo=False)
-        else:
-            ws = workspace()
+        ws = workspace()
         try:
             res = mcp_tools.why_edge(ws, src, dst)
         except mcp_tools.ToolError as e:

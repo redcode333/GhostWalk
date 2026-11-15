@@ -4,7 +4,7 @@ AUTH_MODE=none (default)  no sign-in; opens the demo workspace.
 AUTH_MODE=clerk           /api/* needs a Clerk session JWT (CLERK_JWKS_URL, CLERK_ISSUER); webhooks use their own secrets.
 """
 from __future__ import annotations
-import json, os, pathlib, secrets
+import collections, datetime, json, os, pathlib, secrets, threading, time
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -44,6 +44,50 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
     app.state.ws = ws
     user = Depends(clerk_user)
 
+    # ---- public deployment: CORS for the frontend origin(s), a rate limit on /v1/* and on writes, a sandbox that cannot change settings ----------
+    origins = [o.strip() for o in os.environ.get("GW_CORS_ORIGINS", "").split(",") if o.strip()]
+    if origins:
+        from fastapi.middleware.cors import CORSMiddleware
+        app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["GET", "POST", "DELETE", "OPTIONS"], allow_headers=["authorization", "content-type", "x-gw-token"],
+                           allow_credentials=False, max_age=600)
+    limit_n, _, limit_s = os.environ.get("GW_RATE_LIMIT", "0/60").partition("/")
+    limit_n, limit_s = int(limit_n or 0), int(limit_s or 60)
+    hits: dict[str, collections.deque] = collections.defaultdict(collections.deque)
+    public_demo = os.environ.get("GW_PUBLIC_DEMO") == "1"
+    sandbox_blocked = ("/api/settings/", "/api/onboarding/", "/api/webhooks/", "/v1/changes", "/api/mcp/", "/api/demo/reset")
+
+    @app.middleware("http")
+    async def guard(request: Request, call_next):
+        path, method = request.url.path, request.method
+        if method != "OPTIONS" and public_demo and method not in ("GET", "HEAD") and path.startswith(sandbox_blocked) and path != "/api/demo/reset":
+            return JSONResponse({"detail": "this is the public demo: settings, onboarding and webhooks are read-only here"}, status_code=403)
+        if limit_n and method != "OPTIONS" and (path.startswith("/v1/") or (method == "POST" and path.startswith("/api/"))):
+            ip = (request.headers.get("x-forwarded-for") or (request.client.host if request.client else "?")).split(",")[0].strip()
+            q, now = hits[ip], time.time()
+            while q and q[0] < now - limit_s:
+                q.popleft()
+            if len(q) >= limit_n:
+                return JSONResponse({"detail": f"rate limit: {limit_n} requests per {limit_s} s"}, status_code=429, headers={"Retry-After": str(limit_s)})
+            q.append(now)
+            if len(hits) > 5000:                                   # forget idle clients
+                for k in [k for k, v in hits.items() if not v or v[-1] < now - limit_s]:
+                    hits.pop(k, None)
+        return await call_next(request)
+
+    if public_demo:                                                # the sandbox is rebuilt every night at 03:00 UTC
+        def nightly():
+            while True:
+                now = datetime.datetime.now(datetime.timezone.utc)
+                nxt = now.replace(hour=3, minute=0, second=0, microsecond=0)
+                if nxt <= now:
+                    nxt += datetime.timedelta(days=1)
+                time.sleep((nxt - now).total_seconds())
+                try:
+                    ws.reset_demo()
+                except Exception as e:                             # noqa: BLE001
+                    ws.log.append(f"nightly reset failed: {e}")
+        threading.Thread(target=nightly, name="gw-nightly-reset", daemon=True).start()
+
     def public_url(request: Request):
         return os.environ.get("GW_PUBLIC_URL") or str(request.base_url).rstrip("/")
 
@@ -56,7 +100,17 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
     # ---- public ---------------------------------------------------------------------------
     @app.get("/api/health")
     def health():
-        return {"ok": True, "services": len(ws.g.components)}
+        return {"ok": True, "services": len(ws.g.components), "store": ws.store, "revision": ws.revision, "saving": len(ws.jobs),
+                "public_demo": public_demo, "writer_error": ws.worker_error}
+
+    @app.post("/api/demo/reset")
+    def demo_reset(request: Request):
+        """Rebuild the demo workspace (the nightly job calls the same code). Needs the admin token."""
+        need = os.environ.get("GW_ADMIN_TOKEN")
+        if not need or not secrets.compare_digest(request.headers.get("x-gw-admin", ""), need):
+            raise HTTPException(401, "admin token required")
+        ws.reset_demo()
+        return {"ok": True}
 
     @app.get("/api/config")
     def config():

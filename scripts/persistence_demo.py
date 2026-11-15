@@ -12,7 +12,8 @@ import json, os, pathlib, subprocess, sys, tempfile, time
 import httpx
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-PORT = int(os.environ.get("PORT", "8765"))
+DOCKER = "--docker" in sys.argv          # the API is the `app` container of docker compose (GW_STORE=hydradb GW_DEMO_INCIDENTS=20), reached on :8000
+PORT = int(os.environ.get("PORT", "8000" if DOCKER else "8765"))
 URL = f"http://127.0.0.1:{PORT}"
 RUN = int(time.time()) % 900 + 100
 out = []
@@ -24,7 +25,24 @@ def say(*a):
     out.append(s)
 
 
+def dc(*args):
+    return subprocess.run(["docker", "compose", *args], cwd=ROOT, text=True, encoding="utf8", capture_output=True)
+
+
+def wait_up():
+    for _ in range(240):
+        try:
+            if httpx.get(f"{URL}/api/health", timeout=1).status_code == 200:
+                return
+        except Exception:
+            time.sleep(0.5)
+    raise SystemExit("API did not come up")
+
+
 def start(state):
+    if DOCKER:
+        wait_up()
+        return None
     env = {**os.environ, "GW_STORE": "hydradb", "GW_HYDRA_RUN": str(RUN), "GW_STATE": str(state), "GW_DEMO_INCIDENTS": "20", "GW_REQUIRE_TOKEN": "0", "AUTH_MODE": "none"}
     p = subprocess.Popen([sys.executable, "-m", "uvicorn", "ghostwalk.api.app:app", "--port", str(PORT), "--log-level", "warning"], cwd=ROOT, env=env)
     for _ in range(240):
@@ -53,7 +71,7 @@ def rank(alerts):
 def main():
     state = pathlib.Path(tempfile.mkdtemp()) / "state.json"
     alerts = next_alerts()
-    say(f"# API process 1 (GW_STORE=hydradb, run {RUN}): seeding 20 incidents, learning each into HydraDB")
+    say(f"# API {'container' if DOCKER else 'process'} 1 (GW_STORE=hydradb): 20 incidents learned into HydraDB")
     t = time.time()
     p = start(state)
     say(f"  up in {time.time() - t:.0f} s")
@@ -72,37 +90,46 @@ def main():
             why1 = r.json()
             break
     say(f"  why-edge {src_dst[0]} -> {src_dst[1]}:", why1["explanation"])
-    say("# kill -9 the API process and delete its state file")
-    p.kill()
-    p.wait()
-    time.sleep(1)
-    shutil_state = state.parent
-    for f in shutil_state.glob("*"):
-        f.unlink()
-    say(f"  state file exists: {state.exists()}")
-    say("# API process 2: no state file, same HydraDB")
+    if DOCKER:
+        say("# restart the api container and delete its state file (/data/state.json on the volume)")
+        dc("exec", "-T", "app", "rm", "-f", "/data/state.json")
+        dc("restart", "app")
+        say("  state file exists:", dc("exec", "-T", "app", "test", "-e", "/data/state.json").returncode == 0)
+    else:
+        say("# kill -9 the API process and delete its state file")
+        p.kill()
+        p.wait()
+        time.sleep(1)
+        for f in state.parent.glob("*"):
+            f.unlink()
+        say(f"  state file exists: {state.exists()}")
+    say("# API 2: no state file, same HydraDB")
     t = time.time()
     p = start(state)
     say(f"  up in {time.time() - t:.0f} s (re-attached, learned graph read back from HydraDB)")
     after = rank(alerts)
     say("  ranking for incident 21:", ", ".join(f"{n} {c:.3f}" for n, c in after[:4]))
     r = httpx.get(f"{URL}/v1/edges/{src_dst[0]}/{src_dst[1]}/why", timeout=60).json()
-    p.kill()
-    p.wait()
+    if p is not None:
+        p.kill()
+        p.wait()
     same = before == after
     why_same = r["lessons"] == why1["lessons"]
     say(f"# identical rankings (names and confidences, all {len(before)} candidates): {same}")
     say(f"# why-edge identical after restart: {why_same}")
-    cli = subprocess.run([sys.executable, "-c", "from ghostwalk.cli import main; main()", "why-edge", *src_dst], cwd=ROOT, text=True, encoding="utf8", capture_output=True,
-                         env={**os.environ, "GW_STORE": "hydradb", "GW_HYDRA_RUN": str(RUN), "NO_COLOR": "1", "COLUMNS": "140", "PYTHONIOENCODING": "utf-8"})
+    if DOCKER:
+        cli = dc("exec", "-T", "-e", "NO_COLOR=1", "-e", "COLUMNS=140", "app", "gw", "why-edge", *src_dst)
+    else:
+        cli = subprocess.run([sys.executable, "-c", "from ghostwalk.cli import main; main()", "why-edge", *src_dst], cwd=ROOT, text=True, encoding="utf8", capture_output=True,
+                             env={**os.environ, "GW_STORE": "hydradb", "GW_HYDRA_RUN": str(RUN), "NO_COLOR": "1", "COLUMNS": "140", "PYTHONIOENCODING": "utf-8"})
     text = chr(10).join(l.rstrip() for l in cli.stdout.strip().splitlines())
     say("# the CLI, against HydraDB with no API process running:")
     say(text)
     d = ROOT / "docs" / "measurements"
     d.mkdir(parents=True, exist_ok=True)
-    (d / "persistence_demo.txt").write_text(chr(10).join(out) + chr(10), encoding="utf8")
+    (d / ("persistence_demo_docker.txt" if DOCKER else "persistence_demo.txt")).write_text(chr(10).join(out) + chr(10), encoding="utf8")
     res = ROOT / "results.json"
-    if res.exists():
+    if res.exists() and not DOCKER:
         doc = json.loads(res.read_text(encoding="utf8"))
         doc["memory_graph"] = {
             "store": "HydraDB v0.4.0", "schema": ["(:Incident)-[:RAISED]->(:Alert)-[:ON]->(:Service)", "(:Postmortem)-[:ABOUT]->(:Incident)",

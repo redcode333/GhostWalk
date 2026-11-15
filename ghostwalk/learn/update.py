@@ -58,20 +58,20 @@ def apply(g, ops):
             g.edges[(o["u"], o["v"])] = Edge(o["w"], "learned", 1, o["seq"], o["seq"])
         elif k == "confirm":
             e = g.edges[(o["u"], o["v"])]
-            e.w, e.confirmations = o["w"], e.confirmations + 1
+            e.w, e.confirmations = o["w"], o.get("conf", e.confirmations + 1)      # "conf" (optional): the journalled absolute value, so a replay does not count twice
         elif k == "reweight":
             g.edges[(o["u"], o["v"])].w = o["w"]
         elif k == "drop_edge":
             g.edges.pop((o["u"], o["v"]), None)
         elif k == "root":
-            g.root_counts[o["id"]] = g.root_counts.get(o["id"], 0) + 1
+            g.root_counts[o["id"]] = o.get("rc", g.root_counts.get(o["id"], 0) + 1)
         elif k == "shortcut":
             key = (o["entry"], o["root"])
-            g.shortcuts[key] = g.shortcuts.get(key, 0) + 1
+            g.shortcuts[key] = o.get("n", g.shortcuts.get(key, 0) + 1)
         elif k == "observe":
-            g.affected[o["id"]] = g.affected.get(o["id"], 0) + 1
+            g.affected[o["id"]] = o.get("aff", g.affected.get(o["id"], 0) + 1)
             if o["silent"]:
-                g.missed[o["id"]] = g.missed.get(o["id"], 0) + 1
+                g.missed[o["id"]] = o.get("miss", g.missed.get(o["id"], 0) + 1)
     g.seq += 1
     g.invalidate()                      # weights/edges changed: rebuild adjacency lazily on the next verdict
     return g

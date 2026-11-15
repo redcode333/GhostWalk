@@ -173,13 +173,36 @@ The graph arm uses no alert text: it traverses HydraDB from the alerting service
 | MRR, repeat incidents | 0.709 [0.674, 0.744] | 0.721 [0.697, 0.745] | 0.746 [0.718, 0.770] |
 | related@5, novel incidents (n=595) | 20.2% [17.3, 23.3] | 24.5% [20.4, 28.5] | 25.4% [21.4, 29.1] |
 | related@5, all (n=1770) | 51.0% [46.1, 56.4] | 54.6% [49.8, 59.5] | 54.2% [50.1, 58.8] |
-| retrieval latency p50 / p95 | 164.2 / 424.3 ms | 1.3 / 1.8 ms | 0.6 / 1.0 ms |
+| retrieval latency p50 / p95 | 3.9 / 7.5 ms | 1.3 / 1.8 ms | 0.6 / 1.0 ms |
 
 On repeat incidents, hit@5: graph is behind vector (−3.0 pts, 95% CI −5.8 to −0.1); graph is behind keyword (−5.2 pts, 95% CI −8.0 to −2.4). MRR: graph is not distinguishable from vector (−1.3 pts, 95% CI −5.2 to +2.9).
 On novel incidents (no past incident shares the root, so hit@5 cannot exist), related@5 asks whether a retrieved incident's true causal chain shares a dependency with the current one: graph is behind vector (−4.4 pts, 95% CI −6.8 to −2.0).
 hit@5 needs a past incident with the same root; 1175 of 1770 incidents have one, and the first incident of each company has nothing to retrieve from.
+Graph retrieval first took 164 ms p50 / 424 ms p95 (a HydraDB query per step); it now expands the neighbourhood on the revision-checked cached graph, keeps a per-revision service-to-incidents index current through the write-through path, and fetches only the winners from HydraDB by id: 3.9 / 7.5 ms, with all 1,770 retrieved lists identical to the first implementation's (accuracy numbers unchanged).
 The LLM arms were not run (no API key), so there is no `llm_graph_memory` number. Full definitions and CIs: `results.json` `memory_retrieval`.
 <!-- memory:end -->
+
+<!-- notwin:begin -->
+## What didn't win
+**Graph memory did not beat ordinary retrieval at finding similar past incidents.** On the 30 held-out companies, retrieving the 5 most relevant past incidents
+(hit@5: a retrieved incident has the same root cause, repeat incidents only, n=1,175; 95% CIs in brackets):
+
+| | hit@5 | MRR | latency p50 / p95 |
+|---|---|---|---|
+| keyword (TF-IDF) | 89.5% [87.5, 91.5] | 0.746 | 0.6 / 1.0 ms |
+| vector (pgvector) | 87.3% [85.0, 89.3] | 0.721 | 1.3 / 1.8 ms |
+| graph (HydraDB memory) | 84.3% [82.1, 86.7] | 0.709 | 3.9 / 7.5 ms |
+
+graph is behind keyword (−5.2 pts, 95% CI −8.0 to −2.4); graph is behind vector (−3.0 pts, 95% CI −5.8 to −0.1). Looking up similar past incidents is easy in this setting: a repeat incident usually alerts on the same
+services, so a bag-of-words match on the alert text finds it, and nothing about the graph helps. **The graph matters for root-cause ranking, which is a different job.** On the same held-out
+incidents the multi-hop walk gets top-1 accuracy 0.764, against 0.419 for TF-IDF retrieval of past postmortems and 0.388 for vector search over them,
+and replacing the graph with a 1-hop key-value store drops it to 0.629 (the store swap, below). HydraDB is where the graph and its memory live and it answers path queries in a few
+milliseconds, but Postgres with recursive queries gets the same accuracy and answers faster: we do not claim HydraDB or graph retrieval beats vector search or Postgres.
+<!-- notwin:end -->
+
+## Deploy
+Backend (HydraDB + API + HTTPS) on a Linux VM, frontend on Vercel: see [docs/deploy.md](docs/deploy.md). `deploy/setup.sh` brings the backend up and runs `deploy/smoke.py`;
+`gw doctor` checks a running stack. Not deployed yet: there is no live URL to link here.
 
 ## HydraDB (live)
 GhostWalk runs against HydraDB's own published image, `ghcr.io/hydra-db/hydradb:0.4.0` (the one `charts/hydradb` references): `docker compose up -d hydradb`.

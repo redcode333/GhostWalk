@@ -1,0 +1,22 @@
+# API container 1 (GW_STORE=hydradb): 20 incidents learned into HydraDB
+  up in 0 s
+  ranking for incident 21: transcode-svc 0.852, ledger-db 0.050, consent-svc 0.042, admin-api 0.029
+  learned edges in the graph: 5
+  why-edge experiment-svc -> ledger-db: experiment-svc -> ledger-db was learned: proposed from INC-1004 (root ledger-db, path experiment-svc -> ledger-db), confirmed by INC-1018. Now confirmed, weight 0.70.
+# restart the api container and delete its state file (/data/state.json on the volume)
+  state file exists: False
+# API 2: no state file, same HydraDB
+  up in 1 s (re-attached, learned graph read back from HydraDB)
+  ranking for incident 21: transcode-svc 0.852, ledger-db 0.050, consent-svc 0.042, admin-api 0.029
+# identical rankings (names and confidences, all 5 candidates): True
+# why-edge identical after restart: True
+# the CLI, against HydraDB with no API process running:
+$ gw why-edge experiment-svc ledger-db
+
+  experiment-svc -> ledger-db   w 0.70  learned  2 confirmations
+
+  lesson L153  confirmed  w 0.70  created at revision 4
+    taught by   INC-1004  root ledger-db  path experiment-svc -> ledger-db
+    confirmed   ✓ INC-1018
+
+  gw why-edge answers by traversal: Lesson -> Postmortem -> Incident, in HydraDB
