@@ -6,3 +6,4 @@ web/dist/
 .env
 .venv/
 .pytest_cache/
+dev_results.json
