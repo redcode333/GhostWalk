@@ -20,7 +20,7 @@ services:
       GRAPH_ALLOW_PLAINTEXT: "true"
       RUST_MIN_STACK: "33554432"
       GRAPH_USAGE_REPORT_ENABLED: "false"
-    ports: ["8443:8443", "9090:9090"]
+    ports: ["8443:8443", "9090:9090", "7687:7687"]
     volumes: ["hydradb-data:/var/cache/slatedb"]
     healthcheck: {test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9090"], interval: 3s, timeout: 3s, retries: 40}
   app:

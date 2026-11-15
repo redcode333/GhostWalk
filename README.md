@@ -9,7 +9,7 @@ Root cause analysis that learns the dependencies nobody drew.
 95% CIs −16.7 to −10.3 and −42.4 to −32.7). GhostWalk gets 76.4% against 38.8% for vector search over postmortem text.
 
 A relational database with recursive queries matches accuracy (+0.0 pts), as expected: the gain comes from multi-hop graph walks, not from which product stores the graph.
-We use HydraDB for its native weighted path algorithms. In our latency measurements Postgres is faster, not slower (see [graph vs SQL](docs/graph-vs-sql.md)).
+We use HydraDB for its native weighted path algorithms. In our latency measurements Postgres is faster, not slower (about 1 ms against 2 to 5 ms per path query once HydraDB's transport was fixed) (see [graph vs SQL](docs/graph-vs-sql.md)).
 
 ![GhostWalk proof card](docs/proof-card.png)
 <!-- proof:end -->
@@ -140,19 +140,36 @@ the cost it reports, and `algo.MSpaths` selects by a property shared across comp
 
 - **Parity:** the HydraDB-vs-in-memory tests (`tests/test_parity.py`, 8) check identical rankings and scores, identical final graph state, path costs equal to the in-memory best path,
   the cache re-reading only when the revision changes, and in-DB verdicts matching in-memory rankings.
-- **Three read modes** (3 DEV companies, 180 verdicts; latency only), p50 / p95 ms: cold (read the graph back) 289 / 328;
-  cached by revision, hit 55 / 64 (a hit is a graph unchanged since the last verdict) and miss 346 / 379
-  (every incident in the online loop is a miss: each follows a learner write); in-DB (two `MSpaths` requests, no edge read) 400 / 510.
-  In-DB rankings matched the in-memory engine in 180/180 verdicts.
-- **Path queries at scale** (synthetic graphs, same generator; p50 / p95 ms; both stores return the exact same cost every time; one machine, loopback docker):
+- **Why it was 48 ms per request, and the fix:** HydraDB answers in 0.1 to 0.9 ms (its own `/metrics` histogram) and its response arrives in one read. Clients that write the request headers
+  and body separately (httpx, http.client, HTTP/2) took ~45 ms through Docker Desktop's published port on Windows, the same clients inside the docker network took 0.3 to 1.5 ms, and a client
+  that sends headers and body in one write took 0.4 ms through the same port (so did Bolt). Client-side `TCP_NODELAY` did not help. The adapter now uses a persistent connection with one write per request
+  (`ghostwalk/graph/fasthttp.py`); data in `docs/measurements/`, full results in `results.json` `ops.hydradb_latency.diagnosis`.
+- **Warm latency after the fix** (this laptop: Windows-11-10.0.26300-SP0, 16 CPUs, 7.6 GB; client on the host, HydraDB and Postgres in docker; 200 timed requests after 20 warm-up; p50 / p95 ms):
+
+| | HydraDB | Postgres |
+|---|---|---|
+| 1-hop neighbours | 2.7 / 3.8 | 0.3 / 0.5 |
+| best path, 3 hops | 0.5 / 0.8 | 0.4 / 0.5 |
+| best path, 5 hops | 0.6 / 1.0 | 0.5 / 0.7 |
+| edge-weight write | 23 / 24 | 0.8 / 1.1 |
+| verdict: cached hit | 1.8 / 2.9 | |
+| verdict: cached miss (every incident in the online loop) | 36 / 66 | |
+| verdict: cold read | 40 / 64 | |
+| verdict: in-DB (two `MSpaths`) | 144 / 269 | |
+| verdict: Postgres, two batched CTEs | | 2.8 / 4.3 |
+
+  HydraDB's verdict p50 is under 20 ms only on a **cache hit** (1.8 ms); a miss or cold read is 40 to 36 ms, and an in-DB verdict
+  144 ms. In-DB verdicts matched the in-memory engine in 180/180 cases. Before the fix: cold p50 / p95 was
+  289 / 328 ms. HydraDB writes still cost about 23 ms each (server-side commit), so loading and learning are the slow part.
+- **Path queries at scale, after the transport fix** (synthetic graphs, same generator; p50 / p95 ms; both stores return the exact same cost every time; before the fix HydraDB read about 48 ms at every size):
 
 | services | HydraDB 3 hops | Postgres 3 hops | HydraDB 5 hops | Postgres 5 hops | whole verdict p50: HydraDB read / in-DB / Postgres |
 |---|---|---|---|---|---|
-| 100 | 48 / 51 | 0.9 / 1.5 | 48 / 53 | 0.7 / 1.5 | 265 / 466 / 4.0 |
-| 1000 | 48 / 52 | 0.8 / 1.8 | 49 / 52 | 0.8 / 1.8 | 681 / 1666 / 34 |
-| 5000 | 49 / 60 | 0.8 / 2.1 | 51 / 56 | 0.7 / 1.1 | 4235 / 102605 / 221 |
+| 100 | 1.7 / 2.9 | 0.4 / 0.8 | 2.1 / 3.5 | 0.4 / 0.8 | 40 / 234 / 3.5 |
+| 1000 | 5.4 / 11 | 1.0 / 4.1 | 3.0 / 5.8 | 0.8 / 1.7 | 475 / 1905 / 12 |
+| 5000 | 4.1 / 6.5 | 0.5 / 0.8 | 3.2 / 7.6 | 0.5 / 0.6 | 2472 / 97623 / 210 |
 
-  **Postgres keeps up and is faster at every size** (about 1 ms vs about 50 ms per path; no CTE blow-up at 5 hops on these graphs). Pushing the whole verdict into HydraDB is slower than reading
+  **Postgres is still faster at every size** (under 1 ms to about 1 ms per path against 2 to 5 ms for HydraDB; no CTE blow-up at 5 hops on these graphs). Pushing the whole verdict into HydraDB is slower than reading
   the graph back, and at 5,000 services `MSpaths` needs several requests to stay under its 64 MB response buffer. HydraDB's role here is native weighted path algorithms, not speed or accuracy.
   Side-by-side queries and round trips: [docs/graph-vs-sql.md](docs/graph-vs-sql.md).
 
@@ -160,11 +177,11 @@ Store swap on the TEST split, run once, same incidents, ΔAC@1 against HydraDB:
 
 | store | AC@1 | ΔAC@1 (95% CI, pts) | p50 | p95 |
 |---|---|---|---|---|
-| HydraDB v0.4.0 (published image) | 0.764 | reference | 341.8 ms | 388.4 ms |
-| Postgres recursive CTE | 0.764 | +0.0 (+0.0 to +0.0) | 13.9 ms | 44.9 ms |
-| Key-value, 1 hop (Redis) | 0.629 | −13.5 (−16.7 to −10.3) | 40.7 ms | 61.0 ms |
-| pgvector nearest postmortem | 0.388 | −37.6 (−42.4 to −32.7) | 44.3 ms | 48.5 ms |
-| In-memory graph | 0.764 | +0.0 (+0.0 to +0.0) | 0.2 ms | 0.8 ms |
+| HydraDB v0.4.0 (published image) | 0.764 | reference | 49.2 ms | 88.7 ms |
+| Postgres recursive CTE | 0.764 | +0.0 (+0.0 to +0.0) | 17.4 ms | 71.8 ms |
+| Key-value, 1 hop (Redis) | 0.629 | −13.5 (−16.7 to −10.3) | 40.2 ms | 61.0 ms |
+| pgvector nearest postmortem | 0.388 | −37.6 (−42.4 to −32.7) | 44.6 ms | 48.1 ms |
+| In-memory graph | 0.764 | +0.0 (+0.0 to +0.0) | 0.2 ms | 0.7 ms |
 
 - **Accuracy history on TEST (top-1 hits of 1,800):**
   - before the walk-loop optimisation (commit f8bf9a8): 1379/1800 top-1 hits (0.7661)

@@ -28,6 +28,9 @@ r = json.loads((ROOT / "results.json").read_text(encoding="utf8"))
 sc = r["scale"]["path_query"]["sizes"]
 pv = r["scale"]["postgres_verdict"]["sizes"]
 hl = r["ops"]["hydradb_latency"]
+w = hl["warm"]
+before_sc = r["scale_before_transport_fix"]["path_query"]["sizes"]
+diag = hl["diagnosis"]
 
 # round trips of the per-node Postgres store used in the store swap: one CTE per reach() call = |alerting| + |candidates| per verdict
 trips = []
@@ -103,14 +106,30 @@ Whole verdict (the first incidents with several alerts; rankings identical to th
 |---|---|---|---|
 {vq}
 
-HydraDB on the 3 DEV companies (42 to 105 services), 180 verdicts: cold p50 {fmt(hl['cold']['p50'])} / p95 {fmt(hl['cold']['p95'])} ms,
-cached hit p50 {fmt(hl['cached']['hit']['p50'])} / p95 {fmt(hl['cached']['hit']['p95'])} ms (a miss, which is every incident in the online loop because each one
-follows a learner write: p50 {fmt(hl['cached']['miss']['p50'])} ms), in-DB p50 {fmt(hl['in_db']['p50'])} / p95 {fmt(hl['in_db']['p95'])} ms.
+**Per query, warm** (200 timed requests after 20 warm-up, one at a time, the median DEV company, p50 / p95 ms):
+
+| query | HydraDB | Postgres |
+|---|---|---|
+| 1-hop neighbours | {fmt(w['per_query']['one_hop']['hydradb']['p50'])} / {fmt(w['per_query']['one_hop']['hydradb']['p95'])} | {fmt(w['per_query']['one_hop']['postgres']['p50'])} / {fmt(w['per_query']['one_hop']['postgres']['p95'])} |
+| best path, 3 hops | {fmt(w['per_query']['path_3_hops']['hydradb']['p50'])} / {fmt(w['per_query']['path_3_hops']['hydradb']['p95'])} | {fmt(w['per_query']['path_3_hops']['postgres']['p50'])} / {fmt(w['per_query']['path_3_hops']['postgres']['p95'])} |
+| best path, 5 hops | {fmt(w['per_query']['path_5_hops']['hydradb']['p50'])} / {fmt(w['per_query']['path_5_hops']['hydradb']['p95'])} | {fmt(w['per_query']['path_5_hops']['postgres']['p50'])} / {fmt(w['per_query']['path_5_hops']['postgres']['p95'])} |
+| edge-weight write | {fmt(w['per_query']['edge_write']['hydradb']['p50'])} / {fmt(w['per_query']['edge_write']['hydradb']['p95'])} | {fmt(w['per_query']['edge_write']['postgres']['p50'])} / {fmt(w['per_query']['edge_write']['postgres']['p95'])} |
+
+**Per verdict, warm** ({w['verdicts']} verdicts on 3 DEV companies of 42 to 105 services, p50 / p95 ms): HydraDB cached hit {fmt(w['per_verdict']['cached_hit']['p50'])} / {fmt(w['per_verdict']['cached_hit']['p95'])},
+cached miss {fmt(w['per_verdict']['cached_miss']['p50'])} / {fmt(w['per_verdict']['cached_miss']['p95'])} (every incident in the online loop is a miss: each follows a learner write),
+cold read {fmt(w['per_verdict']['cold']['p50'])} / {fmt(w['per_verdict']['cold']['p95'])}, in-DB {fmt(w['per_verdict']['in_db']['p50'])} / {fmt(w['per_verdict']['in_db']['p95'])};
+Postgres, two batched CTEs {fmt(w['postgres_per_verdict']['p50'])} / {fmt(w['postgres_per_verdict']['p95'])}.
+Machine: {w['machine']['platform']}, {w['machine']['cpus']} logical CPUs, {w['machine'].get('ram_gb', '?')} GB RAM; HydraDB and Postgres in docker, reached over published loopback ports.
+
+**Before a transport fix, every HydraDB request took about 45 ms** (the path-query rows above read {fmt(before_sc['1000']['path_query']['hops_3']['hydradb']['p50'])} ms at 1,000 services and 3 hops).
+The cause was not HydraDB and not graph work: {diag['cause']}
+Evidence and raw data: `docs/measurements/`. The adapter now keeps one connection and writes each request in one segment (`ghostwalk/graph/fasthttp.py`).
 
 ## Reading it honestly
-- **Postgres keeps up, and wins on latency here.** A recursive CTE answers a bounded weighted path in about 1 ms at every size tried and never exploded (no
-  timeouts at 5,000 services and 5 hops: this graph family has small out-degree, so the number of paths within five hops stays small). HydraDB's `SPpaths`
-  takes about 50 ms regardless of size, which is per-request overhead of this single-node setup rather than search time. Both return the exact same costs.
+- **Postgres still wins on latency here, by a smaller margin than first measured.** With the transport fixed, HydraDB's `SPpaths` takes a few milliseconds
+  (about 0.5 ms on a 75-service company, 2 ms at 100 services, 3 to 5 ms at 1,000 to 5,000 services) and a recursive CTE under 1 ms, both with identical costs. Whole verdicts: Postgres' two
+  batched CTEs are faster than a HydraDB read-back or an in-DB verdict at every size, and a Postgres write is about 0.8 ms against about 22 ms for HydraDB (server-side commit).
+  The first measurement (about 48 ms for every HydraDB query, flat across sizes) was a client/proxy artefact on this laptop, now diagnosed and fixed.
 - **Accuracy is the same.** Postgres with recursive queries gets the same AC@1 as HydraDB (store swap, delta 0.0). The gain over key-value (1 hop) and
   vector search comes from the multi-hop weighted walk, not from the product that stores the graph.
 - **Pushing the verdict into HydraDB did not help.** Reading the graph back is cheaper than asking HydraDB for every path, and at 5,000 services

@@ -19,10 +19,12 @@ Layout (one HydraDB graph shared by all companies and runs; ids are offsets: id 
 from __future__ import annotations
 import math
 import types
+from concurrent.futures import ThreadPoolExecutor
 import httpx
 from gwsim.world import official_view
 from ..engine.walk import walk, resolve
 from .state import GraphState, Edge, W0_OFFICIAL
+from .fasthttp import FastClient
 
 RUN_SPAN = 10_000_000
 CO_SPAN = 100_000
@@ -101,22 +103,28 @@ class HydraGraph:
       in_db   verdict_in_db(): the walk's reach comes from two algo.MSpaths queries, the graph's edges are never read back
     """
     def __init__(self, base_url="http://127.0.0.1:8443", token="local-development-token-32-bytes",
-                 run_id=1, graph="default", namespace="default", cell_id="cell-0", batch=BATCH, timeout=60, mode="cached"):
+                 run_id=1, graph="default", namespace="default", cell_id="cell-0", batch=BATCH, timeout=60, mode="cached", transport="fast"):
         assert mode in ("cold", "cached"), "in_db is a method (verdict_in_db), not a snapshot mode"
         self.mode = mode
         self._cache = None
         self.hits = self.misses = 0
         self.mspaths_requests = 0
+        self._pool = None
         self.run_id = run_id
         self.cell_id = cell_id
         self.batch = min(batch, BATCH)
         self._url = f"{base_url.rstrip('/')}/v1/graphs/{graph}/query"
-        self._http = httpx.Client(timeout=timeout, headers={"Authorization": f"Bearer {token}", "X-Graph-Namespace": namespace})
+        headers = {"Authorization": f"Bearer {token}", "X-Graph-Namespace": namespace}
+        # "fast": a persistent connection that sends each request in one write (see fasthttp.py: httpx's split writes cost ~45 ms per request through
+        # Docker Desktop's published port). https and transport="httpx" use httpx.
+        self._http = FastClient(base_url, headers, timeout) if transport == "fast" and base_url.startswith("http://") else httpx.Client(timeout=timeout, headers=headers)
         self._next_company = 0
         self.co = None            # id offset of the current company (the only per-company state kept)
 
     # ---- plumbing -------------------------------------------------------------------------
     def close(self):
+        if self._pool is not None:
+            self._pool.shutdown(wait=False)
         self._http.close()
 
     def _q(self, query, **params):
@@ -151,7 +159,7 @@ class HydraGraph:
 
     def revision(self):
         """The graph revision: GwMeta.seq, bumped by every apply()."""
-        r = self._rows("MATCH (m:GwMeta {co: $co}) RETURN m.seq AS seq", co=self._need_co())
+        r = self._rows("MATCH (m {id: $id}) RETURN m.seq AS seq", id=self._need_co() + META_LOCAL)      # id-anchored: about 1 ms
         return r[0][0] if r else 0
 
     def _need_co(self):
@@ -198,15 +206,29 @@ class HydraGraph:
         self._cache = ((self.co, g.seq), g)
         return g
 
+    def _par(self, jobs):
+        """Run independent reads at the same time (one connection per worker thread). {name: (query, params)} -> {name: rows}."""
+        if self._pool is None:
+            self._pool = ThreadPoolExecutor(5)
+        futs = {n: self._pool.submit(self._rows, q, **p) for n, (q, p) in jobs.items()}
+        return {n: f.result() for n, f in futs.items()}
+
     def _read_graph(self, with_edges=True) -> GraphState:
-        """Read the whole company back from HydraDB into a GraphState with local ids (edges optional: the in-DB verdict never needs them)."""
+        """Read the whole company back from HydraDB into a GraphState with local ids (edges optional: the in-DB verdict never needs them).
+        The reads are independent, so they are issued together; the revision is an id-anchored read (about 1 ms against 11 to 50 ms for a scan on `co`)."""
         base = self._need_co()
         loc = lambda x: int(x) - base
+        jobs = {"comps": ("MATCH (c:Component {co: $co}) RETURN c.id AS id, c.name AS name, c.kind AS kind, c.tier AS tier, c.rc AS rc, c.aff AS aff, c.miss AS miss", {"co": base}),
+                "aliases": ("MATCH (a:Alias {co: $co})-[:ALIAS_OF]->(c:Component) RETURN a.id AS aid, a.name AS name, c.id AS cid", {"co": base}),
+                "shortcuts": ("MATCH (a:Component {co: $co})-[s:SHORTCUT]->(b:Component) RETURN a.id AS u, b.id AS v, s.n AS n", {"co": base}),
+                "meta": ("MATCH (m {id: $id}) RETURN m.seq AS seq", {"id": base + META_LOCAL})}
+        if with_edges:
+            jobs["edges"] = ("MATCH (a:Component {co: $co})-[e:DEPENDS_ON]->(b:Component) "
+                             "RETURN a.id AS u, b.id AS v, e.w AS w, e.origin AS origin, e.conf AS conf, e.lf AS lf, e.cs AS cs, e.o AS o", {"co": base})
+        got = self._par(jobs)
         g = GraphState(components={})
         rc, aff, miss = {}, {}, {}
-        comps = self._rows("MATCH (c:Component {co: $co}) RETURN c.id AS id, c.name AS name, c.kind AS kind, c.tier AS tier, "
-                           "c.rc AS rc, c.aff AS aff, c.miss AS miss", co=base)
-        for r in sorted(comps, key=lambda r: r[0]):
+        for r in sorted(got["comps"], key=lambda r: r[0]):
             i = loc(r[0])
             g.components[i] = {"name": r[1], "kind": r[2], "tier": r[3]}
             g.names[r[1]] = i
@@ -218,17 +240,13 @@ class HydraGraph:
                 miss[i] = r[6]
         g.root_counts, g.affected, g.missed = rc, aff, miss
         if with_edges:
-            edges = self._rows("MATCH (a:Component {co: $co})-[e:DEPENDS_ON]->(b:Component) "
-                               "RETURN a.id AS u, b.id AS v, e.w AS w, e.origin AS origin, e.conf AS conf, e.lf AS lf, e.cs AS cs, e.o AS o", co=base)
-            for r in sorted(edges, key=lambda r: r[7]):
+            for r in sorted(got["edges"], key=lambda r: r[7]):
                 g.edges[(loc(r[0]), loc(r[1]))] = Edge(float(r[2]), r[3], r[4], r[5], r[6])
-        aliases = self._rows("MATCH (a:Alias {co: $co})-[:ALIAS_OF]->(c:Component) RETURN a.id AS aid, a.name AS name, c.id AS cid", co=base)
-        for r in sorted(aliases, key=lambda r: r[0]):
+        for r in sorted(got["aliases"], key=lambda r: r[0]):
             g.names[r[1]] = loc(r[2])
-        for r in self._rows("MATCH (a:Component {co: $co})-[s:SHORTCUT]->(b:Component) RETURN a.id AS u, b.id AS v, s.n AS n", co=base):
+        for r in got["shortcuts"]:
             g.shortcuts[(loc(r[0]), loc(r[1]))] = r[2]
-        meta = self._rows("MATCH (m:GwMeta {co: $co}) RETURN m.seq AS seq", co=base)
-        g.seq = meta[0][0] if meta else 0
+        g.seq = got["meta"][0][0] if got["meta"] else 0
         return g
 
     def best_path(self, src, dst):
@@ -298,19 +316,18 @@ class HydraGraph:
         """Translate learner ops into Cypher. Mirrors ghostwalk.learn.update.apply() op by op."""
         base = self._need_co()
         gid = lambda x: base + x
-        seq, eo, ao = self._rows("MATCH (m:GwMeta {co: $co}) RETURN m.seq AS seq, m.eo AS eo, m.ao AS ao", co=base)[0]
-        counters = {}
+        jobs = {"meta": ("MATCH (m {id: $id}) RETURN m.seq AS seq, m.eo AS eo, m.ao AS ao", {"id": base + META_LOCAL})}
         if any(o["op"] in ("root", "observe") for o in ops):          # current counters of the whole company in one read
-            for r in self._rows("MATCH (c:Component {co: $co}) RETURN c.id AS id, c.rc AS rc, c.aff AS aff, c.miss AS miss", co=base):
-                counters[r[0] - base] = {"rc": r[1], "aff": r[2], "miss": r[3]}
-        existing = {}
+            jobs["counters"] = ("MATCH (c:Component {co: $co}) RETURN c.id AS id, c.rc AS rc, c.aff AS aff, c.miss AS miss", {"co": base})
         if any(o["op"] in ("add_edge", "confirm") for o in ops):
-            for r in self._rows("MATCH (a:Component {co: $co})-[e:DEPENDS_ON]->(b:Component) RETURN a.id AS u, b.id AS v, e.conf AS conf, e.o AS o", co=base):
-                existing[(r[0] - base, r[1] - base)] = {"conf": r[2], "o": r[3]}
-        shortcuts = {}
+            jobs["edges"] = ("MATCH (a:Component {co: $co})-[e:DEPENDS_ON]->(b:Component) RETURN a.id AS u, b.id AS v, e.conf AS conf, e.o AS o", {"co": base})
         if any(o["op"] == "shortcut" for o in ops):
-            for r in self._rows("MATCH (a:Component {co: $co})-[s:SHORTCUT]->(b:Component) RETURN a.id AS u, b.id AS v, s.n AS n", co=base):
-                shortcuts[(r[0] - base, r[1] - base)] = r[2]
+            jobs["shortcuts"] = ("MATCH (a:Component {co: $co})-[s:SHORTCUT]->(b:Component) RETURN a.id AS u, b.id AS v, s.n AS n", {"co": base})
+        got = self._par(jobs)                                          # independent reads, issued together
+        seq, eo, ao = got["meta"][0]
+        counters = {r[0] - base: {"rc": r[1], "aff": r[2], "miss": r[3]} for r in got.get("counters", [])}
+        existing = {(r[0] - base, r[1] - base): {"conf": r[2], "o": r[3]} for r in got.get("edges", [])}
+        shortcuts = {(r[0] - base, r[1] - base): r[2] for r in got.get("shortcuts", [])}
 
         dirty_counters = set()
         for o in ops:  # sequential, so repeated keys behave exactly like the in-memory loop

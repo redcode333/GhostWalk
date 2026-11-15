@@ -59,6 +59,9 @@ export default function Proof() {
   const refLabel = sw ? (sw.reference === "hydradb" ? "HydraDB" : "the in-memory graph") : ""
   const sc = r.scale?.path_query?.sizes
   const scaleRows = sc ? Object.entries(sc).sort((a, b) => +a[0] - +b[0]) : []
+  const pgFaster = scaleRows.length > 0 && scaleRows.every(([, e]) => ["hops_3", "hops_5"].every((h) => e.path_query[h].postgres.p50 < e.path_query[h].hydradb.p50))
+  const beforeFix = (r as any).scale_before_transport_fix?.path_query?.sizes?.["1000"]?.path_query?.hops_3?.hydradb?.p50 as number | undefined
+  const warm = (r.ops as any)?.hydradb_latency?.warm as any
   return (
     <Page>
       <H1 title="Proof" sub={`Held-out ${r.meta.split} split: ${r.meta.companies} companies, ${r.meta.incidents.toLocaleString()} incidents. 95% bootstrap intervals.`}
@@ -162,6 +165,24 @@ export default function Proof() {
           )}
         </section>
       )}
+      {warm && (
+        <section className="card" style={{ padding: 18, overflowX: "auto" }}>
+          <h2 style={{ margin: 0, fontSize: 16 }}>HydraDB and Postgres, warm latency</h2>
+          <p style={{ margin: "2px 0 10px", fontSize: 13, color: "var(--text-4)" }}>p50 / p95 ms, 200 timed requests after warm-up, one at a time. {warm.machine?.cpus} CPUs, {warm.machine?.ram_gb} GB, both databases in docker on the same machine.</p>
+          <table className="mono" style={{ fontSize: 13, borderCollapse: "collapse", minWidth: 520 }}>
+            <thead><tr style={{ color: "var(--text-4)", textAlign: "left" }}>{["", "HydraDB", "Postgres"].map((h) => <th key={h} style={{ padding: "6px 14px 6px 0", fontFamily: "Geist", fontWeight: 500 }}>{h}</th>)}</tr></thead>
+            <tbody>
+              {([["1-hop neighbours", "one_hop"], ["Best path, 3 hops", "path_3_hops"], ["Best path, 5 hops", "path_5_hops"], ["Edge-weight write", "edge_write"]] as [string, string][]).map(([label, k]) => (
+                <tr key={k} style={{ borderTop: "1px solid var(--line)" }}><td style={{ padding: "8px 14px 8px 0", fontFamily: "Geist" }}>{label}</td>
+                  <td style={{ paddingRight: 14 }}>{ms(warm.per_query[k].hydradb.p50)} / {ms(warm.per_query[k].hydradb.p95)}</td><td>{ms(warm.per_query[k].postgres.p50)} / {ms(warm.per_query[k].postgres.p95)}</td></tr>))}
+              {([["Verdict, cache hit", "cached_hit"], ["Verdict, cache miss (every incident while learning)", "cached_miss"], ["Verdict, read the graph back", "cold"], ["Verdict, in-DB (two MSpaths)", "in_db"]] as [string, string][]).map(([label, k]) => (
+                <tr key={k} style={{ borderTop: "1px solid var(--line)" }}><td style={{ padding: "8px 14px 8px 0", fontFamily: "Geist" }}>{label}</td><td style={{ paddingRight: 14 }}>{ms(warm.per_verdict[k].p50)} / {ms(warm.per_verdict[k].p95)}</td><td /></tr>))}
+              <tr style={{ borderTop: "1px solid var(--line)" }}><td style={{ padding: "8px 14px 8px 0", fontFamily: "Geist" }}>Verdict, two batched CTEs</td><td /><td>{ms(warm.postgres_per_verdict.p50)} / {ms(warm.postgres_per_verdict.p95)}</td></tr>
+            </tbody>
+          </table>
+          <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--text-3)" }}>HydraDB's verdict is under 20 ms only on a cache hit. HydraDB writes cost about {ms(warm.per_query.edge_write.hydradb.p50)} ms each (server-side commit).</p>
+        </section>
+      )}
       {scaleRows.length > 0 && (
         <section className="card" style={{ padding: 18, overflowX: "auto" }}>
           <h2 style={{ margin: 0, fontSize: 16 }}>Path queries at scale: HydraDB vs Postgres</h2>
@@ -176,7 +197,7 @@ export default function Proof() {
                 <td>{ms(e.verdict.cold_read.p50)} / {ms(e.verdict.in_db.p50)} / {pv ? ms(pv.p50) : "n/a"} ms</td></tr>)
             })}</tbody>
           </table>
-          <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--text-3)" }}>Postgres keeps up here and is faster at every size; HydraDB's value in this project is native path algorithms, not speed. See <a href="https://github.com/redcode333/GhostWalk/blob/main/docs/graph-vs-sql.md" style={{ textDecoration: "underline" }}>the queries side by side</a>.</p>
+          <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--text-3)" }}>{pgFaster ? "Postgres is faster at every size and hop limit here; " : "Neither store is faster everywhere; "}HydraDB's value in this project is native path algorithms, not speed.{beforeFix ? ` Before a transport fix on this laptop HydraDB read about ${ms(beforeFix)} ms at every size (a client/proxy artefact, diagnosed in results.json).` : ""} See <a href="https://github.com/redcode333/GhostWalk/blob/main/docs/graph-vs-sql.md" style={{ textDecoration: "underline" }}>the queries side by side</a>.</p>
         </section>
       )}
       {r.repeat_vs_novel && (
