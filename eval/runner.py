@@ -27,7 +27,7 @@ def placebo_pm(co, inc, rng):
     return {"root": root, "chain": [e for e in chain if e[0] != e[1]], "aliases": [], "correct": False}
 
 
-def run_company(co, method, max_hops=5, steps=update.ALL_STEPS, placebo=False, seed=0, backend=None):
+def run_company(co, method, max_hops=5, steps=update.ALL_STEPS, placebo=False, seed=0, backend=None, trace=None):
     """Returns per-incident rows: seq, truth, rank of truth (1-based, None if absent), top, confidence."""
     rng = random.Random(seed * 7919 + zlib.crc32(co["name"].encode()) % 10007)
     if method == "oracle":
@@ -35,6 +35,8 @@ def run_company(co, method, max_hops=5, steps=update.ALL_STEPS, placebo=False, s
     else:
         g = backend.fresh(co) if backend else GraphState.from_official(official_view(_View(co)))
     rows, history = [], []
+    if trace is not None:
+        trace["rankings"] = []
     for inc in co["incidents"]:
         alerts, truth = inc["alerts"], inc["root"]
         verdict = None
@@ -43,6 +45,8 @@ def run_company(co, method, max_hops=5, steps=update.ALL_STEPS, placebo=False, s
             verdict = walk(snap, alerts, max_hops=max_hops, use_prior=(method == "ghostwalk"))
             ranked = [c for c, _ in verdict.ranking]
             conf = verdict.confidence
+            if trace is not None:
+                trace["rankings"].append(verdict.ranking)
         elif method == "deepest":
             ranked, conf = simple.rank_deepest(g, alerts, max_hops=max_hops), None
         elif method == "pagerank":
@@ -54,7 +58,7 @@ def run_company(co, method, max_hops=5, steps=update.ALL_STEPS, placebo=False, s
         rank = ranked.index(truth) + 1 if truth in ranked else None
         rows.append({"company": co["name"], "family": co["family"], "seq": inc["seq"], "truth": truth,
                      "top": ranked[0] if ranked else None, "rank": rank, "confidence": conf,
-                     "repeat": any(h["root"] == truth for h in history), "graph_seq": g.seq})
+                     "repeat": any(h["root"] == truth for h in history), "graph_seq": (snap if verdict is not None else g).seq})
         # learning happens only after the prediction, from this incident's postmortem
         if method == "ghostwalk":
             pm = placebo_pm(co, inc, rng) if placebo else inc["postmortem"]
@@ -63,6 +67,8 @@ def run_company(co, method, max_hops=5, steps=update.ALL_STEPS, placebo=False, s
         elif method == "retrieval":
             pass
         history.append({"alerts": alerts, "postmortem": inc["postmortem"], "root": truth})
+    if trace is not None:  # final graph state (read back from the backend when there is one)
+        trace["final"] = backend.snapshot() if backend and method in ("ghostwalk", "learning_off") else g
     return rows
 
 
