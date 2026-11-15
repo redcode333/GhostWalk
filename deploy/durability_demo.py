@@ -19,7 +19,14 @@ def main():
     ap.add_argument("--api", default="https://localhost")
     ap.add_argument("--insecure", action="store_true")
     ap.add_argument("--project", default="ghostwalk-prod")
+    ap.add_argument("--ssh", default=None, help="user@host: run the docker commands on that machine (the stack runs there), the API calls still go to --api")
     a = ap.parse_args()
+    import shlex
+    def sh(cmd, **kw):
+        cmd = list(cmd)
+        if a.ssh:
+            cmd = ["ssh", "-o", "BatchMode=yes", a.ssh, "cd GhostWalk && " + shlex.join(cmd)]
+        return subprocess.run(cmd, **kw)
     dc = ["docker", "compose", "--env-file", "deploy/.env", "-f", "deploy/docker-compose.prod.yml"]
     c = httpx.Client(timeout=60, verify=not a.insecure)
     api = a.api.rstrip("/")
@@ -53,15 +60,15 @@ def main():
 
     before, why_before, h = snapshot()
     print(f"before: store={h['store']} revision={h['revision']} ranking {before[:3]} why-edge {why_before['edge'] if why_before else None}")
-    vols = subprocess.run(["docker", "volume", "ls", "--format", "{{.Name}}"], capture_output=True, text=True).stdout.split()
+    vols = sh(["docker", "volume", "ls", "--format", "{{.Name}}"], capture_output=True, text=True).stdout.split()
     hv, mv = f"{a.project}_hydradb-data", f"{a.project}_minio-data"
     assert hv in vols and mv in vols, (hv, mv, vols)
     print(f"stop the stack, delete ONLY {hv} (keep {mv})")
-    subprocess.run(dc + ["stop"], check=True, capture_output=True)
-    subprocess.run(dc + ["down"], check=True, capture_output=True)                  # containers only: volumes stay
-    subprocess.run(["docker", "volume", "rm", hv], check=True, capture_output=True)
-    assert mv in subprocess.run(["docker", "volume", "ls", "--format", "{{.Name}}"], capture_output=True, text=True).stdout.split()
-    subprocess.run(dc + ["up", "-d"], check=True, capture_output=True)
+    sh(dc + ["stop"], check=True, capture_output=True)
+    sh(dc + ["down"], check=True, capture_output=True)                              # containers only: volumes stay
+    sh(["docker", "volume", "rm", hv], check=True, capture_output=True)
+    assert mv in sh(["docker", "volume", "ls", "--format", "{{.Name}}"], capture_output=True, text=True).stdout.split()
+    sh(dc + ["up", "-d"], check=True, capture_output=True)
     wait()
     after, why_after, h2 = snapshot()
     print(f"after:  store={h2['store']} revision={h2['revision']} ranking {after[:3]} why-edge {why_after['edge'] if why_after else None}")
