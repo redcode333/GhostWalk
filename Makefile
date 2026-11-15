@@ -1,7 +1,7 @@
 PY ?= python
 COMPOSE ?= docker compose
 
-.PHONY: data eval eval-quick eval-stores test up down
+.PHONY: data eval eval-quick eval-stores test up down web
 
 data:
 	$(PY) -m gwsim.cli --out data
@@ -29,3 +29,6 @@ up:
 
 down:
 	$(COMPOSE) --profile eval down
+
+web:
+	cd web && npm ci && npm run build

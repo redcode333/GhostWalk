@@ -1,6 +1,20 @@
 # Default profile: the app (api + web). `--profile eval`: real stores + the store-swap run.
 name: ghostwalk
 services:
+  app:
+    build: .
+    ports: ["8000:8000"]
+    environment:
+      AUTH_MODE: ${AUTH_MODE:-none}
+      GW_PUBLIC_URL: ${GW_PUBLIC_URL:-http://localhost:8000}
+      CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY:-}
+      CLERK_JWKS_URL: ${CLERK_JWKS_URL:-}
+      GITHUB_APP_ID: ${GITHUB_APP_ID:-}
+      GITHUB_APP_PRIVATE_KEY: ${GITHUB_APP_PRIVATE_KEY:-}
+      GITHUB_APP_SLUG: ${GITHUB_APP_SLUG:-ghostwalk}
+      GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
+      GITHUB_PR_TOKEN: ${GITHUB_PR_TOKEN:-}
+    volumes: ["gw-data:/data"]
   redis:
     image: redis:7-alpine
     profiles: [eval]
@@ -21,3 +35,6 @@ services:
     environment: {REDIS_URL: "redis://redis:6379/0", PG_URL: "postgresql://gw:gw@postgres:5432/gw"}
     volumes: [".:/app"]
     command: ["python", "eval/store_swap.py", "--split", "test"]
+
+volumes:
+  gw-data:

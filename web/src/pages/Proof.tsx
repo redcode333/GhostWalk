@@ -1,0 +1,155 @@
+import { loadResults, METHOD_LABEL, ms, pct, proofStrip, pts, type CI, type Results } from "@/lib/results"
+import { Err, Muted, useLoad } from "@/components/common"
+import { H1, Page } from "@/components/AppShell"
+
+const f3 = (x: number) => x.toFixed(3)
+const ci = (c: CI) => `${f3(c.ci95[0])}–${f3(c.ci95[1])}`
+
+function CurveChart({ r }: { r: Results }) {
+  const lc = r.learning_curve
+  if (!lc) return <Muted>No learning-curve series in results.json.</Muted>
+  const W = 720, H = 260, L = 44, B = 28, T = 10
+  const series: [string, string, string?][] = [["ghostwalk", "var(--accent)"], ["learning_off", "var(--text-3)"], ["placebo", "var(--amber)", "4 3"], ["oracle", "var(--ink)", "2 3"]]
+  const all = series.flatMap(([k]) => lc.series[k] ?? [])
+  const lo = Math.floor(Math.min(...all.map((p) => p.ci95[0])) * 10) / 10, hi = Math.min(1, Math.ceil(Math.max(...all.map((p) => p.ci95[1])) * 10) / 10)
+  const n = (lc.series.ghostwalk ?? []).length
+  const x = (i: number) => L + (i * (W - L - 12)) / Math.max(1, n - 1)
+  const y = (v: number) => T + ((hi - v) * (H - T - B)) / (hi - lo)
+  const line = (k: string) => (lc.series[k] ?? []).map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.ac1).toFixed(1)}`).join(" ")
+  const band = (lc.series.ghostwalk ?? [])
+  const bandPath = band.length ? `${band.map((p, i) => `${i ? "L" : "M"}${x(i)},${y(p.ci95[1])}`).join(" ")} ${[...band].reverse().map((p, i) => `L${x(band.length - 1 - i)},${y(p.ci95[0])}`).join(" ")} Z` : ""
+  return (
+    <div>
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Top-1 accuracy by incident number">
+        {Array.from({ length: Math.round((hi - lo) / 0.1) + 1 }, (_, i) => lo + i * 0.1).map((v) => (
+          <g key={v}><line x1={L} x2={W - 12} y1={y(v)} y2={y(v)} stroke="var(--line)" /><text x={L - 8} y={y(v) + 4} textAnchor="end" fontSize="11" fill="var(--text-4)" fontFamily="Geist Mono">{v.toFixed(1)}</text></g>
+        ))}
+        {band.map((p, i) => (i % 2 === 0 ? <text key={i} x={x(i)} y={H - 8} textAnchor="middle" fontSize="11" fill="var(--text-4)" fontFamily="Geist Mono">{p.from}</text> : null))}
+        <path d={bandPath} fill="var(--accent)" opacity="0.14" />
+        {series.map(([k, c, d]) => <path key={k} d={line(k)} fill="none" stroke={c} strokeWidth={k === "ghostwalk" ? 2.4 : 1.6} strokeDasharray={d} />)}
+      </svg>
+      <div className="mono" style={{ display: "flex", flexWrap: "wrap", gap: 16, fontSize: 12, color: "var(--text-3)" }}>
+        {[["GhostWalk, 95% band", "var(--accent)"], ["Learning off", "var(--text-3)"], ["Placebo postmortems", "var(--amber)"], ["Perfect map", "var(--ink)"]].map(([l, c]) => (
+          <span key={l} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span style={{ width: 14, height: 2, background: c }} />{l}</span>
+        ))}
+        <span style={{ marginLeft: "auto" }}>incident number, bins of {lc.bin}</span>
+      </div>
+    </div>
+  )
+}
+
+export default function Proof() {
+  const { data: r, error } = useLoad(loadResults, [])
+  if (error) return <Page><Err>{error}</Err></Page>
+  if (!r) return <Page><H1 title="Proof" /><Muted>No results.json yet. Run <span className="mono">make eval</span>.</Muted></Page>
+  const strip = proofStrip(r)
+  const order = ["ghostwalk", "pagerank", "retrieval", "deepest", "random"]
+  const ops = r.ops ?? {}
+  const sw = r.store_swap
+  const st = (k: string, label: string) => {
+    const b = sw?.backends?.[k]
+    return b ? { label, v: f3(b.ac1.point), sub: b.delta_vs_reference ? `${pts(b.delta_vs_reference.point)} (${pts(b.delta_vs_reference.ci95[0])} to ${pts(b.delta_vs_reference.ci95[1])})` : "reference" } : null
+  }
+  const tiles = [st("inmemory", "In-memory graph (reference)"), st("pg_cte", "Postgres recursive"), st("pgvector", "pgvector search"), st("kv_1hop", "Key-value, 1 hop")].filter(Boolean) as { label: string; v: string; sub: string }[]
+  const depth = (r as any).depth as Record<string, CI> | undefined
+  return (
+    <Page>
+      <H1 title="Proof" sub={`Held-out ${r.meta.split} split: ${r.meta.companies} companies, ${r.meta.incidents.toLocaleString()} incidents. 95% bootstrap intervals.`}
+        right={<a className="btn btn-glass" href="/results.json" download>Download results.json</a>} />
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+        {strip.map((t) => (
+          <div key={t.label} className="card" style={{ flex: "1 1 220px", padding: "16px 18px" }}>
+            <div className="mono" style={{ fontSize: 30, fontWeight: 600 }}>{t.value}</div>
+            <div style={{ fontSize: 14, color: "var(--text-3)" }}>{t.label}</div>
+            {t.note && <div className="mono" style={{ fontSize: 11, color: "var(--text-4)", marginTop: 4 }}>{t.note}</div>}
+          </div>
+        ))}
+      </div>
+      <section className="card" style={{ padding: 18 }}>
+        <h2 style={{ margin: 0, fontSize: 16 }}>Learning curve</h2>
+        <p style={{ margin: "2px 0 10px", fontSize: 13, color: "var(--text-4)" }}>top-1 accuracy by incident number</p>
+        <CurveChart r={r} />
+      </section>
+      <section className="card" style={{ padding: 18, overflowX: "auto" }}>
+        <h2 style={{ margin: "0 0 10px", fontSize: 16 }}>Against baselines</h2>
+        <table className="mono" style={{ width: "100%", minWidth: 640, fontSize: 13, borderCollapse: "collapse" }}>
+          <thead><tr style={{ color: "var(--text-4)", textAlign: "left" }}>{["Method", "AC@1", "95% CI", "AC@3", "Checks to root", "p95 latency"].map((h) => <th key={h} style={{ padding: "6px 8px", fontWeight: 500, fontFamily: "Geist" }}>{h}</th>)}</tr></thead>
+          <tbody>
+            {order.map((k) => {
+              const m = r.methods[k]; const o = ops[k]
+              if (!m) return null
+              const mine = k === "ghostwalk"
+              return (
+                <tr key={k} style={{ borderTop: "1px solid var(--line)", color: mine ? "var(--ink)" : "var(--text-2)", fontWeight: mine ? 600 : 400 }}>
+                  <td style={{ padding: "9px 8px", fontFamily: "Geist" }}>{METHOD_LABEL[k]}</td>
+                  <td style={{ padding: "9px 8px" }}>{f3(m.ac1.point)}</td><td style={{ padding: "9px 8px" }}>{ci(m.ac1)}</td><td style={{ padding: "9px 8px" }}>{f3(m.ac3.point)}</td>
+                  <td style={{ padding: "9px 8px" }}>{o && typeof o === "object" ? o.mean_checks_to_root.toFixed(2) : "—"}</td>
+                  <td style={{ padding: "9px 8px" }}>{o && typeof o === "object" ? `${ms(o.verdict_ms_p95)} ms` : "—"}</td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
+        <p style={{ margin: "10px 0 0", fontSize: 12, color: "var(--text-4)" }}>
+          PageRank is tuned on the dev split{r.baseline_fairness?.pagerank.grid_budget ? ` over ${r.baseline_fairness.pagerank.grid_budget} settings` : ""} and run once on test. Latency is {String(ops.backend ?? "in-memory")}.
+          Reproduce: <span className="mono">$ make eval</span>
+        </p>
+      </section>
+      {tiles.length > 0 && (
+        <section className="card" style={{ padding: 18 }}>
+          <h2 style={{ margin: 0, fontSize: 16 }}>Same incidents, same learner. Only the store changes.</h2>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 12 }}>
+            {tiles.map((t) => (
+              <div key={t.label} style={{ flex: "1 1 190px", border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px" }}>
+                <div style={{ fontSize: 13, color: "var(--text-3)" }}>{t.label}</div>
+                <div className="mono" style={{ fontSize: 24, fontWeight: 600 }}>{t.v}</div>
+                <div className="mono" style={{ fontSize: 11, color: "var(--text-4)" }}>{t.sub}</div>
+              </div>
+            ))}
+            <div style={{ flex: "1 1 190px", border: "1px dashed var(--line)", borderRadius: 12, padding: "12px 14px" }}>
+              <div style={{ fontSize: 13, color: "var(--text-3)" }}>HydraDB paths</div>
+              <div className="mono" style={{ fontSize: 14, marginTop: 6 }}>not run</div>
+              <div style={{ fontSize: 11, color: "var(--text-4)" }}>{sw?.hydradb.status}</div>
+            </div>
+          </div>
+          {depth && (
+            <div className="mono" style={{ marginTop: 14, fontSize: 13, display: "flex", flexWrap: "wrap", gap: 16 }}>
+              <span style={{ fontFamily: "Geist", color: "var(--text-3)" }}>Max hops walked</span>
+              {Object.entries(depth).map(([h, c]) => <span key={h}>{h}: {f3(c.point)}</span>)}
+            </div>
+          )}
+        </section>
+      )}
+      {r.repeat_vs_novel && (
+        <section className="card" style={{ padding: 18, overflowX: "auto" }}>
+          <h2 style={{ margin: 0, fontSize: 16 }}>New and repeat incidents</h2>
+          <p style={{ margin: "2px 0 10px", fontSize: 13, color: "var(--text-4)" }}>{r.repeat_vs_novel.definition}</p>
+          <table className="mono" style={{ fontSize: 13, borderCollapse: "collapse", minWidth: 420 }}>
+            <thead><tr style={{ color: "var(--text-4)", textAlign: "left" }}><th style={{ padding: "6px 12px 6px 0", fontFamily: "Geist", fontWeight: 500 }}>AC@1</th><th style={{ fontFamily: "Geist", fontWeight: 500 }}>Repeat</th><th style={{ fontFamily: "Geist", fontWeight: 500 }}>Novel</th></tr></thead>
+            <tbody>{Object.entries(r.repeat_vs_novel.methods).map(([k, v]) => (
+              <tr key={k} style={{ borderTop: "1px solid var(--line)" }}><td style={{ padding: "8px 12px 8px 0" }}>{k === "tfidf" ? "TF-IDF retrieval" : METHOD_LABEL[k]}</td><td style={{ paddingRight: 16 }}>{f3(v.repeat.point)} <span style={{ color: "var(--text-4)" }}>{ci(v.repeat)}</span></td><td>{f3(v.novel.point)} <span style={{ color: "var(--text-4)" }}>{ci(v.novel)}</span></td></tr>
+            ))}</tbody>
+          </table>
+        </section>
+      )}
+      {r.poisoning && (
+        <section className="card" style={{ padding: 18 }}>
+          <h2 style={{ margin: 0, fontSize: 16 }}>When postmortems are wrong</h2>
+          <p style={{ margin: "2px 0 10px", fontSize: 13, color: "var(--text-4)" }}>Share of postmortems naming the wrong root: GhostWalk vs learning off, same incidents.</p>
+          <div className="mono" style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
+            {Object.values(r.poisoning.levels).map((l) => (
+              <div key={l.wrong_pm} style={{ flex: "1 1 180px", border: "1px solid var(--line)", borderRadius: 12, padding: "10px 14px", fontSize: 13 }}>
+                <div style={{ color: "var(--text-4)" }}>{pct(l.wrong_pm)} wrong</div>
+                <div>{f3(l.ghostwalk.point)} vs {f3(l.learning_off.point)}</div>
+                <div style={{ color: "var(--text-4)" }}>{pts(l.gain.point)}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+      <div className="mono" style={{ fontSize: 12, color: "var(--text-4)" }}>
+        run {r.meta.timestamp_utc.slice(0, 10)} · commit {r.meta.git.short}{r.meta.git.dirty ? " (dirty)" : ""}
+      </div>
+    </Page>
+  )
+}
