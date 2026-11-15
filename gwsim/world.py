@@ -25,6 +25,9 @@ class Knobs:
     monitor_blind: float = 0.05    # incident where monitoring itself is degraded
     wrong_pm: float = 0.10         # postmortem names the wrong root / drops the chain
     n_incidents: int = 60
+    p_root_change: float = 0.5     # the true root had a deploy/config change in the 30 min before the first alert
+    r_noise: float = 2.0           # Poisson rate of distractor changes (random non-root services) per incident
+    change_jitter: float = 0.10    # share of change timestamps jittered by up to +-10 min
 
 
 @dataclass
@@ -99,6 +102,8 @@ def build_company(name, family, seed, n=None, knobs: Knobs | None = None, real=N
 
     co = Company(name, family, seed, comps, edges, official, hidden, aliases, knobs=asdict(knobs))
     co.incidents = [_incident(co, i, rng, knobs) for i in range(knobs.n_incidents)]
+    for inc in co.incidents:       # change events use their OWN random stream, so every other field is identical to before they existed
+        inc["changes"] = _changes(co, inc, knobs)
     return co
 
 
@@ -156,6 +161,27 @@ def _incident(co: Company, seq: int, rng, k: Knobs):
         pm = {"root": int(rng.choice(nbrs)) if nbrs else root, "chain": chain[:1], "correct": False, "aliases": []}
     return {"seq": seq, "alerts": alert_rows, "root": root, "affected": sorted(onset), "entry": entry,
             "chain": chain, "postmortem": pm, "postmortem_text": _pm_text(co, root, chain, pm, rng)}
+
+
+def _changes(co: Company, inc: dict, k: Knobs):
+    """'What changed recently': deploy/config events on the same time axis as the alerts (seconds, first alert = reference).
+    The root's change is drawn with probability p_root_change independently of everything else; distractors land on random
+    non-root services. Nothing marks which event is the real one. A change on an alerting-but-innocent service is a distractor."""
+    rng = np.random.default_rng([co.seed, 4242, inc["seq"]])
+    t0 = min(a["t"] for a in inc["alerts"])
+    events = []
+    if rng.random() < k.p_root_change:
+        events.append((inc["root"], t0 - float(rng.uniform(60, 1800))))
+    others = [c["id"] for c in co.components if c["id"] != inc["root"]]
+    for _ in range(int(rng.poisson(k.r_noise))):
+        events.append((int(rng.choice(others)), t0 - float(rng.uniform(0, 3600))))
+    out = []
+    for svc, ts in events:
+        if rng.random() < k.change_jitter:
+            ts += float(rng.uniform(-600, 600))
+        out.append({"service": co.components[svc]["name"], "ts": round(ts, 1), "kind": str(rng.choice(["deploy", "config"])),
+                    "ref": f"#{int(rng.integers(100, 999))}"})
+    return sorted(out, key=lambda e: e["ts"])
 
 
 def _pm_text(co, root, chain, pm, rng):

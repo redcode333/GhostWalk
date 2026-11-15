@@ -3,10 +3,11 @@ from __future__ import annotations
 import json, pathlib, random, time, zlib
 from gwsim.world import official_view
 from ghostwalk.graph.state import GraphState
-from ghostwalk.engine.walk import walk
+from ghostwalk.engine.walk import walk, changes_before
 from ghostwalk.learn import update
 from baselines import simple
 
+CHANGES_TUNED = pathlib.Path(__file__).with_name("changes_tuned.json")
 METHODS = ["ghostwalk", "learning_off", "oracle", "deepest", "pagerank", "retrieval", "random"]
 TUNED = pathlib.Path(__file__).with_name("pagerank_tuned.json")
 
@@ -27,6 +28,14 @@ def pagerank_settings():
     return dict(simple.PR_DEFAULT)
 
 
+def changes_settings():
+    """DEV-tuned (gamma, tau) for --use-changes. gamma=0 when change evidence did not beat the engine on DEV."""
+    if CHANGES_TUNED.exists():
+        c = json.loads(CHANGES_TUNED.read_text())["chosen"]
+        return c["gamma"], c["tau"]
+    return 0.0, 15.0
+
+
 def placebo_pm(co, inc, rng):
     """Control: a postmortem with a random root and random edges. Same shape, no information."""
     ids = [c["id"] for c in co["components"]]
@@ -36,7 +45,7 @@ def placebo_pm(co, inc, rng):
 
 
 def run_company(co, method, max_hops=5, steps=update.ALL_STEPS, placebo=False, seed=0, backend=None, trace=None,
-                pr=None, snap_every=10):
+                pr=None, snap_every=10, use_changes=False, gamma=None, tau=None):
     """Returns per-incident rows: seq, truth, rank of truth (1-based, None if absent), top, confidence, latency.
 
     backend: object with fresh(co) / snapshot() / apply(ops) (HydraGraph and the eval/stores.py stores).
@@ -60,7 +69,8 @@ def run_company(co, method, max_hops=5, steps=update.ALL_STEPS, placebo=False, s
         t0 = time.perf_counter()
         if method in ("ghostwalk", "learning_off", "oracle"):
             snap = backend.snapshot() if backend and method != "oracle" else g
-            verdict = walk(snap, alerts, max_hops=max_hops, use_prior=(method == "ghostwalk"), reach=reach)
+            ch = changes_before(snap, inc.get("changes"), min(a["t"] for a in alerts)) if use_changes and alerts else None
+            verdict = walk(snap, alerts, max_hops=max_hops, use_prior=(method == "ghostwalk"), reach=reach, changes=ch, gamma=gamma, tau=tau)
             ranked = [c for c, _ in verdict.ranking]
             conf = verdict.confidence
             if trace is not None:
