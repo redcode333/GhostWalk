@@ -49,12 +49,12 @@ export default function Incident() {
         <Stat label="Checks to root" value={inc.checks_to_root ? String(inc.checks_to_root) : "—"} sub={inc.checks_to_root ? undefined : "after the postmortem"} />
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-start" }}>
-        <section className="card" style={{ flex: "3 1 520px", minWidth: 0, padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
+        <section className="card" style={{ flex: "3 1 min(520px, 100%)", minWidth: 0, padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
           <h2 style={{ margin: 0, fontSize: 16 }}>Blast radius</h2>
           {nodes.length ? <Graph nodes={nodes} edges={edges} height={Math.max(260, 70 * new Set(nodes.map((n) => n.tier)).size + 60)} /> : <Muted>Nothing matched the map.</Muted>}
           <Legend items={["Alerting", "Root cause", "Learned edge"]} />
         </section>
-        <aside style={{ flex: "2 1 320px", minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
+        <aside style={{ flex: "2 1 min(320px, 100%)", minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
           <section className="card" style={{ padding: 18 }}>
             <h2 style={{ margin: "0 0 10px", fontSize: 16 }}>Verdict</h2>
             <RankList ranking={v.ranking} />

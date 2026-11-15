@@ -5,7 +5,7 @@ import { Err, Muted, useLoad } from "@/components/common"
 import { H1, Page } from "@/components/AppShell"
 
 export const Stat = ({ label, value, sub }: { label: string; value: string; sub?: string }) => (
-  <div className="card" style={{ padding: "16px 18px", flex: "1 1 180px" }}>
+  <div className="card" style={{ padding: "16px 18px", flex: "1 1 min(180px, 100%)" }}>
     <div style={{ fontSize: 13, color: "var(--text-4)" }}>{label}</div>
     <div className="mono" style={{ fontSize: 28, fontWeight: 600, marginTop: 2 }}>{value}</div>
     {sub && <div style={{ fontSize: 12, color: "var(--text-4)", marginTop: 2 }}>{sub}</div>}

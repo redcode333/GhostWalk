@@ -58,7 +58,7 @@ export default function Proof() {
         right={<a className="btn btn-glass" href="/results.json" download>Download results.json</a>} />
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
         {strip.map((t) => (
-          <div key={t.label} className="card" style={{ flex: "1 1 220px", padding: "16px 18px" }}>
+          <div key={t.label} className="card" style={{ flex: "1 1 min(220px, 100%)", padding: "16px 18px" }}>
             <div className="mono" style={{ fontSize: 30, fontWeight: 600 }}>{t.value}</div>
             <div style={{ fontSize: 14, color: "var(--text-3)" }}>{t.label}</div>
             {t.note && <div className="mono" style={{ fontSize: 11, color: "var(--text-4)", marginTop: 4 }}>{t.note}</div>}
@@ -100,14 +100,14 @@ export default function Proof() {
           <h2 style={{ margin: 0, fontSize: 16 }}>Same incidents, same learner. Only the store changes.</h2>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 12 }}>
             {tiles.map((t) => (
-              <div key={t.label} style={{ flex: "1 1 190px", border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px" }}>
+              <div key={t.label} style={{ flex: "1 1 min(190px, 100%)", border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px" }}>
                 <div style={{ fontSize: 13, color: "var(--text-3)" }}>{t.label}</div>
                 <div className="mono" style={{ fontSize: 24, fontWeight: 600 }}>{t.v}</div>
                 <div aria-hidden="true" style={{ height: 6, borderRadius: 3, background: "var(--muted)", margin: "6px 0" }}><div style={{ height: "100%", width: `${parseFloat(t.v) * 100}%`, borderRadius: 3, background: "var(--accent)" }} /></div>
                 <div className="mono" style={{ fontSize: 11, color: "var(--text-4)" }}>{t.sub}</div>
               </div>
             ))}
-            <div style={{ flex: "1 1 190px", border: "1px dashed var(--line)", borderRadius: 12, padding: "12px 14px" }}>
+            <div style={{ flex: "1 1 min(190px, 100%)", border: "1px dashed var(--line)", borderRadius: 12, padding: "12px 14px" }}>
               <div style={{ fontSize: 13, color: "var(--text-3)" }}>HydraDB paths</div>
               <div className="mono" style={{ fontSize: 14, marginTop: 6 }}>not run</div>
               <div style={{ fontSize: 11, color: "var(--text-4)" }}>{sw?.hydradb.status}</div>
@@ -146,7 +146,7 @@ export default function Proof() {
           <p style={{ margin: "2px 0 10px", fontSize: 13, color: "var(--text-4)" }}>Share of postmortems naming the wrong root: GhostWalk vs learning off, same incidents.</p>
           <div className="mono" style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
             {Object.values(r.poisoning.levels).map((l) => (
-              <div key={l.wrong_pm} style={{ flex: "1 1 180px", border: "1px solid var(--line)", borderRadius: 12, padding: "10px 14px", fontSize: 13 }}>
+              <div key={l.wrong_pm} style={{ flex: "1 1 min(180px, 100%)", border: "1px solid var(--line)", borderRadius: 12, padding: "10px 14px", fontSize: 13 }}>
                 <div style={{ color: "var(--text-4)" }}>{pct(l.wrong_pm)} wrong</div>
                 <div>{f3(l.ghostwalk.point)} vs {f3(l.learning_off.point)}</div>
                 <div style={{ color: "var(--text-4)" }}>{pts(l.gain.point)}</div>

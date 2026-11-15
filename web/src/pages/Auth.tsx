@@ -44,7 +44,7 @@ const BULLETS = ["Connect alerts with one webhook", "Every postmortem teaches th
 
 function Side({ headline }: { headline: string }) {
   return (
-    <aside className="hide-sm" style={{ flex: "1 1 420px", position: "relative", overflow: "hidden", padding: 48, display: "flex", flexDirection: "column", justifyContent: "center", gap: 24, borderLeft: "1px solid var(--line)",
+    <aside className="hide-sm" style={{ flex: "1 1 min(420px, 100%)", position: "relative", overflow: "hidden", padding: 48, display: "flex", flexDirection: "column", justifyContent: "center", gap: 24, borderLeft: "1px solid var(--line)",
       background: "radial-gradient(60% 50% at 20% 10%, rgba(var(--lrgb), 0) 0, transparent 100%), radial-gradient(70% 60% at 85% 0%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%), radial-gradient(60% 50% at 0% 100%, color-mix(in srgb, var(--amber) 16%, transparent), transparent 70%), var(--surface-2)" }}>
       <h2 style={{ margin: 0, fontSize: 34, lineHeight: 1.1, letterSpacing: "-0.03em", fontWeight: 600, maxWidth: 420 }}>{headline}</h2>
       <div className="card" style={{ padding: 18, maxWidth: 420 }}>
@@ -66,7 +66,7 @@ function Shell({ children, headline }: { children: ReactNode; headline: string }
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexWrap: "wrap", background: "var(--bg)", position: "relative" }}>
       <div style={{ position: "absolute", top: 16, right: 16, zIndex: 5 }}><ThemeToggle /></div>
-      <main style={{ flex: "1 1 460px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24, padding: 32 }}>
+      <main style={{ flex: "1 1 min(460px, 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24, padding: 32 }}>
         <Link to="/" aria-label="GhostWalk home"><Logo width={66} size={27} /></Link>
         {children}
       </main>

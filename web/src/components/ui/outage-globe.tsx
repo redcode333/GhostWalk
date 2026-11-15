@@ -136,7 +136,7 @@ export function OutageGlobe() {
         const cwid = Math.min(300, (root.current?.clientWidth ?? w) - 24)
         const ax = a.x * D - left0, ay = a.y * D
         const rightFree = ax + 30 + cwid < (root.current?.clientWidth ?? w) - 8
-        cw.style.transform = `translate(${Math.max(12, rightFree ? ax + 30 : ax - 30 - cwid)}px, ${Math.max(14, Math.min(H - 170, ay - 70))}px)`
+        cw.style.transform = `translate(${Math.max(12, rightFree ? ax + 30 : ax - 30 - cwid)}px, ${Math.max(14, Math.min(H - 215, ay - 70))}px)`
         cw.style.opacity = a.depth > 0.05 ? "1" : "0"
       }
       // dashed arcs from the active pin: amber to two others, violet to a third
@@ -249,10 +249,10 @@ export function OutageGlobe() {
           <div className="mono" style={{ fontSize: 12, color: "var(--accent-text)", display: "flex", alignItems: "center", gap: 8 }}>
             <span aria-hidden="true" style={{ width: 16, borderTop: "2px dashed var(--accent)" }} />{o.edge}
           </div>
-          {o.cost && <a href={o.costSource} target="_blank" rel="noreferrer" className="mono" style={{ display: "block", marginTop: 6, fontSize: 12, color: "var(--amber)" }}>{o.cost}</a>}
+          {o.cost && <a href={o.costSource} target="_blank" rel="noreferrer" className="mono" style={{ display: "block", marginTop: 6, fontSize: 12, color: "var(--amber-text)" }}>{o.cost}</a>}
           <a href={o.source} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 6, fontSize: 12, color: "var(--text-4)", textDecoration: "underline" }}>source</a>
         </div>
-        <div aria-hidden="true" style={{ position: "absolute", inset: "auto 0 0 0", height: 150, background: "linear-gradient(to bottom, transparent, var(--bg))", pointerEvents: "none", zIndex: 50 }} />
+        <div aria-hidden="true" style={{ position: "absolute", inset: "auto 0 0 0", height: 150, background: "linear-gradient(to bottom, transparent, var(--bg))", pointerEvents: "none", zIndex: 20 }} />
       </div>
       <div role="group" aria-label="Outages" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: 8, marginTop: 4, padding: "0 16px" }}>
         {OUTAGES.map((x, i) => <button key={x.company} className={`chip${i === ix ? " on" : ""}`} aria-pressed={i === ix} onClick={() => pick(i)}>{x.company}</button>)}

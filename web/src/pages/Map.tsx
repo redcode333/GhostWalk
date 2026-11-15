@@ -32,7 +32,7 @@ export default function MapPage() {
           <a className="btn btn-glass" href="/api/map/export" download="ghostwalk-graph.json">Export graph</a>
           <Btn to="/app/learn">Review queue</Btn></div>} />
       <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-start" }}>
-        <section className="card" style={{ flex: "3 1 560px", minWidth: 0, padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
+        <section className="card" style={{ flex: "3 1 min(560px, 100%)", minWidth: 0, padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
             <div role="tablist" aria-label="Edges" style={{ display: "flex", gap: 4 }}>
               <button role="tab" aria-selected={mode === "official"} className={`chip${mode === "official" ? " on" : ""}`} onClick={() => setMode("official")}>Official</button>
@@ -43,7 +43,7 @@ export default function MapPage() {
           <Graph nodes={view.nodes} edges={view.edges} height={420} tierLabels />
           <Legend items={["Edge", "Service", "Data", "Infra", "Learned edge"]} />
         </section>
-        <aside className="card" style={{ flex: "1 1 300px", padding: 18 }}>
+        <aside className="card" style={{ flex: "1 1 min(300px, 100%)", padding: 18 }}>
           <h2 style={{ margin: "0 0 8px", fontSize: 16 }}>Learned edges</h2>
           {m.learned.length === 0 && <Muted>None yet. Write a postmortem and the first one lands here.</Muted>}
           <LearnedList edges={m.learned} name={name} />

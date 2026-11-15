@@ -47,7 +47,7 @@ export function AppShell() {
 
   return (
     <div className="app dark" style={{ background: "var(--bg)", color: "var(--ink)", minHeight: "100vh", display: "flex", flexWrap: "wrap" }}>
-      <aside style={{ flex: "1 1 220px", maxWidth: 240, borderRight: "1px solid var(--line)", padding: "16px 12px", display: "flex", flexDirection: "column", gap: 4, boxSizing: "border-box" }}>
+      <aside style={{ flex: "1 1 min(220px, 100%)", maxWidth: 240, borderRight: "1px solid var(--line)", padding: "16px 12px", display: "flex", flexDirection: "column", gap: 4, boxSizing: "border-box" }}>
         <a href="/" aria-label="GhostWalk home" style={{ padding: "6px 10px 18px" }}><Logo width={36} size={16} /></a>
         <nav aria-label="App" style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {NAV.map(({ to, label, icon: I }) => (
@@ -61,11 +61,11 @@ export function AppShell() {
           <div className="mono">{s ? `${s.workspace} · ${s.services} services` : ""}</div>
         </div>
       </aside>
-      <div style={{ flex: "999 1 560px", minWidth: 0, display: "flex", flexDirection: "column" }}>
+      <div style={{ flex: "999 1 min(560px, 100%)", minWidth: 0, display: "flex", flexDirection: "column" }}>
         <header style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12, padding: "12px 24px", borderBottom: "1px solid var(--line)" }}>
           <label htmlFor="cmd" className="sr-only">Ask GhostWalk</label>
           <form onSubmit={(e) => { e.preventDefault(); ask(input.current?.value ?? "") }}
-            style={{ flex: "1 1 320px", maxWidth: 520, display: "flex", alignItems: "center", gap: 8, background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 12, padding: "0 10px", minHeight: 36 }}>
+            style={{ flex: "1 1 min(320px, 100%)", maxWidth: 520, display: "flex", alignItems: "center", gap: 8, background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 12, padding: "0 10px", minHeight: 36 }}>
             <span className="mono" style={{ color: "var(--accent-text)", fontSize: 13 }}>&gt;_</span>
             <input id="cmd" ref={input} className="mono" placeholder="why checkout-api" style={{ flex: 1, minWidth: 0, background: "transparent", border: 0, outline: "none", color: "var(--ink)", fontSize: 13 }} />
             <span className="kbd">⌘</span><span className="kbd">K</span>

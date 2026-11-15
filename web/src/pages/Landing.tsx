@@ -89,7 +89,7 @@ function Story() {
         The pager said DDoS. The cause was a database permission.
       </H2>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
-        <div className="card" style={{ flex: "1 1 460px", padding: 28 }}>
+        <div className="card" style={{ flex: "1 1 min(460px, 100%)", padding: 28 }}>
           <h3 style={{ margin: 0, fontSize: 20 }}>What happened</h3>
           <p style={{ margin: "2px 0 16px", fontSize: 13, color: "var(--text-4)" }}>from Cloudflare's postmortem, UTC</p>
           {rows.map(([t, x], i) => (
@@ -102,7 +102,7 @@ function Story() {
             <div><div className="mono" style={{ fontSize: 34, fontWeight: 600 }}>5h 46m</div><div style={{ fontSize: 13, color: "var(--text-4)" }}>until fully resolved</div></div>
           </div>
           <div style={{ border: "1px solid var(--amber)", borderRadius: 14, padding: "14px 16px", marginBottom: 16 }}>
-            <div className="mono" style={{ fontSize: 28, fontWeight: 600, color: "var(--amber)" }}>$250M–$300M</div>
+            <div className="mono" style={{ fontSize: 28, fontWeight: 600, color: "var(--amber-text)" }}>$250M–$300M</div>
             <div style={{ fontSize: 14, color: "var(--text-3)" }}>estimated direct and indirect losses (Forrester) · roughly $1.4M for every minute of core impact</div>
           </div>
           <div style={{ display: "flex", gap: 20, flexWrap: "wrap", fontSize: 15 }}>
@@ -110,7 +110,7 @@ function Story() {
             <a href={CLOUDFLARE.techinformed} target="_blank" rel="noreferrer" style={{ color: "var(--accent-text)" }}>techinformed.com on the Forrester estimate →</a>
           </div>
         </div>
-        <div className="card" style={{ flex: "1 1 460px", padding: 28, display: "flex", flexDirection: "column", gap: 14 }}>
+        <div className="card" style={{ flex: "1 1 min(460px, 100%)", padding: 28, display: "flex", flexDirection: "column", gap: 14 }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}><h3 style={{ margin: 0, fontSize: 20 }}>How GhostWalk walks it</h3><span className="mono" style={{ fontSize: 12, color: "var(--text-4)" }}>illustrative</span></div>
           <div><div style={{ fontSize: 13, color: "var(--text-4)", marginBottom: 6 }}>Alerts in</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>{["proxy 5xx", "Turnstile", "dashboard login", "Workers KV", "Access"].map((a) => (
@@ -128,17 +128,17 @@ function Story() {
           <div style={{ borderTop: "1px solid var(--line)", paddingTop: 14 }}>
             <label htmlFor="mins" style={{ fontSize: 14, color: "var(--text-2)" }}>If the root had been found in <span className="mono" style={{ color: "var(--ink)", fontWeight: 600 }}>{mins} min</span> instead of 3h 10m</label>
             <input id="mins" type="range" min={5} max={180} step={5} value={mins} onChange={(e) => setMins(+e.target.value)} style={{ width: "100%", accentColor: "var(--accent)", margin: "8px 0" }} />
-            <div style={{ fontSize: 15 }}>≈ <span className="mono" style={{ color: "var(--amber)", fontWeight: 600 }}>${saved.toFixed(0)}M</span> of that estimate wouldn't have happened</div>
+            <div style={{ fontSize: 15 }}>≈ <span className="mono" style={{ color: "var(--amber-text)", fontWeight: 600 }}>${saved.toFixed(0)}M</span> of that estimate wouldn't have happened</div>
             <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--text-4)" }}>Back-of-envelope: $275M midpoint ÷ 190 min, assuming cost scales with minutes down.</p>
           </div>
           <p style={{ margin: 0, fontSize: 14, color: "var(--text-4)" }}>Assumes the feature-file dependency is in the graph. That's exactly the kind of edge a single earlier postmortem teaches GhostWalk.</p>
         </div>
       </div>
       <h3 style={{ textAlign: "center", fontSize: 22, margin: "48px 0 16px" }}>The bill for one dependency nobody watched</h3>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(260px, 100%), 1fr))", gap: 16 }}>
         {BILL.map((b) => (
           <a key={b.who} href={b.href} target="_blank" rel="noreferrer" className="card" style={{ padding: 22, display: "block" }}>
-            <div className="mono" style={{ fontSize: 30, fontWeight: 600, color: "var(--amber)" }}>{b.v}</div>
+            <div className="mono" style={{ fontSize: 30, fontWeight: 600, color: "var(--amber-text)" }}>{b.v}</div>
             <div style={{ fontSize: 15, marginTop: 4 }}>{b.who}</div>
             <div className="mono" style={{ fontSize: 12, color: "var(--text-4)", marginTop: 6 }}>estimate by {b.by} · source →</div>
           </a>))}
@@ -177,13 +177,13 @@ function Curve({ r }: { r: Results | null }) {
   )
 }
 
-function Bento({ r }: { r: Results | null }) {
+function Bento({ r, d }: { r: Results | null; d: Demo | null }) {
   const p95 = r?.ops?.ghostwalk
   const g = (id: number, name: string, kind: string, tier: number, extra = {}) => ({ id, name, kind, tier, ...extra })
   return (
     <Section id="product">
       <H2 sub="Deterministic, explainable, and fast enough to answer before the second page goes out.">Root cause analysis that gets sharper every incident</H2>
-      <div className="bento-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16 }}>
+      <div className="bento-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))", gap: 16 }}>
         <Tile title="Walks the graph live" span={2}>
           {p95 && typeof p95 === "object" && <div className="mono" style={{ fontSize: 13, color: "var(--text-4)" }}>p95 {p95.verdict_ms_p95 < 10 ? p95.verdict_ms_p95.toFixed(1) : Math.round(p95.verdict_ms_p95)} ms</div>}
           <Graph height={210} nodes={[g(1, "web-edge", "edge", 0, { alerting: true }), g(2, "checkout-api", "service", 1, { alerting: true }), g(3, "cart", "service", 1), g(4, "payments", "service", 2, { alerting: true }),
@@ -195,7 +195,7 @@ function Bento({ r }: { r: Results | null }) {
         </Tile>
         <Tile title="Explains itself">
           <div className="mono" style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: 14 }}>
-            {[["config-svc", 0.81], ["fraud-check", 0.12], ["payments", 0.05]].map(([a, b], i) => (
+            {(d ? d.after.ranking.slice(0, 3).map((x) => [x.name, x.confidence]) : []).map(([a, b], i) => (
               <div key={a as string} style={{ display: "grid", gridTemplateColumns: "1fr 40px", gap: 8, alignItems: "center", color: i === 0 ? "var(--accent-text)" : "var(--text-3)" }}>
                 <span style={{ display: "flex", flexDirection: "column", gap: 3 }}>{a}<span style={{ height: 4, borderRadius: 2, background: "var(--muted)" }}><span style={{ display: "block", height: "100%", width: `${(b as number) * 100}%`, borderRadius: 2, background: i === 0 ? "var(--accent)" : "var(--text-4)" }} /></span></span>
                 <span>{(b as number).toFixed(2)}</span>
@@ -205,9 +205,8 @@ function Bento({ r }: { r: Results | null }) {
         </Tile>
         <Tile title="Learns from postmortems">
           <div className="mono" style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 6 }}>
-            <span className="fade-line" style={{ color: "var(--accent-text)", animationDelay: ".2s" }}>+ config-svc ⇢ fraud-check</span>
-            <span className="fade-line" style={{ color: "var(--amber)", animationDelay: ".9s" }}>~ fraud-check → payments 0.73</span>
-            <span className="fade-line" style={{ color: "var(--text-3)", animationDelay: "1.6s" }}>= "cfg" alias of config-svc</span>
+            {(d?.changes ?? []).slice(0, 3).map((c, i) => (
+              <span key={c.index} className="fade-line" style={{ color: c.symbol === "+" ? "var(--accent-text)" : c.symbol === "~" ? "var(--amber-text)" : "var(--text-3)", animationDelay: `${0.2 + i * 0.7}s` }}>{c.symbol} {c.text}{c.symbol === "~" ? ` ${c.detail.split("→ ")[1] ?? ""}` : ""}</span>))}
           </div>
           <Small>Three fields become reviewed graph changes. New edges need a second incident to count in full.</Small>
         </Tile>
@@ -221,7 +220,7 @@ function Bento({ r }: { r: Results | null }) {
           <Small>Any tool that can POST a webhook. CLI, HTTP API and an MCP server included.</Small>
         </Tile>
         <Tile title="No LLM in the hot path"><Small>Verdicts are graph math. A model can help import old postmortems; it proposes, the graph decides, you approve.</Small></Tile>
-        <Tile title="Open source core"><Small>Self-host the engine with Docker Compose, or let us run it on HydraDB for you.</Small><a className="mono" href={GITHUB} style={{ fontSize: 13, color: "var(--accent-text)" }}>github.com/redcode333/GhostWalk</a></Tile>
+        <Tile title="Open source core"><Small>Self-host the engine with Docker Compose, or let us run it on HydraDB for you.</Small><a className="mono" href={GITHUB} style={{ fontSize: 13, color: "var(--accent-text)", textDecoration: "underline", textUnderlineOffset: 3 }}>github.com/redcode333/GhostWalk</a></Tile>
       </div>
       <Architecture />
     </Section>
@@ -261,17 +260,17 @@ function Mcp({ d }: { d: Demo | null }) {
   return (
     <Section id="mcp">
       <div style={{ display: "flex", flexWrap: "wrap", gap: 40, alignItems: "center" }}>
-        <div style={{ flex: "1 1 460px", display: "flex", flexDirection: "column", gap: 18 }}>
+        <div style={{ flex: "1 1 min(460px, 100%)", minWidth: 0, display: "flex", flexDirection: "column", gap: 18 }}>
           <span className="mono" style={{ alignSelf: "flex-start", border: "1px solid var(--accent)", color: "var(--accent-text)", borderRadius: 999, padding: "3px 12px", fontSize: 12 }}>MCP server · beta</span>
           <h2 style={{ margin: 0, fontSize: "clamp(30px, 4.4vw, 48px)", lineHeight: 1.08, letterSpacing: "-0.03em", fontWeight: 600 }}>Ask why from Claude, Cursor or any MCP client.</h2>
           <p style={{ margin: 0, fontSize: 18, color: "var(--text-3)" }}>GhostWalk ships an MCP server, so your AI assistant gets the verdict from the graph instead of guessing from logs. The model asks; the graph answers.</p>
           <code className="mono" style={{ fontSize: 13, background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px", overflowX: "auto", whiteSpace: "nowrap" }}>claude mcp add ghostwalk -- gw mcp</code>
           <pre className="mono" style={{ margin: 0, fontSize: 12.5, background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px", overflowX: "auto" }}>{`{"mcpServers":{"ghostwalk":{"command":"gw","args":["mcp"]}}}`}</pre>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 10 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(200px, 100%), 1fr))", gap: 10 }}>
             {tools.map(([t, x]) => <div key={t} className="card" style={{ padding: "12px 14px", borderRadius: 14 }}><div className="mono" style={{ fontSize: 14, color: "var(--accent-text)" }}>{t}</div><div style={{ fontSize: 13, color: "var(--text-3)", marginTop: 2 }}>{x}</div></div>)}
           </div>
         </div>
-        <div className="card" style={{ flex: "1 1 420px", padding: 20, display: "flex", flexDirection: "column", gap: 12, minHeight: 360 }} aria-label="Example conversation">
+        <div className="card" style={{ flex: "1 1 min(420px, 100%)", padding: 20, display: "flex", flexDirection: "column", gap: 12, minHeight: 360 }} aria-label="Example conversation">
           <div className="fade-line" style={{ alignSelf: "flex-end", maxWidth: "85%", background: "var(--muted)", borderRadius: 14, padding: "10px 14px", fontSize: 15, animationDelay: ".2s" }}>checkout is throwing 5xx. What broke?</div>
           <div className="fade-line mono" style={{ alignSelf: "flex-start", border: "1px dashed var(--accent)", color: "var(--accent-text)", borderRadius: 999, padding: "4px 12px", fontSize: 12, animationDelay: "1.1s" }}>
             ghostwalk.why · {d ? `${d.alerts} alerts · ${d.ms < 10 ? d.ms.toFixed(1) : Math.round(d.ms)} ms` : "…"}</div>
@@ -330,7 +329,7 @@ function SearchVsWalk({ r, d }: { r: Results | null; d: Demo | null }) {
     <div style={{ marginTop: 64 }}>
       <h3 style={{ textAlign: "center", fontSize: 26, margin: "0 0 6px" }}>Search vs walk</h3>
       <p style={{ textAlign: "center", color: "var(--text-3)", margin: "0 0 20px" }}>A first-time cause. Searching old postmortems finds nothing like it; the graph gets there through the dependency it learned.</p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(340px, 100%), 1fr))", gap: 16 }}>
         <div className="card" style={{ background: "#0F0F16", overflow: "hidden", borderRadius: 18 }}><Terminal title="Search old postmortems" lines={left} />{foot(tf, (o?.retrieval as any)?.verdict_ms_p95, tok?.retrieval)}</div>
         <div className="card" style={{ background: "#0F0F16", overflow: "hidden", borderRadius: 18 }}><Terminal title="gw why" lines={right} />{foot(gw, (o?.ghostwalk as any)?.verdict_ms_p95, tok?.ghostwalk)}</div>
       </div>
@@ -371,7 +370,7 @@ function How({ r, d }: { r: Results | null; d: Demo | null }) {
     <Section id="how">
       <H2 sub="No agents to install, no telemetry pipeline to rebuild. A map, your alerts, and one webhook.">From clone to first verdict in three commands</H2>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 32, alignItems: "stretch" }}>
-        <ol style={{ flex: "1 1 360px", margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 28 }}>
+        <ol style={{ flex: "1 1 min(360px, 100%)", margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 28 }}>
           {[["01", "Start it", "HydraDB, the API and the dashboard come up together.", "docker compose up -d"],
             ["02", "Load your map", "A service catalog, even a partial one. Missing edges get learned.", "gw map import services.yaml"],
             ["03", "Ask why", "From the CLI, the API, or automatically on every alert webhook.", "gw why --alerts alerts.json"]].map(([n, t, x, c]) => (
@@ -381,13 +380,13 @@ function How({ r, d }: { r: Results | null; d: Demo | null }) {
             </li>))}
           <li style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", fontSize: 14, color: "var(--text-4)" }}>Alerts from <Pill>Alertmanager</Pill><Pill>Grafana</Pill><Pill>PagerDuty</Pill><Pill>Datadog</Pill> or any webhook</li>
         </ol>
-        <div style={{ flex: "1 1 480px" }}><Terminal title="~/acme · zsh" lines={TERM} loop /></div>
+        <div style={{ flex: "1 1 min(480px, 100%)" }}><Terminal title="~/acme · zsh" lines={TERM} loop /></div>
       </div>
       <SearchVsWalk r={r} d={d} />
       <StoreTable r={r} />
       <div style={{ marginTop: 56 }}>
         {strip.length > 0 ? (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(220px, 100%), 1fr))", gap: 16 }}>
             {strip.map((t) => (
               <div key={t.label} style={{ borderTop: "1px solid var(--line)", paddingTop: 16 }}>
                 <div className="mono" style={{ fontSize: 40, fontWeight: 600, letterSpacing: "-0.02em" }}>{t.value}</div>
@@ -415,8 +414,8 @@ function Pricing() {
   return (
     <Section id="pricing">
       <H2 sub="Priced by the size of your service graph, not your headcount. Everyone on call gets a seat.">Simple pricing. No per-seat tax.</H2>
-      <p style={{ textAlign: "center", marginTop: -28 }}><Pill>Draft pricing</Pill></p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(290px, 1fr))", gap: 16 }}>
+      <p style={{ textAlign: "center", margin: "-16px 0 28px" }}><Pill>Draft pricing</Pill></p>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(290px, 100%), 1fr))", gap: 16 }}>
         {plans.map((p) => (
           <div key={p.n} className="card" style={{ padding: 28, display: "flex", flexDirection: "column", gap: 14, borderColor: p.hot ? "var(--accent)" : undefined }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}><h3 style={{ margin: 0, fontSize: 22 }}>{p.n}</h3>{p.hot && <span style={{ fontSize: 12, color: "var(--accent-text)", border: "1px solid var(--accent)", borderRadius: 999, padding: "1px 10px" }}>Most popular</span>}</div>
@@ -448,12 +447,12 @@ function Faq() {
   return (
     <Section id="faq">
       <div style={{ display: "flex", flexWrap: "wrap", gap: 48 }}>
-        <div style={{ flex: "1 1 280px" }}>
+        <div style={{ flex: "1 1 min(280px, 100%)" }}>
           <h2 style={{ margin: 0, fontSize: "clamp(30px, 4vw, 44px)", letterSpacing: "-0.03em", fontWeight: 600, lineHeight: 1.1 }}>Frequently asked questions</h2>
           <p style={{ color: "var(--text-3)", fontSize: 17 }}>Something else on your mind? We answer within a working day.</p>
           <Btn href="mailto:support@ghostwalk.dev" variant="glass">Contact support</Btn>
         </div>
-        <div style={{ flex: "2 1 460px", display: "flex", flexDirection: "column" }}>
+        <div style={{ flex: "2 1 min(460px, 100%)", display: "flex", flexDirection: "column" }}>
           {FAQ.map(([q, a], i) => (
             <details key={q} style={{ borderTop: i ? "1px solid var(--line)" : undefined, padding: "18px 4px" }}>
               <summary style={{ cursor: "pointer", fontSize: 18, fontWeight: 500, listStyle: "none", display: "flex", justifyContent: "space-between", gap: 12 }}>{q}<span aria-hidden="true" style={{ color: "var(--text-4)" }}>+</span></summary>
@@ -467,13 +466,13 @@ function Faq() {
 
 function Footer() {
   const col = (t: string, links: [string, string][]) => (
-    <nav aria-label={t} style={{ flex: "1 1 140px", display: "flex", flexDirection: "column", gap: 10 }}>
+    <nav aria-label={t} style={{ flex: "1 1 min(140px, 100%)", display: "flex", flexDirection: "column", gap: 10 }}>
       <span style={{ fontSize: 14, color: "var(--text-4)" }}>{t}</span>{links.map(([l, h]) => <a key={l} href={h} style={{ fontSize: 15 }}>{l}</a>)}
     </nav>)
   return (
     <footer style={{ marginTop: 96, borderTop: "1px solid var(--line)" }}>
       <div style={{ maxWidth: 1240, margin: "0 auto", padding: "56px 24px 40px", display: "flex", flexWrap: "wrap", gap: 48 }}>
-        <div style={{ flex: "2 1 260px", display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ flex: "2 1 min(260px, 100%)", display: "flex", flexDirection: "column", gap: 12 }}>
           <span className="mono" style={{ fontSize: 24, fontWeight: 600 }}>ghost<span style={{ color: "var(--accent)" }}>walk</span></span>
           <p style={{ margin: 0, color: "var(--text-4)", maxWidth: 280 }}>Root cause analysis that learns the dependencies nobody drew.</p>
         </div>
@@ -500,7 +499,7 @@ export default function Landing() {
       <div id="outages" style={{ marginTop: 40, scrollMarginTop: 90 }}>{ready && <OutageGlobe />}</div>
       <InsideGhostWalk />
       <Story />
-      <Bento r={r} />
+      <Bento r={r} d={d} />
       <Mcp d={d} />
       <How r={r} d={d} />
       <Pricing />

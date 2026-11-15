@@ -4,7 +4,7 @@
 :root {
   --bg: #F4F2EC; --surface: #FFFFFF; --surface-2: #FAF9F6; --muted: #EFEDE7;
   --ink: #0D0D10; --text-2: #2A2A30; --text-3: #55555C; --text-4: #66666E;
-  --accent: #6A4BFF; --accent-text: #5536F0; --amber: #D99614;
+  --accent: #6A4BFF; --accent-text: #5536F0; --amber: #D99614; --amber-text: #8A5A00;
   --line: rgba(13, 13, 16, .08); --lrgb: 13, 13, 16;
   --g-edge: #3D7DFF; --g-service: #12B5A0; --g-data: #E2549A; --g-infra: #7FB800;
   --ok: #12B5A0;
@@ -12,7 +12,7 @@
 .dark {
   --bg: #09090E; --surface: #13131B; --surface-2: #0F0F16; --muted: #1D1D27;
   --ink: #F6F5F1; --text-2: #DAD9E2; --text-3: #A6A5B1; --text-4: #8F8E9A;
-  --accent: #8E76FF; --accent-text: #AC9BFF; --amber: #F5B83F;
+  --accent: #8E76FF; --accent-text: #AC9BFF; --amber: #F5B83F; --amber-text: #F5B83F;
   --line: rgba(255, 255, 255, .08); --lrgb: 255, 255, 255;
 }
 
@@ -87,3 +87,5 @@ a { color: inherit; text-decoration: none; }
   .inside-grid { grid-template-columns: 1fr !important; }
 }
 @media (max-width: 720px) { .hide-sm { display: none; } .bento-grid > * { grid-column: auto !important; } }
+
+p a, li a, .prose a { text-decoration: underline; text-underline-offset: 3px; }

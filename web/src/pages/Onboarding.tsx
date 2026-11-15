@@ -65,7 +65,7 @@ export default function Onboarding() {
         </div>
         {o && <span className="mono" style={{ marginLeft: "auto", fontSize: 13, color: "var(--text-4)" }}>Free plan · {o.summary.services} of 25 services</span>}
       </div>
-      <ol style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
+      <ol style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(180px, 100%), 1fr))", gap: 8 }}>
         {steps.map((s, i) => {
           const n = i + 1, done = n < step, on = n === step
           return (
@@ -84,7 +84,7 @@ export default function Onboarding() {
         </div>)}
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-start" }}>
-        <section aria-labelledby="map-h" className="card" style={{ flex: "3 1 560px", minWidth: 0 }}>
+        <section aria-labelledby="map-h" className="card" style={{ flex: "3 1 min(560px, 100%)", minWidth: 0 }}>
           {!prop ? (
             <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 12 }}>
               <h2 id="map-h" style={{ margin: 0, fontSize: 17 }}>Connect GitHub</h2>
@@ -132,7 +132,7 @@ export default function Onboarding() {
           )}
         </section>
 
-        <aside style={{ flex: "2 1 320px", minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
+        <aside style={{ flex: "2 1 min(320px, 100%)", minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
           <section aria-labelledby="al-h" className="card" style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}><span className="mono" style={{ fontSize: 12, color: "var(--text-4)" }}>Next</span><h2 id="al-h" style={{ margin: 0, fontSize: 16 }}>Send alerts</h2></div>
             <div role="tablist" aria-label="Alert source" style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
