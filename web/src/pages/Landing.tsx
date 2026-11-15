@@ -63,7 +63,7 @@ function Hero() {
       </p>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "center", marginTop: 32 }}>
         <Btn to="/signup">Start free</Btn>
-        <Btn to="/app/incidents" variant="glass">Watch a live outage <ArrowRight size={16} /></Btn>
+        <Btn to="/demo" variant="glass">Watch a live outage <ArrowRight size={16} /></Btn>
       </div>
       <p className="mono" style={{ margin: "20px 0 0", fontSize: 13, color: "var(--text-4)" }}>Free for 25 services · No card needed · docker compose up</p>
     </div>

@@ -1,0 +1,58 @@
+# GhostWalk, production: hydradb (pinned) + api + caddy (HTTPS). Run on a Linux VM with >= 4 GB RAM:  ./deploy/setup.sh
+# The frontend is deployed separately (Vercel) and talks to https://$API_DOMAIN.
+name: ghostwalk-prod
+services:
+  hydradb:
+    image: ghcr.io/hydra-db/hydradb@sha256:ab71d651fefee13ebb23eb56d72316065bdca563ff7587442e07be663f2bf880   # = ghcr.io/hydra-db/hydradb:0.4.0
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c", "mkdir -p /var/cache/slatedb/store /var/cache/slatedb/cache && echo \"$HYDRA_TOKEN\" > /tmp/graph/auth-token && exec graph-node"]
+    environment:
+      CLOUD_PROVIDER: local
+      LOCAL_PATH: /var/cache/slatedb/store
+      GRAPH_NAMESPACE: default
+      GRAPH_ID: default
+      GRAPH_CELL_ID: cell-0
+      GRAPH_CELLS: cell-0
+      GRAPH_NODE_ID: node-0
+      GRAPH_BOLT_NODE_ADDRESSES: node-0=hydradb:7687
+      GRAPH_ADVERTISED_BOLT_ADDR: hydradb:7687
+      GRAPH_DATA_CACHE_DIR: /var/cache/slatedb/cache
+      GRAPH_AUTH_TOKEN_FILE: /tmp/graph/auth-token
+      GRAPH_ALLOW_PLAINTEXT: "true"
+      RUST_MIN_STACK: "33554432"
+      GRAPH_USAGE_REPORT_ENABLED: "false"
+      HYDRA_TOKEN: ${HYDRA_TOKEN:?run setup.sh}
+    # no published ports: only the api container reaches HydraDB, on the compose network
+    volumes: ["hydradb-data:/var/cache/slatedb"]
+    healthcheck: {test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9090"], interval: 3s, timeout: 3s, retries: 60}
+    deploy: {resources: {limits: {memory: 2g}}}
+
+  api:
+    build: {context: .., dockerfile: Dockerfile}
+    restart: unless-stopped
+    depends_on: {hydradb: {condition: service_healthy}}
+    environment:
+      AUTH_MODE: none
+      GW_STORE: hydradb
+      HYDRA_URL: http://hydradb:8443
+      HYDRA_READY: http://hydradb:9090/readyz
+      HYDRA_TOKEN: ${HYDRA_TOKEN:?run setup.sh}
+      GW_PUBLIC_DEMO: "1"                       # sandbox: settings / onboarding / webhooks are read-only, everything else works, rebuilt at 03:00 UTC
+      GW_ADMIN_TOKEN: ${GW_ADMIN_TOKEN:?run setup.sh}
+      GW_RATE_LIMIT: ${GW_RATE_LIMIT:-60/60}    # requests per window (seconds) per client, on /v1/* and on POSTs
+      GW_CORS_ORIGINS: ${GW_CORS_ORIGINS:-}     # the Vercel origin(s), comma separated
+      GW_PUBLIC_URL: https://${API_DOMAIN:?run setup.sh}
+      GW_DEMO_INCIDENTS: "30"
+    volumes: ["gw-data:/data"]
+    healthcheck: {test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4).status == 200 else 1)"], interval: 10s, timeout: 6s, retries: 12, start_period: 60s}
+    deploy: {resources: {limits: {memory: 1g}}}
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: {api: {condition: service_healthy}}
+    ports: ["80:80", "443:443"]
+    environment: {API_DOMAIN: "${API_DOMAIN:?run setup.sh}"}
+    volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro", "caddy-data:/data", "caddy-config:/config"]
+
+volumes: {hydradb-data: {}, gw-data: {}, caddy-data: {}, caddy-config: {}}

@@ -1,0 +1,34 @@
+name: deploy
+# Backend: on a push to main that touches the API, SSH to the VM, pull, rebuild, smoke test.
+# Frontend: Vercel builds web/ from the same push (Git integration) with VITE_API_URL set in the Vercel project.
+# Needs repository secrets: VM_HOST, VM_USER, VM_SSH_KEY (private key of a deploy user that can run docker).
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ["ghostwalk/**", "gwsim/**", "baselines/**", "eval/**", "results.json", "Dockerfile", "deploy/**", "pyproject.toml"]
+concurrency: {group: deploy, cancel-in-progress: false}
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install -e . pytest
+      # the HydraDB tests (parity, memory, async learning) need a node and run locally; everything else runs here
+      - run: pytest -q -k "not parity and not test_memory and not test_async_learning"
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: update the VM and smoke test
+        env:
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
+          VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
+        run: |
+          set -euo pipefail
+          install -m 600 /dev/null key
+          printf '%s\n' "$VM_SSH_KEY" > key
+          ssh -i key -o StrictHostKeyChecking=accept-new "$VM_USER@$VM_HOST" 'cd GhostWalk && ./deploy/setup.sh update'

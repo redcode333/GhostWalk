@@ -1,3 +1,4 @@
+import { apiUrl } from "./api"
 // Types and derivations for results.json. Every number the site shows about accuracy comes through here;
 // nothing is hard-coded, and a missing field yields no tile instead of an invented value.
 export type CI = { point: number; ci95: [number, number] }
@@ -80,7 +81,7 @@ export const METHOD_LABEL: Record<string, string> = {
 
 export async function loadResults(): Promise<Results | null> {
   try {
-    const r = await fetch("/api/proof")
+    const r = await fetch(apiUrl("/api/proof"))
     return r.ok ? ((await r.json()) as Results) : null
   } catch {
     return null

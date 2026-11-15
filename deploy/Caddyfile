@@ -1,0 +1,13 @@
+# HTTPS for the API. Caddy gets and renews the certificate by itself (Let's Encrypt); API_DOMAIN is a domain or <vm-ip>.sslip.io.
+{$API_DOMAIN} {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		-Server
+	}
+	# the API trusts X-Forwarded-For from here for its rate limit
+	reverse_proxy api:8000 {
+		header_up X-Forwarded-For {remote_host}
+	}
+}

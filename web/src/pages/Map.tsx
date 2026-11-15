@@ -1,3 +1,4 @@
+import { apiUrl } from "@/lib/api"
 import { useMemo, useState } from "react"
 import { api } from "@/lib/api"
 import { Btn, Err, Muted, useLoad } from "@/components/common"
@@ -29,7 +30,7 @@ export default function MapPage() {
     <Page>
       <H1 title="Dependency map" sub={`${m.nodes.length} services · ${m.official} official edges · ${m.learned.length} learned`}
         right={<div style={{ display: "flex", gap: 8 }}>
-          <a className="btn btn-glass" href="/api/map/export" download="ghostwalk-graph.json">Export graph</a>
+          <a className="btn btn-glass" href={apiUrl("/api/map/export")} download="ghostwalk-graph.json">Export graph</a>
           <Btn to="/app/learn">Review queue</Btn></div>} />
       <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-start" }}>
         <section className="card" style={{ flex: "3 1 min(560px, 100%)", minWidth: 0, padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>

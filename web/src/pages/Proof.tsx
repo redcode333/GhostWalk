@@ -1,3 +1,4 @@
+import { apiUrl } from "@/lib/api"
 import { loadResults, METHOD_LABEL, ms, pct, proofStrip, pts, type CI, type Results } from "@/lib/results"
 import { Err, Muted, useLoad } from "@/components/common"
 import { H1, Page } from "@/components/AppShell"
@@ -87,7 +88,7 @@ export default function Proof() {
   return (
     <Page>
       <H1 title="Proof" sub={`Held-out ${r.meta.split} split: ${r.meta.companies} companies, ${r.meta.incidents.toLocaleString()} incidents. 95% bootstrap intervals.`}
-        right={<a className="btn btn-glass" href="/results.json" download>Download results.json</a>} />
+        right={<a className="btn btn-glass" href={apiUrl("/results.json")} download>Download results.json</a>} />
       <p style={{ margin: 0, padding: "14px 18px", border: "1px solid var(--accent)", borderRadius: 14, fontSize: 17, fontWeight: 500, background: "rgba(var(--lrgb), .03)" }}>
         Evaluated on {r.meta.companies} held-out companies never used for development or tuning; learning starts from zero at each company.
       </p>

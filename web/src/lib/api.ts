@@ -1,3 +1,7 @@
+/** Where the API lives: empty when the page and the API share an origin (the container, the dev proxy), https://<api-domain> on Vercel (VITE_API_URL). */
+export const API_BASE: string = ((import.meta as any).env?.VITE_API_URL ?? "").replace(/\/$/, "")
+export const apiUrl = (p: string) => (p.startsWith("/") ? API_BASE + p : p)
+
 export async function api<T = any>(path: string, init?: RequestInit & { json?: unknown }): Promise<T> {
   const headers: Record<string, string> = { ...(init?.headers as Record<string, string>) }
   let body = init?.body
@@ -5,7 +9,7 @@ export async function api<T = any>(path: string, init?: RequestInit & { json?: u
   const tok = (window as any).__gwToken?.()
   const t = tok ? await tok : null
   if (t) headers.authorization = `Bearer ${t}`
-  const r = await fetch(path, { ...init, headers, body })
+  const r = await fetch(apiUrl(path), { ...init, headers, body })
   if (!r.ok) {
     let msg = r.statusText
     try { const j = await r.json(); msg = typeof j.detail === "string" ? j.detail : JSON.stringify(j.detail) } catch { /* keep statusText */ }

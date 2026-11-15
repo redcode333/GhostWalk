@@ -19,6 +19,7 @@ createRoot(document.getElementById("root")!).render(
       <AuthProvider>
         <Routes>
           <Route path="/" element={<Landing />} />
+          <Route path="/demo" element={<Navigate to="/app/incidents" replace />} />
           <Route path="/signin/*" element={<SignInPage />} />
           <Route path="/signup/*" element={<SignUpPage />} />
           <Route path="/app" element={<RequireAuth><AppShell /></RequireAuth>}>
