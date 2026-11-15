@@ -2,6 +2,18 @@
 
 Root cause analysis that learns the dependencies nobody drew.
 
+<!-- proof:begin -->
+**Evaluated on 30 held-out companies never used for development or tuning; learning starts from zero at each company.**
+
+**Replace graph traversal and it fails: key-value (1 hop) −13.5 pts, vector search −37.6 pts** (top-1 accuracy, HydraDB as the reference;
+95% CIs −16.7 to −10.3 and −42.4 to −32.7). GhostWalk gets 76.4% against 38.8% for vector search over postmortem text.
+
+A relational database with recursive queries matches accuracy (+0.0 pts), as expected: the gain comes from multi-hop graph walks, not from which product stores the graph.
+We use HydraDB for its native weighted path algorithms. In our latency measurements Postgres is faster, not slower (see [graph vs SQL](docs/graph-vs-sql.md)).
+
+![GhostWalk proof card](docs/proof-card.png)
+<!-- proof:end -->
+
 ```
 make data          # regenerate the simulated dev/test companies (data/ is gitignored)
 make eval-quick    # DEV split, ~2 min: PageRank tuning + every headline number -> dev_results.json
@@ -45,7 +57,7 @@ Local mode reads the map saved by `gw` (`GW_HOME`, default `./.gw`). Hosted mode
 
 ## Engineering
 
-All numbers below are in `results.json` (TEST split, commit `f8bf9a8`). Tuning happens on DEV only; TEST is run once at the end.
+All numbers below are in `results.json` (TEST split, commit `c116282`). Tuning happens on DEV only; TEST is run once at the end.
 
 ### Change evidence (`--use-changes`)
 The simulator now emits "what changed recently" events per incident. The true root had a deploy or config change in the 30 minutes before the
@@ -54,14 +66,14 @@ by up to ±10 minutes. Change events use their own random stream, so every other
 they existed (tested). The engine adds `GAMMA * exp(-minutes_before_first_alert / TAU)` to a candidate's log score. `GAMMA ∈ {0, .25, .5, 1}` and
 `TAU ∈ {5, 15, 30}` were searched on DEV only (`eval/tune_changes.py`); the optimum (GAMMA 1, TAU 30) sits on the corner of the grid.
 
-At the defaults (`p_root` 0.5, `r_noise` 2) AC@1 goes 0.766 → 0.783, a gain of **+1.7 pts (95% CI +1.0 to +2.4, paired)**.
+At the defaults (`p_root` 0.5, `r_noise` 2) AC@1 goes 0.764 → 0.782, a gain of **+1.7 pts (95% CI +1.1 to +2.4, paired)**.
 The DEV gain was larger (+2.8 pts), so some of it was fitted. Sensitivity of the gain, in AC@1 points (`*` = 95% CI includes 0):
 
 | root has a change \ distractors per incident | 0.5 | 2 | 5 |
 |---|---|---|---|
 | 20% | +0.8 (+0.3 to +1.3) | +0.4 (-0.0 to +0.9) * | +0.2 (-0.3 to +0.7) * |
-| 50% | +1.9 (+1.2 to +2.7) | +1.7 (+1.0 to +2.4) | +1.1 (+0.4 to +1.7) |
-| 80% | +3.4 (+2.5 to +4.3) | +3.2 (+2.4 to +4.1) | +2.6 (+2.0 to +3.2) |
+| 50% | +1.9 (+1.2 to +2.7) | +1.7 (+1.1 to +2.4) | +1.1 (+0.5 to +1.7) |
+| 80% | +3.4 (+2.6 to +4.3) | +3.3 (+2.4 to +4.2) | +2.7 (+2.1 to +3.3) |
 
 **helps only when the root's own change is common: reliable gain (95% CI above 0) for p_root in [0.5, 0.8]; at p_root=0.2 the gain is +0.4 pts with a CI that includes 0. Distractor noise up to r_noise=5 does not remove it at p_root=0.5.** The gain does not vanish at `r_noise` 5 when `p_root` is 0.5, but it is within noise at `p_root` 0.2 with the default noise.
 Change evidence is a small, conditional gain. It is off by default and is not on the landing page.
@@ -91,8 +103,8 @@ Example comment (snapshot-tested): `+ fraud-check → config-svc · new dependen
 
 ### Numbers for "Search vs walk"
 - LLM tokens per verdict: ghostwalk **0**, TF-IDF **0** (neither calls a model). No LLM baseline was run, so there is no number for one.
-- Verdict latency, in-memory: p50 0.3 ms, p95 1.6 ms. Via HydraDB: **not measured** (no node has answered; the adapter's response parser is still a stub).
-- Novel vs repeat incidents AC@1: ghostwalk 0.707 novel / 0.845 repeat, learning off 0.689 / 0.666, TF-IDF 0.214 / 0.692.
+- Verdict latency, in-memory: p50 0.2 ms, p95 0.8 ms. Via HydraDB: **not measured** (no node has answered; the adapter's response parser is still a stub).
+- Novel vs repeat incidents AC@1: ghostwalk 0.704 novel / 0.845 repeat, learning off 0.686 / 0.662, TF-IDF 0.214 / 0.692.
 
 ### Agent benchmark (stretch): not run
 It needs an LLM API key and spend, and none is configured here, so there is no result and nothing is claimed about it.
@@ -110,8 +122,9 @@ same tier mix as the benchmark, and writes the `latency` section of `results.jso
 Both gates are met without a rewrite: p95 at 1,000 services is under 100 ms, and p95 at 5,000 services is under 250 ms, so there is **no Rust port** and
 no `ghostwalk-fast` wheel. The hygiene that did it: adjacency built once per graph revision and cached (invalidated by every learner write), a per-verdict
 memo, hoisted constants, and a candidate loop that visits only the services a candidate can reach. A parity test keeps the old `walk()` as a reference and
-checks that every incident of every dev and TEST company ranks the same (scores equal to 1e-9) through the whole learning loop, allowing exact ties to reorder. One TEST
-incident of 1,800 did reorder a tie after the change (see the HydraDB section), so the headline table and the store swap differ by that one incident. Profiling also showed the limited Bellman-Ford was only about 15% of a 5,000-service verdict, so porting just that function
+checks that every incident of every dev and TEST company ranks the same (scores equal to 1e-9) through the whole learning loop, allowing exact ties to reorder. The loop change did
+reorder exact ties (the top-1 count moved 1379 to 1380), so ties are now broken deterministically (equal to 9 decimals, then lowest component id), the TEST run was repeated once
+with that final engine, and every table in `results.json` comes from it (see the accuracy history in the HydraDB section). Profiling also showed the limited Bellman-Ford was only about 15% of a 5,000-service verdict, so porting just that function
 would not have met the 250 ms line anyway.
 
 Not done at scale: HydraDB-backed latency on the 100/1,000/5,000-service graphs (its latency on the TEST companies is in the HydraDB section), and UNWIND batching of HydraDB path queries, which this HydraDB version does not allow for edge writes (no batch shape writes edge properties).
@@ -119,25 +132,42 @@ Path costs (-ln w) were already stored with w on every HydraDB write, and result
 
 ## HydraDB (live)
 GhostWalk runs against HydraDB's own published image, `ghcr.io/hydra-db/hydradb:0.4.0` (the one `charts/hydradb` references): `docker compose up -d hydradb`.
-`ghostwalk/graph/hydra.py` is written against the dialect in `USING-HYDRADB.md` and checked on a live node. What differs from a naive Cypher port:
-edgeless nodes need the node batch (`UNWIND ... MERGE (n {id: row.id}) SET n:Label, ...`, values must be row fields), writes accept only one-hop edge patterns,
-`MERGE` cannot be followed by another clause so weight changes are `MATCH ... SET`, there is no batch shape that writes edge properties (so each edge is one request),
-and `algo.SPpaths` minimises `weightProp` while `costProp` is only the cost it reports (both are `-ln w`). `RETURN 1 AS x` is not valid in this engine; the saved probe
-(`tests/fixtures/hydra_probe.json`) is the documented MERGE/MATCH smoke test, and the parser has offline tests against the real responses.
+(If you restart the container, remove its volume first, `docker compose down hydradb -v`: a restarted node rejects writes whose request ids it has seen.)
+`ghostwalk/graph/hydra.py` is written against the dialect in `USING-HYDRADB.md` and checked on a live node: edgeless nodes need the node batch, writes accept only one-hop
+edge patterns, `MERGE` cannot be followed by another clause so weight changes are `MATCH ... SET`, no batch shape writes edge properties (each edge is one request, about
+65 ms), results are **paginated** (default 1,024 rows; the adapter follows `next_cursor` to the end), `algo.SPpaths` minimises `weightProp` while `costProp` is only
+the cost it reports, and `algo.MSpaths` selects by a property shared across companies, so each node carries a per-company `key`.
 
-- **Parity:** the 6 HydraDB-vs-in-memory tests pass (identical rankings, scores within 1e-9, identical final graph state, path costs equal to the in-memory best path).
-- **Latency (verdict = read the graph back + walk, loopback docker node, all 1,800 TEST incidents):** p50 297 ms, p95 356 ms,
-  against 0.2 / 0.8 ms in-memory. It is dominated by reading the whole graph back (5 queries per verdict, 15 to 40 ms each).
-  Each write costs about 65 ms, so loading and learning are slow: the HydraDB leg of the store swap took 27 minutes. HydraDB was not run in the 1,000/5,000-service scale benchmark.
+- **Parity:** the HydraDB-vs-in-memory tests (`tests/test_parity.py`, 8) check identical rankings and scores, identical final graph state, path costs equal to the in-memory best path,
+  the cache re-reading only when the revision changes, and in-DB verdicts matching in-memory rankings.
+- **Three read modes** (3 DEV companies, 180 verdicts; latency only), p50 / p95 ms: cold (read the graph back) 289 / 328;
+  cached by revision, hit 55 / 64 (a hit is a graph unchanged since the last verdict) and miss 346 / 379
+  (every incident in the online loop is a miss: each follows a learner write); in-DB (two `MSpaths` requests, no edge read) 400 / 510.
+  In-DB rankings matched the in-memory engine in 180/180 verdicts.
+- **Path queries at scale** (synthetic graphs, same generator; p50 / p95 ms; both stores return the exact same cost every time; one machine, loopback docker):
+
+| services | HydraDB 3 hops | Postgres 3 hops | HydraDB 5 hops | Postgres 5 hops | whole verdict p50: HydraDB read / in-DB / Postgres |
+|---|---|---|---|---|---|
+| 100 | 48 / 51 | 0.9 / 1.5 | 48 / 53 | 0.7 / 1.5 | 265 / 466 / 4.0 |
+| 1000 | 48 / 52 | 0.8 / 1.8 | 49 / 52 | 0.8 / 1.8 | 681 / 1666 / 34 |
+| 5000 | 49 / 60 | 0.8 / 2.1 | 51 / 56 | 0.7 / 1.1 | 4235 / 102605 / 221 |
+
+  **Postgres keeps up and is faster at every size** (about 1 ms vs about 50 ms per path; no CTE blow-up at 5 hops on these graphs). Pushing the whole verdict into HydraDB is slower than reading
+  the graph back, and at 5,000 services `MSpaths` needs several requests to stay under its 64 MB response buffer. HydraDB's role here is native weighted path algorithms, not speed or accuracy.
+  Side-by-side queries and round trips: [docs/graph-vs-sql.md](docs/graph-vs-sql.md).
 
 Store swap on the TEST split, run once, same incidents, ΔAC@1 against HydraDB:
 
-| store | AC@1 | ΔAC@1 vs HydraDB (95% CI, pts) | p50 | p95 |
+| store | AC@1 | ΔAC@1 (95% CI, pts) | p50 | p95 |
 |---|---|---|---|---|
-| HydraDB v0.4.0 (published image) | 0.767 | reference | 297.2 ms | 356.0 ms |
-| Postgres recursive CTE | 0.767 | +0.0 (+0.0 to +0.0) | 17.5 ms | 71.8 ms |
-| Key-value, 1 hop (Redis) | 0.632 | -13.4 (-16.7 to -10.3) | 41.8 ms | 62.6 ms |
-| pgvector nearest postmortem | 0.388 | -37.9 (-42.7 to -32.9) | 44.4 ms | 48.3 ms |
-| In-memory graph | 0.767 | +0.0 (+0.0 to +0.0) | 0.2 ms | 0.8 ms |
+| HydraDB v0.4.0 (published image) | 0.764 | reference | 341.8 ms | 388.4 ms |
+| Postgres recursive CTE | 0.764 | +0.0 (+0.0 to +0.0) | 13.9 ms | 44.9 ms |
+| Key-value, 1 hop (Redis) | 0.629 | −13.5 (−16.7 to −10.3) | 40.7 ms | 61.0 ms |
+| pgvector nearest postmortem | 0.388 | −37.6 (−42.4 to −32.7) | 44.3 ms | 48.5 ms |
+| In-memory graph | 0.764 | +0.0 (+0.0 to +0.0) | 0.2 ms | 0.8 ms |
 
-The store-swap runs use the current engine (after the walk-loop optimisation); the headline methods table was produced by the engine before it (commit f8bf9a8). They differ by one incident of 1,800 on the in-memory graph (1380 vs 1379 top-1 hits, 0.7667 vs 0.7661): the optimised loop sums floats in a different order, which re-ordered an exact tie. HydraDB, in-memory and Postgres-CTE agree with each other exactly. TEST was not re-run for the headline table, by instruction.
+- **Accuracy history on TEST (top-1 hits of 1,800):**
+  - before the walk-loop optimisation (commit f8bf9a8): 1379/1800 top-1 hits (0.7661)
+  - after the optimisation: tied scores ordered by float summation order (store-swap run, commit 3c43bab): 1380/1800 top-1 hits (0.7667)
+  - final: deterministic tie-break (scores equal to 9 decimals, then lowest component id): 1376/1800 top-1 hits (0.7644)
+  Every table in `results.json` now comes from the final engine.
