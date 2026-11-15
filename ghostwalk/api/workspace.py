@@ -3,6 +3,10 @@
 The graph is the in-memory GraphState (the same object the evaluation uses). The demo workspace is the simulated
 company `acme-demo` (80 services); accepting an onboarding map replaces it with the accepted edges.
 State is saved to a JSON file after every change, so a restart keeps the learned graph.
+
+GW_STORE=hydradb: HydraDB holds the graph AND the learner's memory (incidents, alerts, postmortems, lessons). Every learner write goes to HydraDB
+first (hydra.apply), the in-memory GraphState is a cache that is rebuilt from HydraDB whenever its revision differs, and a restarted process
+re-attaches to HydraDB and reads the learned graph back (the state file is not needed for it).
 """
 from __future__ import annotations
 import json, math, os, pathlib, random, secrets, threading, time
@@ -21,8 +25,16 @@ def ui_kind(c):
 
 
 class Workspace:
-    def __init__(self, state_path=None, demo_incidents=30, seed=7777, demo=True, use_changes=None):
+    def __init__(self, state_path=None, demo_incidents=30, seed=7777, demo=True, use_changes=None, store=None, hydra=None):
         self.lock = threading.RLock()
+        self.store = store or os.environ.get("GW_STORE", "memory")
+        self.hy = None
+        if self.store == "hydradb":
+            from ..graph.hydra import HydraGraph, RUN_SPAN
+            run = int(os.environ.get("GW_HYDRA_RUN", "1"))
+            self.hy = hydra or HydraGraph(os.environ.get("HYDRA_URL", "http://127.0.0.1:8443"), os.environ.get("HYDRA_TOKEN", "local-development-token-32-bytes"),
+                                          run_id=run, mode="cached")
+            self.hy_base = self.hy.run_id * RUN_SPAN
         self.path = pathlib.Path(state_path) if state_path else None
         self.rng = random.Random(seed)
         self.mode = "demo"                       # demo | imported
@@ -41,7 +53,16 @@ class Workspace:
         self.changes: list[dict] = []             # deploy/config events: {service, ts (epoch s), kind, ref}
         self.use_changes = use_changes if use_changes is not None else os.environ.get("GW_USE_CHANGES") == "1"
         self.learned_by: dict[int, str] = {}      # graph revision -> the incident whose postmortem produced it
-        if not (self.path and self.path.exists() and self._load()):
+        loaded = bool(self.path and self.path.exists() and self._load())
+        if self.hy is not None and self.hy.attach(self.hy_base):       # HydraDB already holds this workspace: it is the source of truth
+            self._pull()
+            if not loaded:
+                from gwsim.cli import make
+                self.mode, self.company = "demo", json.loads(make("hub", seed, 80).to_json())
+                self.next_sim = self.hy._rows("MATCH (i:Incident {co: $co}) RETURN count(*) AS c", co=self.hy_base)[0][0]
+                self.log.append("state restored from HydraDB (no state file)")
+            self.save()
+        elif not loaded or self.hy is not None:
             if demo:
                 self._seed_demo(seed, demo_incidents)
             else:
@@ -49,6 +70,48 @@ class Workspace:
             self.save()
 
     # ---- demo seed -------------------------------------------------------------------------
+    # ---- HydraDB as the store --------------------------------------------------------------
+    def _pull(self):
+        """The in-memory graph is a cache of HydraDB: rebuild it when its revision differs."""
+        self.g = self.hy._copy(self.hy.snapshot())
+
+    def _sync(self):
+        if self.hy is not None and self.hy.co is not None and self.hy.revision() != self.g.seq:
+            self._pull()
+
+    def _co_dict(self):
+        g = self.g
+        return {"components": [{"id": i, "name": c["name"], "kind": c["kind"], "tier": c["tier"]} for i, c in sorted(g.components.items())],
+                "official_edges": [{"u": u, "v": v} for (u, v), e in g.edges.items() if e.origin == "official"]}
+
+    def _hy_reload(self, co):
+        """A new official graph: replace everything HydraDB holds for this workspace."""
+        if self.hy is None:
+            return
+        if self.hy.co is None:
+            self.hy.co = self.hy_base
+        self.hy.drop()
+        self.hy.fresh(co, index=0)
+        self._pull()
+
+    def _hy_apply(self, ops, inc=None, pm=None):
+        if self.hy is None:
+            return
+        self._sync()
+        self.hy.apply(ops, incident=None if inc is None else {"seq": self.g.seq, "name": inc["id"], "alerts": inc["alerts"], "postmortem": pm})
+
+    def why_edge(self, src, dst):
+        if self.hy is None:
+            raise LookupError("edge lineage lives in HydraDB: start the API with GW_STORE=hydradb")
+        self._sync()
+        return self.hy.why_edge(src, dst)
+
+    def lesson_impact(self, lesson_id):
+        if self.hy is None:
+            raise LookupError("edge lineage lives in HydraDB: start the API with GW_STORE=hydradb")
+        self._sync()
+        return self.hy.lesson_impact(lesson_id)
+
     def _seed_demo(self, seed, n_history):
         from gwsim.cli import make
         co = json.loads(make("hub", seed, 80).to_json())
@@ -58,6 +121,8 @@ class Workspace:
         self.g = GraphState.from_official({"components": [{k: c[k] for k in ("id", "name", "kind", "tier")} for c in co["components"]],
                                            "edges": co["official_edges"]})
         self.incidents, self.pending, self.next_sim, self.revision = [], [], 0, 0
+        if self.hy is not None:
+            self._hy_reload(co)
         for _ in range(n_history):                # history: past incidents whose postmortems were applied
             inc = self._ingest(co["incidents"][self.next_sim]["alerts"], started=-(n_history - self.next_sim) * 86400 * 0.4)
             pm = co["incidents"][self.next_sim]["postmortem"]
@@ -82,6 +147,7 @@ class Workspace:
             return ev
 
     def _ingest(self, alerts, started=None, source="webhook"):
+        self._sync()
         t0 = time.perf_counter()
         epochs = [a["epoch"] for a in alerts if a.get("epoch")]
         first_epoch = min(epochs) if epochs else time.time() + (started or 0)
@@ -233,6 +299,7 @@ class Workspace:
         ops = update.propose(self.g, pm, walk(self.g, inc["alerts"]), inc["alerts"], self.g.seq)
         keep = [o for i, o in enumerate(ops) if i not in set(reject)]
         self.learned_by[self.g.seq] = inc["id"]
+        self._hy_apply(keep, inc, pm)
         update.apply(self.g, keep)
         self.revision += 1
         inc["status"], inc["postmortem_applied"] = "Resolved", True
@@ -255,6 +322,7 @@ class Workspace:
                 keep = self._apply_pm(inc, item["pm"], reject)
             else:
                 keep = [o for i, o in enumerate(item["ops"]) if i not in set(reject)]
+                self._hy_apply(keep)
                 update.apply(self.g, keep)
                 self.revision += 1
             self.pending.remove(item)
@@ -268,6 +336,8 @@ class Workspace:
             self.g.root_counts, self.g.shortcuts, self.g.affected, self.g.missed = {}, {}, {}, {}
             self.g.names = {c["name"]: i for i, c in self.g.components.items()}
             self.g.invalidate()
+            if self.hy is not None:
+                self._hy_reload(self._co_dict())
             self.revision += 1
             self.save()
 
@@ -289,6 +359,8 @@ class Workspace:
             comps = [{"id": i, "name": n, "kind": kinds.get(n, "service"), "tier": TIER_OF.get(kinds.get(n, "service"), 1)} for i, n in enumerate(names)]
             ix = {n: i for i, n in enumerate(names)}
             self.g = GraphState.from_official({"components": comps, "edges": [{"u": ix[e["src"]], "v": ix[e["dst"]]} for e in edges]})
+            if self.hy is not None:
+                self._hy_reload(self._co_dict())
             self.company, self.mode, self.incidents, self.pending, self.revision = None, "imported", [], [], 0
             self.onboarding.update(map=True, alert=False, first_alert_at=None)
             self.map_proposals["accepted"] = sorted(ids)
@@ -313,7 +385,7 @@ class Workspace:
                 "open": sum(1 for i in self.incidents if i["status"] == "Open"),
                 "top1_last_30": (sum(1 for i in done if i["checks_to_root"] == 1) / len(done)) if done else None, "scored": len(done),
                 "median_ms": ms[len(ms) // 2] if ms else None, "revision": self.revision,
-                "store": {"name": os.environ.get("GW_STORE", "memory"), "label": "In-memory graph"},
+                "store": {"name": self.store, "label": "HydraDB graph (memory in the graph)" if self.hy is not None else "In-memory graph"},
                 "pending": len(self.pending), "onboarding": self.onboarding, "demo_outages_left": (len(self.company["incidents"]) - self.next_sim) if self.company else 0}
 
     # ---- persistence -----------------------------------------------------------------------

@@ -2226,13 +2226,13 @@
     },
     "checks_definition": "1-based rank of the true root in the ranked list (absent from the list = list length + 1)",
     "hydradb_online_loop_test": {
-      "verdict_ms_p50": 2.3109499998099636,
-      "verdict_ms_p95": 3.922699998474854,
+      "verdict_ms_p50": 2.272800000355346,
+      "verdict_ms_p95": 3.77850500135537,
       "n": 1800,
       "split": "test",
-      "learning_write_ms_p50": 111.3818000012543,
-      "learning_write_ms_p95": 191.1363600005643,
-      "backend": "HydraDB v0.4.0, local node in docker (loopback), write-through cache",
+      "learning_write_ms_p50": 403.4488999986934,
+      "learning_write_ms_p95": 1071.0660050030126,
+      "backend": "HydraDB v0.4.0, local node in docker (loopback), write-through cache, memory graph written",
       "before_write_through_cache": {
         "verdict_ms_p50": 49.16054999921471,
         "verdict_ms_p95": 88.65408500096237
@@ -3122,7 +3122,7 @@
         "verdict_ms_p95": 0.735469997380278
       },
       "hydradb": {
-        "description": "HydraDB v0.4.0 (published image): the graph lives in HydraDB; verdicts read it through a revision-checked write-through cache",
+        "description": "HydraDB v0.4.0 (published image): the graph and the learner's memory live in HydraDB; verdicts read the graph through a revision-checked write-through cache",
         "ac1": {
           "point": 0.7644444444444445,
           "ci95": [
@@ -3131,20 +3131,21 @@
           ]
         },
         "delta_vs_reference": null,
-        "verdict_ms_p50": 2.3109499998099636,
-        "verdict_ms_p95": 3.922699998474854,
+        "verdict_ms_p50": 2.272800000355346,
+        "verdict_ms_p95": 3.77850500135537,
         "verdict_ms_before_write_through_cache": {
           "verdict_ms_p50": 49.16054999921471,
           "verdict_ms_p95": 88.65408500096237
         },
-        "learning_write_ms_p50": 111.3818000012543,
-        "learning_write_ms_p95": 191.1363600005643,
-        "learning_write_note": "the learner's writes to HydraDB (alias/add/confirm/reweight/decay/counters), measured separately: they happen after the verdict, off the verdict path",
+        "learning_write_ms_p50": 403.4488999986934,
+        "learning_write_ms_p95": 1071.0660050030126,
+        "learning_write_note": "the learner's writes to HydraDB, measured separately because they happen after the verdict, off the verdict path: the graph change (alias/add/confirm/reweight/decay/counters) AND the memory (incident, alerts, postmortem, lessons and their links)",
         "cache": {
           "kind": "revision-checked write-through",
           "full_graph_rereads": 0,
-          "cache_hits": 1800,
-          "disagreements": 0
+          "cache_hits": 7370,
+          "disagreements": 0,
+          "timeouts_resent": 1
         }
       },
       "kv_1hop": {
@@ -3210,7 +3211,7 @@
     },
     "note": "\u0394AC@1 is measured against HydraDB. Latency is the whole verdict (snapshot read + walk) per incident. Embeddings are feature-hashed bags of words (no model).",
     "engine": {
-      "commit": "e215c9a06d6f336ca114bbae77ef63896769759a",
+      "commit": "3f4ee35b687e1db9126e5475be3c589d4520d540",
       "note": "store swap run with the final engine; HydraDB, in-memory and Postgres-CTE give the identical top-1 count"
     }
   },
@@ -3815,6 +3816,401 @@
           "timeouts": 0
         }
       }
+    }
+  },
+  "memory_retrieval": {
+    "split": "test",
+    "companies": 30,
+    "k": 5,
+    "arms": {
+      "graph": {
+        "hit5_repeat": {
+          "point": 0.843404255319149,
+          "ci95": [
+            0.8206120865553505,
+            0.8671962925823369
+          ],
+          "n": 1175
+        },
+        "mrr_repeat": {
+          "point": 0.7086808510638298,
+          "ci95": [
+            0.674178367801122,
+            0.7443347115116765
+          ],
+          "n": 1175
+        },
+        "related5_novel": {
+          "point": 0.20168067226890757,
+          "ci95": [
+            0.17275348482519715,
+            0.23327313360153104
+          ],
+          "n": 595
+        },
+        "related5_repeat": {
+          "point": 0.6663829787234042,
+          "ci95": [
+            0.6258272616879175,
+            0.7072989572470015
+          ],
+          "n": 1175
+        },
+        "related5_all": {
+          "point": 0.5101694915254237,
+          "ci95": [
+            0.4610169491525424,
+            0.5644067796610169
+          ],
+          "n": 1770
+        },
+        "latency_ms": {
+          "p50": 164.2253999998502,
+          "p95": 424.2909350019545
+        }
+      },
+      "vector": {
+        "hit5_repeat": {
+          "point": 0.8731914893617021,
+          "ci95": [
+            0.8499969733656174,
+            0.8930076730005022
+          ],
+          "n": 1175
+        },
+        "mrr_repeat": {
+          "point": 0.721290780141844,
+          "ci95": [
+            0.6966921039046072,
+            0.7454026312679136
+          ],
+          "n": 1175
+        },
+        "related5_novel": {
+          "point": 0.2453781512605042,
+          "ci95": [
+            0.20379497519929893,
+            0.2849095432581684
+          ],
+          "n": 595
+        },
+        "related5_repeat": {
+          "point": 0.6978723404255319,
+          "ci95": [
+            0.6570457661383159,
+            0.7384654300168634
+          ],
+          "n": 1175
+        },
+        "related5_all": {
+          "point": 0.5457627118644067,
+          "ci95": [
+            0.49830508474576274,
+            0.5954943502824858
+          ],
+          "n": 1770
+        },
+        "latency_ms": {
+          "p50": 1.2776499988831347,
+          "p95": 1.7863250010123009
+        }
+      },
+      "keyword": {
+        "hit5_repeat": {
+          "point": 0.8953191489361703,
+          "ci95": [
+            0.8745850233137455,
+            0.9147122882220862
+          ],
+          "n": 1175
+        },
+        "mrr_repeat": {
+          "point": 0.7455319148936169,
+          "ci95": [
+            0.7180114023850518,
+            0.7704510284171561
+          ],
+          "n": 1175
+        },
+        "related5_novel": {
+          "point": 0.253781512605042,
+          "ci95": [
+            0.21375449155587495,
+            0.2910117121282169
+          ],
+          "n": 595
+        },
+        "related5_repeat": {
+          "point": 0.6885106382978723,
+          "ci95": [
+            0.6516403326908438,
+            0.7255776991372326
+          ],
+          "n": 1175
+        },
+        "related5_all": {
+          "point": 0.5423728813559322,
+          "ci95": [
+            0.5005649717514125,
+            0.588135593220339
+          ],
+          "n": 1770
+        },
+        "latency_ms": {
+          "p50": 0.5601499997283099,
+          "p95": 1.0197550014709122
+        }
+      }
+    },
+    "paired": {
+      "hit5_repeat": {
+        "graph_minus_vector": {
+          "point": -0.029787234042553123,
+          "ci95": [
+            -0.05766102751944885,
+            -0.0008589417389546558
+          ],
+          "p_le_0": 0.981
+        },
+        "graph_minus_keyword": {
+          "point": -0.051914893617021285,
+          "ci95": [
+            -0.07983687228346285,
+            -0.024301580280322
+          ],
+          "p_le_0": 1.0
+        },
+        "vector_minus_keyword": {
+          "point": -0.02212765957446816,
+          "ci95": [
+            -0.03952013646814504,
+            -0.006246305301296827
+          ],
+          "p_le_0": 0.9995
+        }
+      },
+      "mrr_repeat": {
+        "graph_minus_vector": {
+          "point": -0.01260992907801417,
+          "ci95": [
+            -0.05185875392778996,
+            0.028566724835761902
+          ],
+          "p_le_0": 0.7235
+        },
+        "graph_minus_keyword": {
+          "point": -0.03685106382978709,
+          "ci95": [
+            -0.07514355825845781,
+            0.0008297578551359665
+          ],
+          "p_le_0": 0.971
+        },
+        "vector_minus_keyword": {
+          "point": -0.02424113475177292,
+          "ci95": [
+            -0.039574179899136655,
+            -0.009575124132152276
+          ],
+          "p_le_0": 0.999
+        }
+      },
+      "related5_novel": {
+        "graph_minus_vector": {
+          "point": -0.04369747899159662,
+          "ci95": [
+            -0.06799368689781389,
+            -0.019993716337522494
+          ],
+          "p_le_0": 1.0
+        },
+        "graph_minus_keyword": {
+          "point": -0.052100840336134435,
+          "ci95": [
+            -0.07391706924315619,
+            -0.029629307007355776
+          ],
+          "p_le_0": 1.0
+        },
+        "vector_minus_keyword": {
+          "point": -0.008403361344537813,
+          "ci95": [
+            -0.01766898254838032,
+            0.0
+          ],
+          "p_le_0": 0.978
+        }
+      },
+      "related5_repeat": {
+        "graph_minus_vector": {
+          "point": -0.03148936170212768,
+          "ci95": [
+            -0.05400752702581971,
+            -0.007104010503287857
+          ],
+          "p_le_0": 0.995
+        },
+        "graph_minus_keyword": {
+          "point": -0.02212765957446805,
+          "ci95": [
+            -0.05029730484885557,
+            0.005456435870981349
+          ],
+          "p_le_0": 0.9355
+        },
+        "vector_minus_keyword": {
+          "point": 0.009361702127659632,
+          "ci95": [
+            -0.013123359580052507,
+            0.03272246452507736
+          ],
+          "p_le_0": 0.2245
+        }
+      },
+      "related5_all": {
+        "graph_minus_vector": {
+          "point": -0.035593220338983045,
+          "ci95": [
+            -0.05199152542372884,
+            -0.01807909604519775
+          ],
+          "p_le_0": 1.0
+        },
+        "graph_minus_keyword": {
+          "point": -0.03220338983050852,
+          "ci95": [
+            -0.05141242937853108,
+            -0.01242937853107351
+          ],
+          "p_le_0": 0.9995
+        },
+        "vector_minus_keyword": {
+          "point": 0.003389830508474523,
+          "ci95": [
+            -0.012429378531073456,
+            0.02033898305084747
+          ],
+          "p_le_0": 0.3605
+        }
+      }
+    },
+    "incidents": {
+      "with_a_past_incident": 1770,
+      "repeat_root": 1175,
+      "novel_root": 595,
+      "first_incident_of_each_company_excluded": 30
+    },
+    "definitions": {
+      "hit@5": "a retrieved past incident has the same root cause as the current one; defined only for repeat incidents (a past incident with that root exists)",
+      "mrr": "1 / rank of the first same-root past incident in the top 5, else 0 (repeat incidents)",
+      "related@5": "a retrieved past incident whose true causal chain shares a dependency edge with the current incident's chain (used for novel incidents, where hit@5 cannot exist)",
+      "graph": "HydraDB traversal: past incidents with an alert on a service within 2 hops of the alerting services, ranked by neighbourhood overlap; alert text unused",
+      "vector": "pgvector: nearest 5 past postmortems to the embedded alert text (feature-hashing bag-of-words, 512 dims)",
+      "keyword": "TF-IDF cosine between the alert text and past postmortem texts"
+    },
+    "learner_ac1_in_this_run": {
+      "top1": 1376,
+      "of": 1800
+    },
+    "llm_graph_memory": {
+      "status": "not run",
+      "why": "the LLM baseline (B4) was never run: it needs an API key and spend, so there is no llm_memory arm to put an llm_graph_memory arm next to"
+    },
+    "measured_utc": "2026-11-15T21:07:48Z"
+  },
+  "memory_graph": {
+    "store": "HydraDB v0.4.0",
+    "schema": [
+      "(:Incident)-[:RAISED]->(:Alert)-[:ON]->(:Service)",
+      "(:Postmortem)-[:ABOUT]->(:Incident)",
+      "(:Lesson {src, dst, w, state, created_seq})-[:TAUGHT_BY]->(:Postmortem)",
+      "(:Lesson)-[:CONFIRMED_BY]->(:Incident)",
+      "(:Service)-[:DEPENDS_ON {w, cost}]->(:Service)  (w and cost follow the Lesson)"
+    ],
+    "why_edge_example": {
+      "src": "experiment-svc",
+      "dst": "ledger-db",
+      "text": "$ gw why-edge experiment-svc ledger-db\n\n  experiment-svc -> ledger-db   w 0.70  learned  2 confirmations\n\n  lesson L153  confirmed  w 0.70  created at revision 4\n    taught by   INC-1004  root ledger-db  path experiment-svc -> ledger-db\n    confirmed   \u2713 INC-1018\n\n  gw why-edge answers by traversal: Lesson -> Postmortem -> Incident, in HydraDB",
+      "explanation": "experiment-svc -> ledger-db was learned: proposed from INC-1004 (root ledger-db, path experiment-svc -> ledger-db), confirmed by INC-1018. Now confirmed, weight 0.70.",
+      "lesson": {
+        "id": 153,
+        "src": "experiment-svc",
+        "dst": "ledger-db",
+        "w": 0.7,
+        "state": "confirmed",
+        "created_seq": 4,
+        "taught_by": [
+          {
+            "incident": "INC-1004",
+            "seq": 4,
+            "ts": 0.0,
+            "postmortem": {
+              "root": "ledger-db",
+              "path": "experiment-svc>ledger-db",
+              "missed": []
+            }
+          }
+        ],
+        "confirmed_by": [
+          {
+            "incident": "INC-1018",
+            "seq": 18,
+            "ts": 57.3
+          }
+        ]
+      }
+    },
+    "persistence": {
+      "incidents_learned": 20,
+      "killed": "the API process (kill -9) and its state file",
+      "identical_ranking": true,
+      "candidates_compared": 5,
+      "why_edge_identical": true,
+      "ranking_before": [
+        [
+          "transcode-svc",
+          0.8515
+        ],
+        [
+          "ledger-db",
+          0.0502
+        ],
+        [
+          "consent-svc",
+          0.0422
+        ],
+        [
+          "admin-api",
+          0.0287
+        ],
+        [
+          "warehouse-svc",
+          0.0107
+        ]
+      ],
+      "ranking_after": [
+        [
+          "transcode-svc",
+          0.8515
+        ],
+        [
+          "ledger-db",
+          0.0502
+        ],
+        [
+          "consent-svc",
+          0.0422
+        ],
+        [
+          "admin-api",
+          0.0287
+        ],
+        [
+          "warehouse-svc",
+          0.0107
+        ]
+      ],
+      "summary": "Twenty incidents were learned through the API with GW_STORE=hydradb; the API process was killed and its state file deleted; a new process re-attached to HydraDB and ranked incident 21 identically (all 5 candidates, names and confidences) (`scripts/persistence_demo.py`, transcript in `docs/measurements/persistence_demo.txt`). The same holds in a test that also compares against the in-memory learner."
     }
   }
 }

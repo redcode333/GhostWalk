@@ -36,6 +36,8 @@ services:
       GITHUB_APP_SLUG: ${GITHUB_APP_SLUG:-ghostwalk}
       GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
       GITHUB_PR_TOKEN: ${GITHUB_PR_TOKEN:-}
+      GW_STORE: ${GW_STORE:-memory}            # hydradb: the graph and the learner's memory live in HydraDB (start it too: docker compose up -d hydradb app)
+      HYDRA_URL: ${HYDRA_URL:-http://hydradb:8443}
     volumes: ["gw-data:/data"]
   redis:
     image: redis:7-alpine

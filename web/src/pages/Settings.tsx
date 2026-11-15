@@ -58,7 +58,7 @@ export default function Settings() {
       </section>
       <section className="card" style={{ padding: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 10px" }}><h2 style={{ margin: 0, fontSize: 17 }}>MCP server</h2><span className="mono" style={{ fontSize: 11, border: "1px solid var(--accent)", color: "var(--accent-text)", borderRadius: 999, padding: "1px 8px" }}>beta</span></div>
-        <p style={{ margin: "0 0 10px", fontSize: 14, color: "var(--text-3)" }}>Let Claude, Cursor or any MCP client ask why. Tools: why, path, blast_radius, propose_edge. Proposals stay pending until you approve them in Learn.</p>
+        <p style={{ margin: "0 0 10px", fontSize: 14, color: "var(--text-3)" }}>Let Claude, Cursor or any MCP client ask why. Tools: why, path, blast_radius, why_edge, lesson_impact, propose_edge. Proposals stay pending until you approve them in Learn.</p>
         <pre className="mono" style={{ margin: 0, fontSize: 13, lineHeight: 1.8, color: "var(--text-3)", overflowX: "auto" }}>{`$ claude mcp add ghostwalk -- gw mcp
 # hosted: GW_URL=${s.webhook_url.replace("/v1/alerts/acme", "")} GW_TOKEN=<token above> gw mcp`}</pre>
       </section>

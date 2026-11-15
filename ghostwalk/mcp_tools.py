@@ -1,6 +1,6 @@
-"""The four MCP tools as plain functions over a Workspace, so the stdio server, the hosted HTTP API and the tests share one implementation.
+"""The six MCP tools as plain functions over a Workspace, so the stdio server, the hosted HTTP API and the tests share one implementation.
 
-Read-only: why / path / blast_radius never change the graph. propose_edge only creates a PENDING proposal for a human to review.
+Read-only: why / path / blast_radius / why_edge / lesson_impact never change the graph. propose_edge only creates a PENDING proposal for a human to review.
 GhostWalk never calls an LLM; the model on the other end asks, the graph answers."""
 from __future__ import annotations
 import math
@@ -77,6 +77,38 @@ def blast_radius(ws: Workspace, service: str, hops: int = 3) -> dict:
     rows = sorted(((ws.g.components[c]["name"], round(p, 3)) for c, p in best.items() if c != s), key=lambda t: -t[1])
     return {"service": service, "hops": hops, "affected": [{"service": n, "likelihood": p} for n, p in rows], "count": len(rows),
             "explanation": f"If {service} fails, {len(rows)} services within {hops} hops depend on it, directly or not."}
+
+
+def why_edge(ws: Workspace, src: str, dst: str) -> dict:
+    """Why does the graph believe `src depends on dst`? Answered by traversal in HydraDB: the lesson, the postmortems that taught it, the incidents that confirmed it."""
+    _id(ws, src), _id(ws, dst)
+    try:
+        r = ws.why_edge(src, dst)
+    except LookupError as e:
+        raise ToolError(str(e))
+    if r["edge"] is None:
+        raise ToolError(f"there is no edge {src} -> {dst} in the map")
+    if not r["lessons"]:
+        return {**r, "explanation": f"{src} -> {dst} is in the official map (weight {r['edge']['w']:.2f}); no postmortem taught it."}
+    les = r["lessons"][0]
+    t = les["taught_by"][0] if les["taught_by"] else None
+    c = les["confirmed_by"]
+    text = (f"{src} -> {dst} was learned: proposed from {t['incident']} (root {t['postmortem']['root']}, path {t['postmortem']['path'].replace('>', ' -> ')})"
+            if t else f"{src} -> {dst} was learned")
+    text += f", confirmed by {', '.join(x['incident'] for x in c)}" if c else ", not confirmed yet"
+    return {**r, "explanation": text + f". Now {les['state']}, weight {les['w']:.2f}."}
+
+
+def lesson_impact(ws: Workspace, lesson_id: int) -> dict:
+    """Services and past incidents whose paths use a learned edge (a Lesson node in HydraDB)."""
+    try:
+        r = ws.lesson_impact(int(lesson_id))
+    except LookupError as e:
+        raise ToolError(str(e))
+    if r is None:
+        raise ToolError(f"no lesson {lesson_id}")
+    return {**r, "explanation": f"{r['lesson']['src']} -> {r['lesson']['dst']} ({r['lesson']['state']}) sits on paths that reach {len(r['services'])} services "
+                               f"and was relevant to {len(r['incidents'])} past incidents."}
 
 
 def propose_edge(ws: Workspace, src: str, dst: str, incident_id: str | None = None, reason: str = "") -> dict:

@@ -40,8 +40,8 @@ A read-only App cannot open a pull request, so the postmortem-template PR uses `
 without it the UI offers a prefilled "new file" link.
 
 ## MCP server
-`gw mcp` runs a stdio MCP server with four tools: `why(alerts)`, `path(root, service)`, `blast_radius(service, hops=3)` and
-`propose_edge(src, dst, incident_id, reason)`. The first three are read-only. `propose_edge` only creates a pending proposal
+`gw mcp` runs a stdio MCP server with six tools: `why(alerts)`, `path(root, service)`, `blast_radius(service, hops=3)`, `why_edge(src, dst)`,
+`lesson_impact(lesson_id)` and `propose_edge(src, dst, incident_id, reason)`. All but `propose_edge` are read-only (`why_edge` and `lesson_impact` need `GW_STORE=hydradb`). `propose_edge` only creates a pending proposal
 that a person approves in Learn. GhostWalk never calls an LLM; the assistant asks and the graph answers.
 
 Claude Code:
@@ -130,6 +130,57 @@ would not have met the 250 ms line anyway.
 Not done at scale: HydraDB-backed latency on the 100/1,000/5,000-service graphs (its latency on the TEST companies is in the HydraDB section), and UNWIND batching of HydraDB path queries, which this HydraDB version does not allow for edge writes (no batch shape writes edge properties).
 Path costs (-ln w) were already stored with w on every HydraDB write, and results.json is now parsed once per file version.
 
+<!-- memory:begin -->
+## The memory is the graph
+**GhostWalk's learning loop lives in HydraDB: every lesson is a node linked to the postmortems that taught it and the incidents that confirmed it.**
+The learner reads and writes through the HydraDB repository layer; the in-memory graph is a cache that is rebuilt from HydraDB by revision (`GW_STORE=hydradb`).
+
+```mermaid
+graph LR
+  I[Incident] -- RAISED --> AL[Alert] -- ON --> S1[Service]
+  PM[Postmortem] -- ABOUT --> I
+  L[Lesson: src, dst, w, state] -- TAUGHT_BY --> PM
+  L -- CONFIRMED_BY --> I
+  S1 -- "DEPENDS_ON (w, cost) mirrors the Lesson" --> S2[Service]
+```
+
+`state` is tentative, confirmed or decayed. Every node carries the company key. A lesson's weight is written together with its `DEPENDS_ON` edge.
+
+**Why does the map say `experiment-svc` depends on `ledger-db`?** One traversal, `gw why-edge experiment-svc ledger-db` (also `GET /v1/edges/{src}/{dst}/why` and an MCP tool):
+
+```
+$ gw why-edge experiment-svc ledger-db
+
+  experiment-svc -> ledger-db   w 0.70  learned  2 confirmations
+
+  lesson L153  confirmed  w 0.70  created at revision 4
+    taught by   INC-1004  root ledger-db  path experiment-svc -> ledger-db
+    confirmed   ✓ INC-1018
+
+  gw why-edge answers by traversal: Lesson -> Postmortem -> Incident, in HydraDB
+```
+
+`GET /v1/lessons/{id}/impact` answers the other way round: the services and past incidents whose paths use a learned edge.
+
+**Persistence.** Twenty incidents were learned through the API with GW_STORE=hydradb; the API process was killed and its state file deleted; a new process re-attached to HydraDB and ranked incident 21 identically (all 5 candidates, names and confidences) (`scripts/persistence_demo.py`, transcript in `docs/measurements/persistence_demo.txt`). The same holds in a test that also compares against the in-memory learner.
+
+**Graph memory against vector memory** (30 held-out companies, online, only past incidents of the same company; top 5; paired cluster bootstrap, 95% CIs in brackets).
+The graph arm uses no alert text: it traverses HydraDB from the alerting services (2 hops, both directions) to the past incidents that alerted on that neighbourhood, ranked by overlap.
+
+| | graph (HydraDB) | vector (pgvector) | keyword (TF-IDF) |
+|---|---|---|---|
+| hit@5, repeat incidents (n=1175) | 84.3% [82.1, 86.7] | 87.3% [85.0, 89.3] | 89.5% [87.5, 91.5] |
+| MRR, repeat incidents | 0.709 [0.674, 0.744] | 0.721 [0.697, 0.745] | 0.746 [0.718, 0.770] |
+| related@5, novel incidents (n=595) | 20.2% [17.3, 23.3] | 24.5% [20.4, 28.5] | 25.4% [21.4, 29.1] |
+| related@5, all (n=1770) | 51.0% [46.1, 56.4] | 54.6% [49.8, 59.5] | 54.2% [50.1, 58.8] |
+| retrieval latency p50 / p95 | 164.2 / 424.3 ms | 1.3 / 1.8 ms | 0.6 / 1.0 ms |
+
+On repeat incidents, hit@5: graph is behind vector (−3.0 pts, 95% CI −5.8 to −0.1); graph is behind keyword (−5.2 pts, 95% CI −8.0 to −2.4). MRR: graph is not distinguishable from vector (−1.3 pts, 95% CI −5.2 to +2.9).
+On novel incidents (no past incident shares the root, so hit@5 cannot exist), related@5 asks whether a retrieved incident's true causal chain shares a dependency with the current one: graph is behind vector (−4.4 pts, 95% CI −6.8 to −2.0).
+hit@5 needs a past incident with the same root; 1175 of 1770 incidents have one, and the first incident of each company has nothing to retrieve from.
+The LLM arms were not run (no API key), so there is no `llm_graph_memory` number. Full definitions and CIs: `results.json` `memory_retrieval`.
+<!-- memory:end -->
+
 ## HydraDB (live)
 GhostWalk runs against HydraDB's own published image, `ghcr.io/hydra-db/hydradb:0.4.0` (the one `charts/hydradb` references): `docker compose up -d hydradb`.
 (If you restart the container, remove its volume first, `docker compose down hydradb -v`: a restarted node rejects writes whose request ids it has seen.)
@@ -143,9 +194,9 @@ the cost it reports, and `algo.MSpaths` selects by a property shared across comp
 - **How HydraDB is used:** Verdicts read from HydraDB through a revision-checked write-through cache; path computation runs in the engine. HydraDB in-DB path mode is slower at these sizes (measured), so it is not used.
   The cache is write-through: when the learner writes to HydraDB the identical change (the learner's own `update.apply`) is applied to the cached graph in the same step, and the revision
   HydraDB reports is checked; a verdict is never served from a cache whose revision is behind HydraDB's, and the whole graph is re-read only if the revisions disagree. On the 30 TEST companies
-  (1,800 incidents, learning on) that was **2.3 ms p50 / 3.9 ms p95 per verdict with 0 full re-reads**, against
-  49 / 89 ms before the cache; accuracy unchanged. The learning write itself (about 5 to 15 sequential HydraDB writes) takes
-  111 ms p50 / 191 ms p95, off the verdict path.
+  (1,800 incidents, learning on) that was **2.3 ms p50 / 3.8 ms p95 per verdict with 0 full re-reads**, against
+  49 / 89 ms before the cache; accuracy unchanged. The learning write itself (the graph change plus the memory: the incident, its alerts, the postmortem and the lessons with their links, a few dozen sequential HydraDB requests) takes
+  403 ms p50 / 1071 ms p95, off the verdict path.
 - **Why it was 48 ms per request, and the fix:** HydraDB answers in 0.1 to 0.9 ms (its own `/metrics` histogram) and its response arrives in one read. Clients that write the request headers
   and body separately (httpx, http.client, HTTP/2) took ~45 ms through Docker Desktop's published port on Windows, the same clients inside the docker network took 0.3 to 1.5 ms, and a client
   that sends headers and body in one write took 0.4 ms through the same port (so did Bolt). Client-side `TCP_NODELAY` did not help. The adapter now uses a persistent connection with one write per request
@@ -183,7 +234,7 @@ Store swap on the TEST split, run once, same incidents, ΔAC@1 against HydraDB:
 
 | store | AC@1 | ΔAC@1 (95% CI, pts) | p50 | p95 |
 |---|---|---|---|---|
-| HydraDB v0.4.0 (published image) | 0.764 | reference | 2.3 ms | 3.9 ms |
+| HydraDB v0.4.0 (published image) | 0.764 | reference | 2.3 ms | 3.8 ms |
 | Postgres recursive CTE | 0.764 | +0.0 (+0.0 to +0.0) | 17.4 ms | 71.8 ms |
 | Key-value, 1 hop (Redis) | 0.629 | −13.5 (−16.7 to −10.3) | 40.2 ms | 61.0 ms |
 | pgvector nearest postmortem | 0.388 | −37.6 (−42.4 to −32.7) | 44.6 ms | 48.1 ms |

@@ -46,3 +46,10 @@ def test_eval_prints_numbers_from_results_json_only(tmp_path):
 def test_missing_map_is_a_clear_error(tmp_path):
     r = CliRunner().invoke(main, ["why", "--alerts", str(tmp_path / "x.json")], env={"GW_HOME": str(tmp_path / "n")})
     assert r.exit_code != 0
+
+
+def test_why_edge_explains_that_lineage_needs_hydradb(tmp_path):
+    from ghostwalk.api.workspace import Workspace
+    Workspace(tmp_path / ".gw" / "state.json", demo_incidents=4).save()
+    r = CliRunner().invoke(main, ["why-edge", "web-bff", "payments-api"], env={"GW_HOME": str(tmp_path / ".gw")}, catch_exceptions=False)
+    assert r.exit_code == 1 and "HydraDB" in r.output

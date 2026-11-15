@@ -63,7 +63,7 @@ the cost it reports, and `algo.MSpaths` selects by a property shared across comp
   The cache is write-through: when the learner writes to HydraDB the identical change (the learner's own `update.apply`) is applied to the cached graph in the same step, and the revision
   HydraDB reports is checked; a verdict is never served from a cache whose revision is behind HydraDB's, and the whole graph is re-read only if the revisions disagree. On the 30 TEST companies
   (1,800 incidents, learning on) that was **{f(ol['verdict_ms_p50'])} ms p50 / {f(ol['verdict_ms_p95'])} ms p95 per verdict with {b['hydradb']['cache']['full_graph_rereads']} full re-reads**, against
-  {f(ol['before_write_through_cache']['verdict_ms_p50'])} / {f(ol['before_write_through_cache']['verdict_ms_p95'])} ms before the cache; accuracy unchanged. The learning write itself (about 5 to 15 sequential HydraDB writes) takes
+  {f(ol['before_write_through_cache']['verdict_ms_p50'])} / {f(ol['before_write_through_cache']['verdict_ms_p95'])} ms before the cache; accuracy unchanged. The learning write itself (the graph change plus the memory: the incident, its alerts, the postmortem and the lessons with their links, a few dozen sequential HydraDB requests) takes
   {f(ol['learning_write_ms_p50'])} ms p50 / {f(ol['learning_write_ms_p95'])} ms p95, off the verdict path.
 - **Why it was 48 ms per request, and the fix:** HydraDB answers in 0.1 to 0.9 ms (its own `/metrics` histogram) and its response arrives in one read. Clients that write the request headers
   and body separately (httpx, http.client, HTTP/2) took ~45 ms through Docker Desktop's published port on Windows, the same clients inside the docker network took 0.3 to 1.5 ms, and a client

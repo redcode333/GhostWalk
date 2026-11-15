@@ -42,13 +42,36 @@ def hydra_status():
     return {"status": "available", "url": HYDRA_URL, "image": os.environ.get("HYDRADB_IMAGE", "ghcr.io/hydra-db/hydradb:0.4.0")}
 
 
+def update_hydradb_row(doc, rows, hg, split, stat):
+    """Replace the HydraDB row's latency fields from one online run (rows: {company: run_company rows}). Accuracy must not move; if it does, nothing is written."""
+    old = doc["store_swap"]["backends"]["hydradb"]
+    hits = sum(1 for rs in rows.values() for r in rs if r["rank"] is not None and r["rank"] <= 1)
+    was = round(old["ac1"]["point"] * sum(len(v) for v in rows.values()))
+    assert hits == was, f"accuracy moved: {hits} top-1 hits now vs {was} before; nothing written"
+    verdict = np.array([r["ms"] for rs in rows.values() for r in rs])
+    write = np.array([r["apply_ms"] for rs in rows.values() for r in rs if "apply_ms" in r])
+    before = old.get("verdict_ms_before_write_through_cache") or {k: old[k] for k in ("verdict_ms_p50", "verdict_ms_p95") if k in old}
+    old["verdict_ms_p50"], old["verdict_ms_p95"] = float(np.percentile(verdict, 50)), float(np.percentile(verdict, 95))
+    old["verdict_ms_before_write_through_cache"] = before
+    old["learning_write_ms_p50"], old["learning_write_ms_p95"] = float(np.percentile(write, 50)), float(np.percentile(write, 95))
+    old["learning_write_note"] = ("the learner's writes to HydraDB, measured separately because they happen after the verdict, off the verdict path: the graph change "
+                                  "(alias/add/confirm/reweight/decay/counters) AND the memory (incident, alerts, postmortem, lessons and their links)")
+    old["cache"] = {"kind": "revision-checked write-through", "full_graph_rereads": hg.full_reads, "cache_hits": hg.hits, "disagreements": hg.disagreements,
+                    "timeouts_resent": hg.timeouts}
+    old["description"] = "HydraDB v0.4.0 (published image): the graph and the learner's memory live in HydraDB; verdicts read the graph through a revision-checked write-through cache"
+    doc["store_swap"]["hydradb"] = stat
+    ops = doc.setdefault("ops", {})
+    ops["hydradb_online_loop_test"] = {"verdict_ms_p50": old["verdict_ms_p50"], "verdict_ms_p95": old["verdict_ms_p95"], "n": int(len(verdict)), "split": split,
+                                       "learning_write_ms_p50": old["learning_write_ms_p50"], "learning_write_ms_p95": old["learning_write_ms_p95"],
+                                       "backend": "HydraDB v0.4.0, local node in docker (loopback), write-through cache, memory graph written", "before_write_through_cache": before}
+    return hits
+
+
 def only_hydradb(a):
     """Re-measure ONLY the HydraDB row on the same incidents: verdict latency and, separately, the learning write. Accuracy must not move; if it does, nothing is written."""
     out = pathlib.Path(a.results or ("results.json" if a.split == "test" else "dev_results.json"))
     doc = json.loads(out.read_text(encoding="utf8"))
-    old = doc["store_swap"]["backends"]["hydradb"]
     cos = load(a.split)
-    names = [c["name"] for c in cos]
     stat = hydra_status()
     assert stat["status"] == "available", stat
     from ghostwalk.graph.hydra import HydraGraph
@@ -59,27 +82,11 @@ def only_hydradb(a):
             rows[c["name"]] = run_company(c, "ghostwalk", backend=hg)
         finally:
             hg.drop()
-    print(f"  hydradb {time.time() - t0:6.1f}s  full re-reads {hg.full_reads}, cache hits {hg.hits}, disagreements {hg.disagreements}", flush=True)
-    hits = sum(1 for rs in rows.values() for r in rs if r["rank"] is not None and r["rank"] <= 1)
-    was = round(old["ac1"]["point"] * sum(len(v) for v in rows.values()))
-    assert hits == was, f"accuracy moved: {hits} top-1 hits now vs {was} before; nothing written"
-    verdict = np.array([r["ms"] for rs in rows.values() for r in rs])
-    write = np.array([r["apply_ms"] for rs in rows.values() for r in rs if "apply_ms" in r])
-    before = {k: old[k] for k in ("verdict_ms_p50", "verdict_ms_p95") if k in old}
-    old["verdict_ms_p50"], old["verdict_ms_p95"] = float(np.percentile(verdict, 50)), float(np.percentile(verdict, 95))
-    old["verdict_ms_before_write_through_cache"] = before
-    old["learning_write_ms_p50"], old["learning_write_ms_p95"] = float(np.percentile(write, 50)), float(np.percentile(write, 95))
-    old["learning_write_note"] = "the learner's writes to HydraDB (alias/add/confirm/reweight/decay/counters), measured separately: they happen after the verdict, off the verdict path"
-    old["cache"] = {"kind": "revision-checked write-through", "full_graph_rereads": hg.full_reads, "cache_hits": hg.hits, "disagreements": hg.disagreements}
-    old["description"] = "HydraDB v0.4.0 (published image): the graph lives in HydraDB; verdicts read it through a revision-checked write-through cache"
-    doc["store_swap"]["hydradb"] = stat
-    ops = doc.setdefault("ops", {})
-    ops["hydradb_online_loop_test"] = {"verdict_ms_p50": old["verdict_ms_p50"], "verdict_ms_p95": old["verdict_ms_p95"], "n": int(len(verdict)), "split": a.split,
-                                       "learning_write_ms_p50": old["learning_write_ms_p50"], "learning_write_ms_p95": old["learning_write_ms_p95"],
-                                       "backend": "HydraDB v0.4.0, local node in docker (loopback), write-through cache", "before_write_through_cache": before}
+    print(f"  hydradb {time.time() - t0:6.1f}s  full re-reads {hg.full_reads}, cache hits {hg.hits}, disagreements {hg.disagreements}, re-sent after timeout {hg.timeouts}", flush=True)
+    hits = update_hydradb_row(doc, rows, hg, a.split, stat)
     out.write_text(json.dumps(doc, indent=2), encoding="utf8")
-    print(f"verdict p50 {old['verdict_ms_p50']:.2f} ms p95 {old['verdict_ms_p95']:.2f} ms (before {before['verdict_ms_p50']:.1f} / {before['verdict_ms_p95']:.1f}); "
-          f"learning write p50 {old['learning_write_ms_p50']:.1f} ms p95 {old['learning_write_ms_p95']:.1f} ms; top-1 hits {hits} (unchanged)")
+    o = doc["store_swap"]["backends"]["hydradb"]
+    print(f"verdict p50 {o['verdict_ms_p50']:.2f} ms p95 {o['verdict_ms_p95']:.2f} ms; learning write p50 {o['learning_write_ms_p50']:.1f} ms p95 {o['learning_write_ms_p95']:.1f} ms; top-1 hits {hits} (unchanged)")
 
 
 def main():

@@ -38,7 +38,8 @@ def clerk_user(request: Request):
 
 def create_app(state_path=None, results_path=None, workspace: Workspace | None = None):
     app = FastAPI(title="GhostWalk", docs_url="/api/docs", openapi_url="/api/openapi.json")
-    ws = workspace or Workspace(state_path if state_path is not None else os.environ.get("GW_STATE", str(ROOT / "var" / "state.json")))
+    ws = workspace or Workspace(state_path if state_path is not None else os.environ.get("GW_STATE", str(ROOT / "var" / "state.json")),
+                                demo_incidents=int(os.environ.get("GW_DEMO_INCIDENTS", "30")))
     results_file = pathlib.Path(results_path or os.environ.get("GW_RESULTS", ROOT / "results.json"))
     app.state.ws = ws
     user = Depends(clerk_user)
@@ -88,7 +89,7 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
             demo_cache["d"] = demo_inside()
         return demo_cache["d"]
 
-    # ---- hosted MCP (the same four tools over HTTP; `gw mcp` with GW_URL + GW_TOKEN proxies here) --------------------------
+    # ---- hosted MCP (the same six tools over HTTP; `gw mcp` with GW_URL + GW_TOKEN proxies here) --------------------------
     def check_mcp_token(request: Request):
         got = (request.headers.get("authorization") or "").removeprefix("Bearer ").strip()
         if not got or not secrets.compare_digest(got, ws.token):
@@ -98,7 +99,8 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
     async def mcp_call(tool: str, request: Request):
         check_mcp_token(request)
         args = await request.json()
-        fn = {"why": mcp_tools.why, "path": mcp_tools.path, "blast_radius": mcp_tools.blast_radius, "propose_edge": mcp_tools.propose_edge}.get(tool)
+        fn = {"why": mcp_tools.why, "path": mcp_tools.path, "blast_radius": mcp_tools.blast_radius, "propose_edge": mcp_tools.propose_edge,
+              "why_edge": mcp_tools.why_edge, "lesson_impact": mcp_tools.lesson_impact}.get(tool)
         if fn is None:
             raise HTTPException(404, f"no tool {tool}")
         try:
@@ -126,6 +128,24 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
             raise HTTPException(422, str(e))
         inc = ws.ingest_alerts(alerts)
         return {"incident": inc["id"], "root": inc["verdict"]["root_name"], "confidence": inc["verdict"]["confidence"], "ms": inc["verdict"]["ms"]}
+
+    @app.get("/v1/edges/{src}/{dst}/why")
+    def edge_why(src: str, dst: str, request: Request):
+        """Why does the graph say src depends on dst: the Lesson, the postmortems that taught it, the incidents that confirmed it (HydraDB store)."""
+        check_token(request)
+        try:
+            return mcp_tools.why_edge(ws, src, dst)
+        except mcp_tools.ToolError as e:
+            raise HTTPException(501 if "HydraDB" in str(e) else 404, str(e))
+
+    @app.get("/v1/lessons/{lesson_id}/impact")
+    def lesson_impact(lesson_id: int, request: Request):
+        """Services and past incidents whose paths use this learned edge."""
+        check_token(request)
+        try:
+            return mcp_tools.lesson_impact(ws, lesson_id)
+        except mcp_tools.ToolError as e:
+            raise HTTPException(501 if "HydraDB" in str(e) else 404, str(e))
 
     @app.post("/v1/changes")
     async def post_change(request: Request):

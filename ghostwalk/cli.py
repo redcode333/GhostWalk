@@ -207,6 +207,57 @@ def why(alerts_file: Optional[pathlib.Path] = typer.Option(None, "--alerts", exi
     line((f"{inc['id']} saved. Teach it: gw learn {inc['id']} --root {v['root_name']}", DIM))
 
 
+@app.command("why-edge")
+def why_edge_cmd(src: str = typer.Argument(..., help="the service that depends on another, e.g. config-svc"),
+                 dst: str = typer.Argument(..., help="what it depends on, e.g. fraud-check")):
+    """Why does the map say SRC depends on DST: the lesson, the postmortems that taught it, the incidents that confirmed it (HydraDB store)."""
+    from . import mcp_tools
+    url, token = os.environ.get("GW_URL"), os.environ.get("GW_TOKEN")
+    prompt_line(f"gw why-edge {src} {dst}")
+    if url:
+        import httpx
+        r = httpx.get(f"{url.rstrip('/')}/v1/edges/{src}/{dst}/why", headers={"authorization": f"Bearer {token or ''}"}, timeout=30)
+        if r.status_code >= 400:
+            fail(r.json().get("detail", r.text))
+        res = r.json()
+    else:
+        if os.environ.get("GW_STORE") == "hydradb":
+            ws = Workspace(None, demo=False)
+        else:
+            ws = workspace()
+        try:
+            res = mcp_tools.why_edge(ws, src, dst)
+        except mcp_tools.ToolError as e:
+            fail(str(e))
+    e = res["edge"]
+    line((f"{src} ", INK), ("-> ", DIM), (f"{dst}", INK), (f"   w {e['w']:.2f}  {e['origin']}  {e['confirmations']} confirmations", DIM))
+    console.print()
+    if not res["lessons"]:
+        line(("in the official map; no postmortem taught it", DIM))
+        return
+    for les in res["lessons"]:
+        t = Text("  ")
+        t.append("lesson ", style=DIM)
+        t.append(f"L{les['id']}", style=VIOLET_TEXT)
+        t.append(f"  {les['state']}  w {les['w']:.2f}  created at revision {les['created_seq']}", style=DIM)
+        console.print(t)
+        for x in les["taught_by"]:
+            pm = x["postmortem"]
+            line(("  taught by   ", DIM), (f"{x['incident']}", INK), (f"  root {pm['root']}  path {pm['path'].replace('>', ' -> ')}", DIM))
+            if pm["missed"]:
+                line(("              ", DIM), (f"silent in that incident: {', '.join(pm['missed'])}", DIM))
+        for x in les["confirmed_by"]:
+            t = Text("  ")
+            t.append("  confirmed   ", style=DIM)
+            t.append("✓ ", style=TEAL)
+            t.append(x["incident"], style=INK)
+            console.print(t)
+        if not les["confirmed_by"]:
+            line(("  confirmed   not yet", DIM))
+    console.print()
+    line((f"gw why-edge answers by traversal: Lesson -> Postmortem -> Incident, in HydraDB", DIM))
+
+
 # ---- change -----------------------------------------------------------------------------
 change_app = typer.Typer(help="What changed: deploys and config changes the verdict can use.", no_args_is_help=True)
 app.add_typer(change_app, name="change")

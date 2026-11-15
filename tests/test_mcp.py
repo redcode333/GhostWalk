@@ -42,7 +42,7 @@ def test_propose_edge_creates_a_pending_proposal_and_never_writes_the_graph(ws):
     assert any(e.origin == "learned" for e in ws.g.edges.values())          # only a human approval writes it
 
 
-def test_stdio_server_exposes_exactly_the_four_tools(tmp_path, monkeypatch):
+def test_stdio_server_exposes_exactly_the_six_tools(tmp_path, monkeypatch):
     import asyncio, json
     from ghostwalk.mcp_server import build_server
     monkeypatch.setenv("GW_HOME", str(tmp_path / "gw"))
@@ -51,7 +51,7 @@ def test_stdio_server_exposes_exactly_the_four_tools(tmp_path, monkeypatch):
     w.save()
     srv = build_server()
     names = {t.name for t in asyncio.run(srv.list_tools())}
-    assert names == {"why", "path", "blast_radius", "propose_edge"}
+    assert names == {"why", "path", "blast_radius", "propose_edge", "why_edge", "lesson_impact"}
     alerts = [a["name"] for a in w.incidents[-1]["alerts"]]
     out = asyncio.run(srv.call_tool("why", {"alerts": alerts}))
     assert "Root cause:" in json.dumps(out, default=str)

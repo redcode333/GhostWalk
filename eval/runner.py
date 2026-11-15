@@ -45,12 +45,13 @@ def placebo_pm(co, inc, rng):
 
 
 def run_company(co, method, max_hops=5, steps=update.ALL_STEPS, placebo=False, seed=0, backend=None, trace=None,
-                pr=None, snap_every=10, use_changes=False, gamma=None, tau=None):
+                pr=None, snap_every=10, use_changes=False, gamma=None, tau=None, probe=None):
     """Returns per-incident rows: seq, truth, rank of truth (1-based, None if absent), top, confidence, latency.
 
     backend: object with fresh(co) / snapshot() / apply(ops) (HydraGraph and the eval/stores.py stores).
              Optional attributes: max_hops (query depth the store supports), reach (store-side reachability).
-    trace:   dict filled with rankings, per-incident ops and learned-edge snapshots (every `snap_every`)."""
+    trace:   dict filled with rankings, per-incident ops and learned-edge snapshots (every `snap_every`).
+    probe:   optional callable(inc, backend) run for each incident after its verdict and before it is learned from, so it sees only PAST incidents."""
     rng = random.Random(seed * 7919 + zlib.crc32(co["name"].encode()) % 10007)
     if method == "oracle":
         g = GraphState.from_truth(co)
@@ -93,12 +94,19 @@ def run_company(co, method, max_hops=5, steps=update.ALL_STEPS, placebo=False, s
                      "repeat_path": pair in seen_pairs,
                      "graph_seq": (snap if verdict is not None else g).seq})
         seen_pairs.add(pair)
+        if probe is not None:
+            probe(inc, backend)
         # learning happens only after the prediction, from this incident's postmortem
         if method == "ghostwalk":
             pm = placebo_pm(co, inc, rng) if placebo else inc["postmortem"]
             ops = update.propose(snap if backend else g, pm, verdict, alerts, inc["seq"], steps)
             t_apply = time.perf_counter()
-            backend.apply(ops) if backend else update.apply(g, ops)
+            if backend is None:
+                update.apply(g, ops)
+            elif getattr(backend, "remembers", False):          # a store that keeps the learner's memory (incident, alerts, postmortem, lessons) too
+                backend.apply(ops, incident={"seq": inc["seq"], "name": f"{co['name']}#{inc['seq']}", "alerts": alerts, "postmortem": pm})
+            else:
+                backend.apply(ops)
             rows[-1]["apply_ms"] = (time.perf_counter() - t_apply) * 1000       # the learning write, off the verdict path
             if trace is not None:
                 trace["ops"].append(ops)

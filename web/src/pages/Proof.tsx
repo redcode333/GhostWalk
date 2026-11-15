@@ -38,6 +38,25 @@ function CurveChart({ r }: { r: Results }) {
   )
 }
 
+
+function MemorySchema() {
+  const box = (x: number, y: number, label: string, hot = false) => (
+    <g key={label + x}><rect x={x} y={y} width="112" height="34" rx="9" fill="var(--card, var(--bg))" stroke={hot ? "var(--accent)" : "var(--line)"} strokeWidth="1.2" />
+      <text x={x + 56} y={y + 21} textAnchor="middle" fontSize="13" fill="var(--text-2)" fontFamily="Geist, sans-serif">{label}</text></g>)
+  const arrow = (d: string, lx: number, ly: number, label: string, anchor: "start" | "middle" | "end" = "middle") => (
+    <g key={label}><path d={d} fill="none" stroke="var(--text-4)" strokeWidth="1.2" markerEnd="url(#mem-arrow)" />
+      <text x={lx} y={ly} textAnchor={anchor} fontSize="10.5" fill="var(--text-4)" fontFamily="Geist Mono, monospace">{label}</text></g>)
+  return (
+    <svg viewBox="0 0 740 190" role="img" aria-label="Memory schema: Lesson TAUGHT_BY Postmortem ABOUT Incident RAISED Alert ON Service; Lesson CONFIRMED_BY Incident; Service DEPENDS_ON Service"
+      style={{ width: "100%", maxWidth: 740, height: "auto" }}>
+      <defs><marker id="mem-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="var(--text-4)" /></marker></defs>
+      {box(14, 30, "Lesson", true)}{box(204, 30, "Postmortem")}{box(394, 30, "Incident")}{box(584, 30, "Alert")}{box(584, 130, "Service")}{box(394, 130, "Service")}
+      {arrow("M126,47 H202", 164, 40, "TAUGHT_BY")}{arrow("M316,47 H392", 354, 40, "ABOUT")}{arrow("M506,47 H582", 544, 40, "RAISED")}
+      {arrow("M640,64 V128", 646, 100, "ON", "start")}{arrow("M582,147 H508", 545, 141, "DEPENDS_ON")}
+      {arrow("M70,64 V104 H450 V64", 260, 118, "CONFIRMED_BY")}
+    </svg>)
+}
+
 export default function Proof() {
   const { data: r, error } = useLoad(loadResults, [])
   if (error) return <Page><Err>{error}</Err></Page>
@@ -63,6 +82,8 @@ export default function Proof() {
   const beforeFix = (r as any).scale_before_transport_fix?.path_query?.sizes?.["1000"]?.path_query?.hops_3?.hydradb?.p50 as number | undefined
   const warm = (r.ops as any)?.hydradb_latency?.warm as any
   const loop = (r.ops as any)?.hydradb_online_loop_test as any
+  const mg = (r as any).memory_graph as any
+  const mr = (r as any).memory_retrieval as any
   return (
     <Page>
       <H1 title="Proof" sub={`Held-out ${r.meta.split} split: ${r.meta.companies} companies, ${r.meta.incidents.toLocaleString()} incidents. 95% bootstrap intervals.`}
@@ -83,6 +104,40 @@ export default function Proof() {
                 <div className="mono" style={{ fontSize: 12, color: "var(--text-4)" }}>95% CI {f3((v as CI).ci95[0])}–{f3((v as CI).ci95[1])}</div>
               </div>))}
           </div>
+        </section>
+      )}
+      {mg && mr && (
+        <section className="card" style={{ padding: 18, overflowX: "auto" }} aria-label="The memory is the graph">
+          <h2 style={{ margin: 0, fontSize: 16 }}>The memory is the graph</h2>
+          <p style={{ margin: "4px 0 12px", fontSize: 14, color: "var(--text-3)" }}>
+            GhostWalk's learning loop lives in HydraDB: every lesson is a node linked to the postmortems that taught it and the incidents that confirmed it.
+          </p>
+          <MemorySchema />
+          <h3 style={{ margin: "14px 0 6px", fontSize: 14, fontWeight: 500 }}>Why does the map say {mg.why_edge_example.src} depends on {mg.why_edge_example.dst}?</h3>
+          <pre className="mono" style={{ margin: 0, fontSize: 12.5, lineHeight: 1.6, whiteSpace: "pre-wrap", color: "var(--text-2)" }}>{mg.why_edge_example.text}</pre>
+          <h3 style={{ margin: "14px 0 6px", fontSize: 14, fontWeight: 500 }}>Kill the API, keep the learning</h3>
+          <p style={{ margin: 0, fontSize: 13, color: "var(--text-3)" }}>{String(mg.persistence.summary).replaceAll("`", "")}</p>
+          <h3 style={{ margin: "14px 0 6px", fontSize: 14, fontWeight: 500 }}>Graph memory against vector memory</h3>
+          <p style={{ margin: "0 0 8px", fontSize: 13, color: "var(--text-4)" }}>
+            Retrieve the 5 most relevant past incidents of the same company, using only past incidents. hit@5: a retrieved incident has the same root cause (repeat incidents only). 95% intervals over companies.
+          </p>
+          <table className="mono" style={{ fontSize: 13, borderCollapse: "collapse", minWidth: 560 }}>
+            <thead><tr style={{ color: "var(--text-4)", textAlign: "left" }}>{["", "graph (HydraDB)", "vector (pgvector)", "keyword (TF-IDF)"].map((h) => <th key={h} style={{ padding: "6px 14px 6px 0", fontFamily: "Geist", fontWeight: 500 }}>{h}</th>)}</tr></thead>
+            <tbody>
+              {([["hit@5, repeat incidents", "hit5_repeat", "pct"], ["MRR, repeat incidents", "mrr_repeat", "num"], ["related@5, novel incidents", "related5_novel", "pct"], ["related@5, all incidents", "related5_all", "pct"]] as [string, string, string][]).map(([label, k, kind]) => (
+                <tr key={k} style={{ borderTop: "1px solid var(--line)" }}>
+                  <td style={{ padding: "8px 14px 8px 0", fontFamily: "Geist" }}>{label} <span style={{ color: "var(--text-4)" }}>(n={mr.arms.graph[k].n})</span></td>
+                  {["graph", "vector", "keyword"].map((a) => { const c = mr.arms[a][k] as CI; return <td key={a} style={{ paddingRight: 14 }}>{kind === "pct" ? `${(c.point * 100).toFixed(1)}%` : c.point.toFixed(3)} <span style={{ color: "var(--text-4)" }}>{ci(c)}</span></td> })}
+                </tr>))}
+              <tr style={{ borderTop: "1px solid var(--line)" }}><td style={{ padding: "8px 14px 8px 0", fontFamily: "Geist" }}>latency p50 / p95 (ms)</td>
+                {["graph", "vector", "keyword"].map((a) => <td key={a} style={{ paddingRight: 14 }}>{ms(mr.arms[a].latency_ms.p50)} / {ms(mr.arms[a].latency_ms.p95)}</td>)}</tr>
+            </tbody>
+          </table>
+          <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--text-3)" }}>
+            Graph minus vector on repeat incidents, hit@5: {pts(mr.paired.hit5_repeat.graph_minus_vector.point)} (95% CI {pts(mr.paired.hit5_repeat.graph_minus_vector.ci95[0])} to {pts(mr.paired.hit5_repeat.graph_minus_vector.ci95[1])}).
+            Graph minus keyword: {pts(mr.paired.hit5_repeat.graph_minus_keyword.point)} ({pts(mr.paired.hit5_repeat.graph_minus_keyword.ci95[0])} to {pts(mr.paired.hit5_repeat.graph_minus_keyword.ci95[1])}).
+            The LLM memory arms were not run (no API key).
+          </p>
         </section>
       )}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>

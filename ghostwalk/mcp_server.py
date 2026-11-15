@@ -59,6 +59,16 @@ def build_server() -> FastMCP:
         return call("blast_radius", service=service, hops=hops)
 
     @mcp.tool()
+    def why_edge(src: str, dst: str) -> dict:
+        """Why does the graph say `src` depends on `dst`? If the edge was learned: the lesson, the postmortems that taught it and the incidents that confirmed it (needs the HydraDB store)."""
+        return call("why_edge", src=src, dst=dst)
+
+    @mcp.tool()
+    def lesson_impact(lesson_id: int) -> dict:
+        """Which services and past incidents have paths that use this learned edge (a lesson id from why_edge)."""
+        return call("lesson_impact", lesson_id=lesson_id)
+
+    @mcp.tool()
     def propose_edge(src: str, dst: str, incident_id: str = "", reason: str = "") -> dict:
         """Suggest a lesson: `src` depends on `dst`. Creates a PENDING proposal a human approves in GhostWalk; it never writes the graph."""
         return call("propose_edge", src=src, dst=dst, incident_id=incident_id or None, reason=reason)
