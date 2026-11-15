@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# GhostWalk backend on a fresh Linux VM (Ubuntu/Debian, >= 4 GB RAM): HydraDB + API + Caddy (HTTPS).
+# GhostWalk backend on a fresh Linux VM (Ubuntu/Debian, >= 4 GB RAM): HydraDB + MinIO + API + Caddy (HTTPS).
 #   git clone https://github.com/redcode333/GhostWalk && cd GhostWalk
 #   FRONTEND_ORIGIN=https://ghostwalk.vercel.app ./deploy/setup.sh        # API_DOMAIN defaults to api.<this-vm-ip>.sslip.io
 #   API_DOMAIN=api.example.com FRONTEND_ORIGIN=https://example.com ./deploy/setup.sh
@@ -20,19 +20,26 @@ docker compose version >/dev/null || { echo "docker compose plugin missing"; exi
 
 if [ "$MODE" = "update" ]; then git pull --ff-only; fi
 
-if [ ! -f "$DEPLOY/.env" ]; then
-  ip=$(curl -fsS https://api.ipify.org || hostname -I | awk '{print $1}')
-  API_DOMAIN="${API_DOMAIN:-api.${ip}.sslip.io}"
-  {
-    echo "API_DOMAIN=$API_DOMAIN"
-    echo "GW_CORS_ORIGINS=${FRONTEND_ORIGIN:-}"
-    echo "HYDRA_TOKEN=$(openssl rand -hex 16)"
-    echo "GW_ADMIN_TOKEN=$(openssl rand -hex 24)"
-    echo "GW_RATE_LIMIT=60/60"
-  } > "$DEPLOY/.env"
-  chmod 600 "$DEPLOY/.env"
-  echo "wrote $DEPLOY/.env"
-fi
+ENVF="$DEPLOY/.env"
+touch "$ENVF"; chmod 600 "$ENVF"
+ensure() { grep -q "^$1=" "$ENVF" || echo "$1=$2" >> "$ENVF"; }      # add a setting once; existing values (and generated secrets) are never overwritten
+ip=$(curl -fsS https://api.ipify.org 2>/dev/null || hostname -I | awk '{print $1}')
+ensure API_DOMAIN "${API_DOMAIN:-api.${ip}.sslip.io}"
+ensure GW_CORS_ORIGINS "${FRONTEND_ORIGIN:-}"
+ensure HYDRA_TOKEN "$(openssl rand -hex 16)"
+ensure GW_ADMIN_TOKEN "$(openssl rand -hex 24)"
+ensure GW_RATE_LIMIT "60/60"
+# object storage for HydraDB: STORAGE=local (default) keeps the data on a docker volume; STORAGE=minio (opt-in, experimental, see docs/deploy.md) keeps it in MinIO on this VM
+STORAGE="${STORAGE:-$(grep '^STORAGE=' "$ENVF" | cut -d= -f2 || true)}"; STORAGE="${STORAGE:-local}"
+ensure STORAGE "$STORAGE"
+ensure MINIO_ROOT_USER "gwadmin$(openssl rand -hex 4)"
+ensure MINIO_ROOT_PASSWORD "$(openssl rand -hex 24)"
+ensure HYDRA_S3_KEY "$(openssl rand -hex 10)"
+ensure HYDRA_S3_SECRET "$(openssl rand -hex 24)"
+ensure HYDRA_BUCKET "ghostwalk"
+sed -i '/^HYDRA_CLOUD_PROVIDER=/d;/^COMPOSE_PROFILES=/d' "$ENVF"
+if [ "$STORAGE" = minio ]; then echo "HYDRA_CLOUD_PROVIDER=aws" >> "$ENVF"; echo "COMPOSE_PROFILES=minio" >> "$ENVF"; else echo "HYDRA_CLOUD_PROVIDER=local" >> "$ENVF"; echo "COMPOSE_PROFILES=" >> "$ENVF"; fi
+echo "storage: $STORAGE (secrets are in $ENVF, not printed)"
 if command -v ufw >/dev/null; then sudo ufw allow 80/tcp >/dev/null 2>&1 || true; sudo ufw allow 443/tcp >/dev/null 2>&1 || true; fi
 
 DC="docker compose --env-file $DEPLOY/.env -f $DEPLOY/docker-compose.prod.yml"

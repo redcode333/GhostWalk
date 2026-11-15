@@ -1,0 +1,6 @@
+# make durability-demo (laptop, Docker Desktop; prod compose, STORAGE=minio, API_DOMAIN=localhost)
+before: store=hydradb revision=31 ranking [('transcode-svc', 0.9423), ('consent-svc', 0.0176), ('ledger-db', 0.0155)] why-edge ['edge-gateway', 'catalog-api']
+stop the stack, delete ONLY ghostwalk-prod_hydradb-data (keep ghostwalk-prod_minio-data)
+after:  store=hydradb revision=31 ranking [('transcode-svc', 0.9423), ('consent-svc', 0.0176), ('ledger-db', 0.0155)] why-edge ['edge-gateway', 'catalog-api']
+identical ranking and why-edge after deleting HydraDB's local data: True
+# a write after this restart: 409 mutation_conflict (see docs/deploy.md)
