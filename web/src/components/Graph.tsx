@@ -2,11 +2,11 @@ import { useMemo } from "react"
 import { KIND_COLOR } from "./common"
 
 export type GNode = { id: number; name: string; kind: string; tier: number; alerting?: boolean; root?: boolean }
-export type GEdge = { u: number; v: number; origin: string; w?: number; path?: boolean }
+export type GEdge = { u: number; v: number; origin: string; w?: number; path?: boolean; pulse?: boolean; flow?: boolean }
 
 /** Tier-layered SVG graph. Tier colours are for graph elements only: alerting = amber ring, root = violet fill, learned edge = violet dashed. */
-export function Graph({ nodes, edges, height = 360, labels = true, onPick }: {
-  nodes: GNode[]; edges: GEdge[]; height?: number; labels?: boolean; onPick?: (n: GNode) => void
+export function Graph({ nodes, edges, height = 360, labels = true, onPick, tierLabels = false, dim = false }: {
+  nodes: GNode[]; edges: GEdge[]; height?: number; labels?: boolean; onPick?: (n: GNode) => void; tierLabels?: boolean; dim?: boolean
 }) {
   const W = 760
   const layout = useMemo(() => {
@@ -18,24 +18,35 @@ export function Graph({ nodes, edges, height = 360, labels = true, onPick }: {
       const row = rows.get(t)!.sort((a, b) => a.name.localeCompare(b.name))
       row.forEach((n, i) => pos.set(n.id, { dy: row.length > 7 ? 20 + (i % 3) * 12 : 22, x: ((i + 1) * W) / (row.length + 1), y: tiers.length === 1 ? height / 2 : 34 + (ti * (height - 68)) / (tiers.length - 1) }))
     })
-    return pos
+    const info = tiers.map((t, ti) => {
+      const kinds = rows.get(t)!.map((n) => n.kind)
+      const dom = [...new Set(kinds)].sort((a, b) => kinds.filter((k) => k === b).length - kinds.filter((k) => k === a).length)[0]
+      return { y: tiers.length === 1 ? height / 2 : 34 + (ti * (height - 68)) / (tiers.length - 1), kind: dom, n: kinds.length }
+    })
+    return { pos, info }
   }, [nodes, height])
+  const pos = layout.pos
   return (
     <svg viewBox={`0 0 ${W} ${height}`} width="100%" role="img" aria-label="Dependency graph" style={{ display: "block" }}>
       {edges.map((e, i) => {
-        const a = layout.get(e.u), b = layout.get(e.v)
+        const a = pos.get(e.u), b = pos.get(e.v)
         if (!a || !b) return null
         const learned = e.origin === "learned"
         return (
           <line key={i} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={learned ? "var(--accent)" : "var(--g-edge)"}
-            strokeWidth={e.path ? 2.4 : 1.2} strokeDasharray={learned ? "5 4" : undefined} opacity={e.path ? 1 : learned ? 0.85 : 0.35} />
+            className={`${e.pulse ? "pulse-edge" : ""} ${e.flow ? "drift" : ""}`}
+            strokeWidth={e.path ? 2.4 : 1.2} strokeDasharray={e.flow ? "8 4" : learned ? "5 4" : undefined} opacity={e.path ? 1 : dim ? 0.12 : learned ? 0.85 : 0.35} />
         )
       })}
+      {tierLabels && layout.info.map((r, i) => (
+        <text key={i} x={6} y={r.y - 14} fontSize="10" fontFamily="Geist Mono, monospace" fill={KIND_COLOR[r.kind]}>{r.kind} · {r.n}</text>
+      ))}
       {nodes.map((n) => {
-        const p = layout.get(n.id)!
+        const p = pos.get(n.id)!
         const fill = n.root ? "var(--accent)" : KIND_COLOR[n.kind] ?? "var(--g-service)"
         return (
           <g key={n.id} onClick={() => onPick?.(n)} style={{ cursor: onPick ? "pointer" : "default" }}>
+            {n.root && <circle className="ring" cx={p.x} cy={p.y} r={9} fill="none" stroke="var(--accent)" strokeWidth="2" style={{ transformBox: "fill-box", transformOrigin: "center" }} />}
             {n.alerting && <circle cx={p.x} cy={p.y} r={n.root ? 12 : 10.5} fill="none" stroke="var(--amber)" strokeWidth="2.4" />}
             <circle cx={p.x} cy={p.y} r={n.root ? 7.5 : 6} fill={fill} />
             {labels && (

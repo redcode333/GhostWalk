@@ -67,7 +67,7 @@ export function AppShell() {
           <form onSubmit={(e) => { e.preventDefault(); ask(input.current?.value ?? "") }}
             style={{ flex: "1 1 320px", maxWidth: 520, display: "flex", alignItems: "center", gap: 8, background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 12, padding: "0 10px", minHeight: 36 }}>
             <span className="mono" style={{ color: "var(--accent-text)", fontSize: 13 }}>&gt;_</span>
-            <input id="cmd" ref={input} className="mono" placeholder="why INC-1042" style={{ flex: 1, minWidth: 0, background: "transparent", border: 0, outline: "none", color: "var(--ink)", fontSize: 13 }} />
+            <input id="cmd" ref={input} className="mono" placeholder="why checkout-api" style={{ flex: 1, minWidth: 0, background: "transparent", border: 0, outline: "none", color: "var(--ink)", fontSize: 13 }} />
             <span className="kbd">⌘</span><span className="kbd">K</span>
           </form>
           <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>

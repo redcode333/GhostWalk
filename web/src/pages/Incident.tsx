@@ -5,6 +5,7 @@ import { Btn, Err, Muted, useLoad } from "@/components/common"
 import { Graph, Legend, type GEdge, type GNode } from "@/components/Graph"
 import { H1, Page } from "@/components/AppShell"
 import { Stat } from "./Incidents"
+import { RankList } from "@/components/panels"
 
 export default function Incident() {
   const { id = "" } = useParams()
@@ -56,13 +57,7 @@ export default function Incident() {
         <aside style={{ flex: "2 1 320px", minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
           <section className="card" style={{ padding: 18 }}>
             <h2 style={{ margin: "0 0 10px", fontSize: 16 }}>Verdict</h2>
-            {v.ranking.slice(0, 3).map((r: any, i: number) => (
-              <div key={r.id} className="mono" style={{ display: "grid", gridTemplateColumns: "20px 1fr 52px", gap: 8, alignItems: "center", fontSize: 14, padding: "6px 0" }}>
-                <span style={{ color: "var(--text-4)" }}>{i + 1}</span>
-                <span style={{ color: i === 0 ? "var(--accent-text)" : "var(--text-2)" }}>{r.name}</span>
-                <span>{r.confidence.toFixed(2)}</span>
-              </div>
-            ))}
+            <RankList ranking={v.ranking} />
             {!v.ranking.length && <Muted>No alert name matched a service in the map{v.unresolved.length ? `: ${v.unresolved.slice(0, 4).join(", ")}` : ""}.</Muted>}
           </section>
           <section className="card" style={{ padding: 18, display: "flex", flexDirection: "column", gap: 8, fontSize: 14 }}>

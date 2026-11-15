@@ -3,23 +3,12 @@ import { Navigate, useNavigate, useParams } from "react-router-dom"
 import { api } from "@/lib/api"
 import { Btn, Err, Muted, useLoad } from "@/components/common"
 import { H1, Page } from "@/components/AppShell"
+import { ChangeRows } from "@/components/panels"
 
-const SYM: Record<string, string> = { "+": "var(--accent-text)", "~": "var(--amber)", "=": "var(--text-3)", "−": "#D9534F" }
 const field = { padding: "10px 12px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--surface-2)", color: "var(--ink)", font: "14px Geist, sans-serif" } as const
 
 function Changes({ shown, rejected, toggle }: { shown: any[]; rejected: Set<number>; toggle: (i: number) => void }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column" }}>
-      {shown.map((r) => (
-        <div key={r.index} className="mono" style={{ display: "grid", gridTemplateColumns: "20px 1fr auto 70px", gap: 12, alignItems: "center", padding: "10px 0", borderTop: "1px solid var(--line)", fontSize: 14, opacity: rejected.has(r.index) ? 0.45 : 1 }}>
-          <span style={{ color: SYM[r.symbol] }}>{r.symbol}</span>
-          <span style={{ textDecoration: rejected.has(r.index) ? "line-through" : undefined }}>{r.text}</span>
-          <span style={{ color: "var(--text-4)", fontSize: 13 }}>{r.detail}</span>
-          <button className="chip" onClick={() => toggle(r.index)} style={{ padding: "3px 10px", fontSize: 12 }}>{rejected.has(r.index) ? "Keep" : "Reject"}</button>
-        </div>
-      ))}
-    </div>
-  )
+  return <ChangeRows rows={shown} dimmed={rejected} action={(r) => <button className="chip" onClick={() => toggle(r.index)} style={{ padding: "3px 10px", fontSize: 12 }}>{rejected.has(r.index) ? "Keep" : "Reject"}</button>} />
 }
 
 export default function Learn() {

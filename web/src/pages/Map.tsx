@@ -3,6 +3,7 @@ import { api } from "@/lib/api"
 import { Btn, Err, Muted, useLoad } from "@/components/common"
 import { Graph, Legend } from "@/components/Graph"
 import { H1, Page } from "@/components/AppShell"
+import { LearnedList } from "@/components/panels"
 
 const CAP = 40
 
@@ -39,21 +40,13 @@ export default function MapPage() {
             </div>
             <span className="mono" style={{ marginLeft: "auto", fontSize: 12, color: "var(--text-4)" }}>Showing {view.nodes.length} of {m.nodes.length}</span>
           </div>
-          <Graph nodes={view.nodes} edges={view.edges} height={420} />
+          <Graph nodes={view.nodes} edges={view.edges} height={420} tierLabels />
           <Legend items={["Edge", "Service", "Data", "Infra", "Learned edge"]} />
         </section>
         <aside className="card" style={{ flex: "1 1 300px", padding: 18 }}>
           <h2 style={{ margin: "0 0 8px", fontSize: 16 }}>Learned edges</h2>
           {m.learned.length === 0 && <Muted>None yet. Write a postmortem and the first one lands here.</Muted>}
-          {m.learned.map((e: any, i: number) => (
-            <div key={i} style={{ padding: "10px 0", borderTop: i ? "1px solid var(--line)" : undefined }}>
-              <div className="mono" style={{ fontSize: 13, display: "flex", gap: 8 }}>
-                <span style={{ color: "var(--accent-text)" }}>{name(e.u)} ⇢ {name(e.v)}</span>
-                <span style={{ marginLeft: "auto", color: e.confirmations >= 2 ? "var(--ok)" : "var(--text-4)" }}>{e.confirmations >= 2 ? "confirmed" : "tentative"}</span>
-              </div>
-              <div className="mono" style={{ fontSize: 12, color: "var(--text-4)" }}>w {e.w.toFixed(2)} · revision {e.from}</div>
-            </div>
-          ))}
+          <LearnedList edges={m.learned} name={name} />
         </aside>
       </div>
     </Page>

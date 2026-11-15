@@ -57,12 +57,19 @@ export default function Settings() {
         <p style={{ margin: "8px 0 0", fontSize: 12, color: "var(--text-4)" }}>Send it as <span className="mono">Authorization: Bearer …</span>. Required when sign-in is on ({s.auth_mode}).</p>
       </section>
       <section className="card" style={{ padding: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "0 0 10px" }}><h2 style={{ margin: 0, fontSize: 17 }}>MCP server</h2><span className="mono" style={{ fontSize: 11, border: "1px solid var(--accent)", color: "var(--accent-text)", borderRadius: 999, padding: "1px 8px" }}>beta</span></div>
+        <p style={{ margin: "0 0 10px", fontSize: 14, color: "var(--text-3)" }}>Let Claude, Cursor or any MCP client ask why. Tools: why, path, blast_radius, propose_edge. Proposals stay pending until you approve them in Learn.</p>
+        <pre className="mono" style={{ margin: 0, fontSize: 13, lineHeight: 1.8, color: "var(--text-3)", overflowX: "auto" }}>{`$ claude mcp add ghostwalk -- gw mcp
+# hosted: GW_URL=${s.webhook_url.replace("/v1/alerts/acme", "")} GW_TOKEN=<token above> gw mcp`}</pre>
+      </section>
+      <section className="card" style={{ padding: 20 }}>
         <h2 style={{ margin: "0 0 10px", fontSize: 17 }}>CLI</h2>
         <pre className="mono" style={{ margin: 0, fontSize: 13, lineHeight: 1.8, color: "var(--text-3)" }}>{`$ pip install ghostwalk\n$ gw map import ./your-repos\n$ gw why --alerts alerts.json\n$ gw learn INC-1042 --root config-svc`}</pre>
       </section>
       <section className="card" style={{ padding: 20 }}>
         <h2 style={{ margin: "0 0 4px", fontSize: 17 }}>Store</h2>
         <Row k="Backend" v={s.store.label} />
+        <Row k="HydraDB" v={s.store.name === "hydradb" ? "connected" : "not connected (this server uses the in-memory store)"} />
         <Row k="Graph" v={`${s.graph.nodes} nodes · ${s.graph.edges} edges (${s.graph.learned} learned)`} />
         <Row k="Version" v={`v${s.version}`} />
       </section>

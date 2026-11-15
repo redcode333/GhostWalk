@@ -103,6 +103,7 @@ export default function Proof() {
               <div key={t.label} style={{ flex: "1 1 190px", border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px" }}>
                 <div style={{ fontSize: 13, color: "var(--text-3)" }}>{t.label}</div>
                 <div className="mono" style={{ fontSize: 24, fontWeight: 600 }}>{t.v}</div>
+                <div aria-hidden="true" style={{ height: 6, borderRadius: 3, background: "var(--muted)", margin: "6px 0" }}><div style={{ height: "100%", width: `${parseFloat(t.v) * 100}%`, borderRadius: 3, background: "var(--accent)" }} /></div>
                 <div className="mono" style={{ fontSize: 11, color: "var(--text-4)" }}>{t.sub}</div>
               </div>
             ))}
@@ -113,9 +114,16 @@ export default function Proof() {
             </div>
           </div>
           {depth && (
-            <div className="mono" style={{ marginTop: 14, fontSize: 13, display: "flex", flexWrap: "wrap", gap: 16 }}>
-              <span style={{ fontFamily: "Geist", color: "var(--text-3)" }}>Max hops walked</span>
-              {Object.entries(depth).map(([h, c]) => <span key={h}>{h}: {f3(c.point)}</span>)}
+            <div style={{ marginTop: 18 }}>
+              <div style={{ fontSize: 14, color: "var(--text-3)", marginBottom: 8 }}>Max hops walked</div>
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 14, height: 110 }}>
+                {Object.entries(depth).map(([h, c]) => (
+                  <div key={h} className="mono" style={{ flex: 1, maxWidth: 90, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, fontSize: 12 }}>
+                    <span style={{ color: "var(--text-3)" }}>{f3(c.point)}</span>
+                    <span aria-hidden="true" style={{ width: "100%", height: `${Math.max(6, c.point * 80)}px`, background: h === "5" ? "var(--accent)" : "var(--text-4)", borderRadius: "6px 6px 2px 2px", opacity: h === "5" ? 1 : 0.55 }} />
+                    <span style={{ color: "var(--text-4)" }}>{h}</span>
+                  </div>))}
+              </div>
             </div>
           )}
         </section>

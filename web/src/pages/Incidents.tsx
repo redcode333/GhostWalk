@@ -43,7 +43,7 @@ export default function Incidents() {
           {shown.map((r) => (
             <Link key={r.id} to={`/app/incidents/${r.id}`} className="mono"
               style={{ display: "grid", gridTemplateColumns: COLS, gap: 16, alignItems: "center", padding: "12px 16px", borderTop: "1px solid var(--line)", fontSize: 14 }}>
-              <span>{r.id}</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><span aria-hidden="true" className={r.status === "Open" ? "live" : ""} style={{ width: 7, height: 7, borderRadius: 99, background: r.status === "Open" ? "var(--amber)" : r.status === "Needs postmortem" ? "var(--accent)" : "var(--text-4)", opacity: r.status === "Resolved" ? 0.5 : 1 }} />{r.id}</span>
               <span style={{ fontFamily: "Geist, sans-serif" }}>{r.symptom}</span>
               <span style={{ color: "var(--accent-text)", whiteSpace: "nowrap" }}>{r.root}{r.taught ? <Muted> · taught {r.taught} change{r.taught === 1 ? "" : "s"}</Muted> : null}</span>
               <span>{r.confidence.toFixed(2)}</span>

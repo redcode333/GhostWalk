@@ -1,8 +1,9 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
-import { Link, Navigate } from "react-router-dom"
+import { Link, Navigate, useNavigate } from "react-router-dom"
+import { GitBranch, Globe } from "lucide-react"
 import { ClerkProvider, SignIn, SignUp, useAuth } from "@clerk/react"
 import { api } from "@/lib/api"
-import { Btn, Logo } from "@/components/common"
+import { Btn, Logo, ThemeToggle } from "@/components/common"
 
 type Cfg = { auth_mode: "none" | "clerk"; clerk_publishable_key: string | null }
 const Ctx = createContext<Cfg | null>(null)
@@ -43,7 +44,8 @@ const BULLETS = ["Connect alerts with one webhook", "Every postmortem teaches th
 
 function Side({ headline }: { headline: string }) {
   return (
-    <aside style={{ flex: "1 1 420px", background: "var(--surface-2)", borderLeft: "1px solid var(--line)", padding: 48, display: "flex", flexDirection: "column", justifyContent: "center", gap: 24 }}>
+    <aside className="hide-sm" style={{ flex: "1 1 420px", position: "relative", overflow: "hidden", padding: 48, display: "flex", flexDirection: "column", justifyContent: "center", gap: 24, borderLeft: "1px solid var(--line)",
+      background: "radial-gradient(60% 50% at 20% 10%, rgba(var(--lrgb), 0) 0, transparent 100%), radial-gradient(70% 60% at 85% 0%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%), radial-gradient(60% 50% at 0% 100%, color-mix(in srgb, var(--amber) 16%, transparent), transparent 70%), var(--surface-2)" }}>
       <h2 style={{ margin: 0, fontSize: 34, lineHeight: 1.1, letterSpacing: "-0.03em", fontWeight: 600, maxWidth: 420 }}>{headline}</h2>
       <div className="card" style={{ padding: 18, maxWidth: 420 }}>
         <div className="mono" style={{ fontSize: 13, color: "var(--text-4)" }}>INC-1042</div>
@@ -62,9 +64,10 @@ function Side({ headline }: { headline: string }) {
 
 function Shell({ children, headline }: { children: ReactNode; headline: string }) {
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexWrap: "wrap", background: "var(--bg)" }}>
+    <div style={{ minHeight: "100vh", display: "flex", flexWrap: "wrap", background: "var(--bg)", position: "relative" }}>
+      <div style={{ position: "absolute", top: 16, right: 16, zIndex: 5 }}><ThemeToggle /></div>
       <main style={{ flex: "1 1 460px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 24, padding: 32 }}>
-        <Link to="/" aria-label="GhostWalk home"><Logo width={44} size={22} /></Link>
+        <Link to="/" aria-label="GhostWalk home"><Logo width={66} size={27} /></Link>
         {children}
       </main>
       <Side headline={headline} />
@@ -72,14 +75,37 @@ function Shell({ children, headline }: { children: ReactNode; headline: string }
   )
 }
 
-function NoAuth({ title, sub }: { title: string; sub: string }) {
+const input = { padding: "11px 12px", borderRadius: 12, border: "1px solid var(--line)", background: "var(--surface-2)", color: "var(--ink)", font: "15px Geist, sans-serif", minHeight: 44, boxSizing: "border-box" } as const
+const Field = ({ label, children, right }: { label: string; children: ReactNode; right?: ReactNode }) => (
+  <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 14 }}>
+    <span style={{ display: "flex", justifyContent: "space-between" }}>{label}{right}</span>{children}
+  </label>
+)
+const Oauth = () => (
+  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+    <Btn variant="glass" to="/app/incidents"><GitBranch size={16} /> GitHub</Btn>
+    <Btn variant="glass" to="/app/incidents"><Globe size={16} /> Google</Btn>
+  </div>
+)
+const Or = () => <div style={{ display: "flex", alignItems: "center", gap: 12, color: "var(--text-4)", fontSize: 13 }}><span style={{ flex: 1, borderTop: "1px solid var(--line)" }} />or with email<span style={{ flex: 1, borderTop: "1px solid var(--line)" }} /></div>
+
+/** AUTH_MODE=none: the form is the real layout, and submitting opens the demo workspace (there is no account behind it). */
+function DemoForm({ up }: { up: boolean }) {
+  const nav = useNavigate()
   return (
-    <div className="card" style={{ width: "min(420px, 100%)", padding: 28, display: "flex", flexDirection: "column", gap: 14 }}>
-      <h1 style={{ margin: 0, fontSize: 26, fontWeight: 600 }}>{title}</h1>
-      <p style={{ margin: 0, color: "var(--text-3)", fontSize: 15 }}>{sub}</p>
-      <p style={{ margin: 0, color: "var(--text-3)", fontSize: 14 }}>Sign-in is off on this server (<span className="mono">AUTH_MODE=none</span>), so there is no account to create. It opens the demo workspace.</p>
-      <Btn to="/app/incidents">Open the demo workspace</Btn>
-    </div>
+    <form onSubmit={(e) => { e.preventDefault(); nav(up ? "/app/onboarding" : "/app/incidents") }} className="card" style={{ width: "min(420px, 100%)", padding: 28, display: "flex", flexDirection: "column", gap: 14 }}>
+      <div><h1 style={{ margin: 0, fontSize: 26, fontWeight: 600 }}>{up ? "Create your account" : "Welcome back"}</h1>
+        <p style={{ margin: "4px 0 0", color: "var(--text-3)", fontSize: 15 }}>{up ? "Free for up to 25 services. No card needed." : "Sign in to your workspace."}</p></div>
+      <Oauth /><Or />
+      {up && <Field label="Full name"><input style={input} placeholder="Priya Raman" autoComplete="name" /></Field>}
+      <Field label="Work email"><input style={input} type="email" autoComplete="email" placeholder="you@company.com" /></Field>
+      <Field label="Password" right={!up && <a href="#" style={{ color: "var(--accent-text)" }}>Forgot password?</a>}><input style={input} type="password" autoComplete={up ? "new-password" : "current-password"} /></Field>
+      {!up && <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" defaultChecked style={{ accentColor: "var(--accent)" }} /> Keep me signed in</label>}
+      <Btn type="submit">{up ? "Create free account" : "Sign in"}</Btn>
+      {!up && <Btn variant="glass" to="/app/incidents">Sign in with SSO</Btn>}
+      {up && <p style={{ margin: 0, fontSize: 13, color: "var(--text-4)" }}>By continuing you agree to the <a href="#" style={{ textDecoration: "underline" }}>Terms</a> and <a href="#" style={{ textDecoration: "underline" }}>Privacy Policy</a>.</p>}
+      <p style={{ margin: 0, fontSize: 12, color: "var(--text-4)" }}>Sign-in is off on this server (<span className="mono">AUTH_MODE=none</span>), so this opens the demo workspace.</p>
+    </form>
   )
 }
 
@@ -88,8 +114,8 @@ export function SignInPage() {
   const clerk = cfg?.auth_mode === "clerk" && cfg.clerk_publishable_key
   return (
     <Shell headline="The pager says checkout. The graph says config-svc.">
-      {clerk ? <SignIn routing="path" path="/signin" signUpUrl="/signup" forceRedirectUrl="/app/incidents" appearance={appearance} /> : <NoAuth title="Welcome back" sub="Sign in to your workspace." />}
-      {!clerk && <div style={{ fontSize: 14, color: "var(--text-3)" }}>New to GhostWalk? <Link to="/signup" style={{ color: "var(--accent-text)" }}>Create a free account</Link></div>}
+      {clerk ? <SignIn routing="path" path="/signin" signUpUrl="/signup" forceRedirectUrl="/app/incidents" appearance={appearance} /> : <DemoForm up={false} />}
+      <div style={{ fontSize: 14, color: "var(--text-3)" }}>New to GhostWalk? <Link to="/signup" style={{ color: "var(--accent-text)" }}>Create a free account</Link></div>
     </Shell>
   )
 }
@@ -99,8 +125,8 @@ export function SignUpPage() {
   const clerk = cfg?.auth_mode === "clerk" && cfg.clerk_publishable_key
   return (
     <Shell headline="Next time it breaks, you'll know where in milliseconds.">
-      {clerk ? <SignUp routing="path" path="/signup" signInUrl="/signin" forceRedirectUrl="/app/onboarding" appearance={appearance} /> : <NoAuth title="Create your account" sub="Free for up to 25 services. No card needed." />}
-      {!clerk && <div style={{ fontSize: 14, color: "var(--text-3)" }}>Already have an account? <Link to="/signin" style={{ color: "var(--accent-text)" }}>Sign in</Link></div>}
+      {clerk ? <SignUp routing="path" path="/signup" signInUrl="/signin" forceRedirectUrl="/app/onboarding" appearance={appearance} /> : <DemoForm up />}
+      <div style={{ fontSize: 14, color: "var(--text-3)" }}>Already have an account? <Link to="/signin" style={{ color: "var(--accent-text)" }}>Sign in</Link></div>
     </Shell>
   )
 }

@@ -61,11 +61,31 @@ def demo_inside():
     # a second incident with the same root confirms the edge and counts the root (that is how a tentative edge grows up)
     ops2 = update.propose(g2, pm, walk(g2, alerts_seen), alerts_seen, g2.seq)
     update.apply(g2, ops2)
+    import time
+    t0 = time.perf_counter()
     after, path_after, _ = _verdict(g2, alerts_seen)
+    ms = (time.perf_counter() - t0) * 1000
     nodes = [{"id": i, "name": c["name"], "kind": ui_kind(c), "tier": c["tier"], "alerting": c["name"] in {a["name"] for a in alerts_seen}}
              for i, c in g.components.items()]
     edges = [{"u": u, "v": v, "origin": "official"} for (u, v) in g.edges]
     learned = [{"u": u, "v": v, "origin": "learned", "w": round(e.w, 2)} for (u, v), e in g2.edges.items() if e.origin == "learned"]
-    return {"nodes": nodes, "edges": edges, "learned_edges": learned, "before": {"ranking": before, "path": path_before},
+    # "Search old postmortems": the TF-IDF baseline over a few earlier incidents of the same company (each one's postmortem names its root).
+    # None of them had config-svc as the root, which is the point: this is a first-time cause, so there is nothing to retrieve.
+    from ..engine.walk import _limited_best
+    from baselines import simple
+    pm_of = lambda root: {"root": ids[root]}
+    hist_spec = [("INC-0907", "postgres-pay", [("checkout-api", "error_rate"), ("payments", "latency_p99"), ("postgres-pay", "saturation")]),
+                 ("INC-0931", "fraud-check", [("fraud-check", "latency_p99"), ("payments", "timeouts"), ("checkout-api", "error_rate")]),
+                 ("INC-0958", "redis-main", [("search", "timeouts"), ("cart", "latency_p99"), ("redis-main", "saturation")]),
+                 ("INC-0984", "payments", [("payments", "error_rate"), ("checkout-api", "error_rate")])]
+    history = [{"alerts": [{"name": n, "signal": sg, "t": float(i)} for i, (n, sg) in enumerate(al)], "postmortem": pm_of(root), "root": ids[root]} for _, root, al in hist_spec]
+    ranked = simple.rank_retrieval(g, alerts, history)
+    inc_of = {ids[r]: i for i, r, _ in hist_spec}
+    search = {"query": [f"{a['name']}|{a['signal']}" for a in alerts],
+              "matches": [{"incident": inc_of[c], "root": g.components[c]["name"]} for c in ranked if c in inc_of][:3]}
+    root_id = after[0]["id"]
+    best, _ = _limited_best(g2.in_adj(), root_id, 3)
+    blast = sorted(g.components[c]["name"] for c in best if c != root_id)
+    return {"ms": round(ms, 2), "search": search, "blast": blast, "nodes": nodes, "edges": edges, "learned_edges": learned, "before": {"ranking": before, "path": path_before},
             "after": {"ranking": after, "path": path_after}, "changes": shown, "alerts": len(alerts_seen),
             "note": "computed by the real engine and learner on a 9-service scenario; the second matching incident confirms the edge"}

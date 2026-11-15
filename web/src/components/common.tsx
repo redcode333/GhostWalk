@@ -24,14 +24,36 @@ export function Logo({ width = 66, word = true, size = 27 }: { width?: number; w
   )
 }
 
+const BG = { light: "#F4F2EC", dark: "#09090E" }
+
+/** Flip the theme with a circular reveal from the top-right corner (View Transitions). Fallback: an overlay in the target
+ *  background colour that fades out over 300ms. Instant under prefers-reduced-motion. */
+export function setThemeAnimated(next: boolean, after?: () => void) {
+  const root = document.documentElement
+  const apply = () => {
+    root.classList.toggle("dark", next)
+    try { localStorage.setItem("gw-theme", next ? "dark" : "light") } catch { /* private mode */ }
+    after?.()
+  }
+  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return apply()
+  const vt = (document as any).startViewTransition?.bind(document)
+  if (vt) {
+    const t = vt(() => { apply() })
+    t.ready.then(() => root.animate(
+      { clipPath: ["circle(0% at 100% 0%)", "circle(150% at 100% 0%)"] },
+      { duration: 700, easing: "ease-in-out", pseudoElement: "::view-transition-new(root)" })).catch(() => {})
+    return
+  }
+  const veil = document.createElement("div")
+  veil.style.cssText = `position:fixed;inset:0;z-index:9999;pointer-events:none;background:${next ? BG.dark : BG.light};opacity:1;transition:opacity .3s ease`
+  document.body.appendChild(veil)
+  apply()
+  requestAnimationFrame(() => requestAnimationFrame(() => { veil.style.opacity = "0"; setTimeout(() => veil.remove(), 340) }))
+}
+
 export function useTheme() {
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"))
-  const toggle = () => {
-    const next = !dark
-    document.documentElement.classList.toggle("dark", next)
-    try { localStorage.setItem("gw-theme", next ? "dark" : "light") } catch { /* private mode */ }
-    setDark(next)
-  }
+  const toggle = () => setThemeAnimated(!dark, () => setDark(!dark))
   return { dark, toggle }
 }
 
@@ -45,7 +67,7 @@ export function ThemeToggle() {
 }
 
 export function Btn({ to, href, variant = "primary", children, onClick, disabled, className = "", type }: {
-  to?: string; href?: string; variant?: "primary" | "glass"; children: ReactNode; onClick?: () => void; disabled?: boolean; className?: string; type?: "button" | "submit"
+  to?: string; href?: string; variant?: "primary" | "glass" | "ghost"; children: ReactNode; onClick?: () => void; disabled?: boolean; className?: string; type?: "button" | "submit"
 }) {
   const cls = `btn btn-${variant} ${className}`
   if (to) return <Link to={to} className={cls}>{children}</Link>
