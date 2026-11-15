@@ -3,7 +3,8 @@ import { Link, Navigate, useNavigate } from "react-router-dom"
 import { GitBranch, Globe } from "lucide-react"
 import { ClerkProvider, SignIn, SignUp, useAuth } from "@clerk/react"
 import { api } from "@/lib/api"
-import { Btn, Logo, ThemeToggle } from "@/components/common"
+import { Btn, Logo, ThemeToggle, useLoad } from "@/components/common"
+import { loadResults, verdictLatency } from "@/lib/results"
 
 type Cfg = { auth_mode: "none" | "clerk"; clerk_publishable_key: string | null }
 const Ctx = createContext<Cfg | null>(null)
@@ -43,6 +44,8 @@ const appearance = { variables: { colorPrimary: "var(--ink)", colorBackground: "
 const BULLETS = ["Connect alerts with one webhook", "Every postmortem teaches the graph", "Upgrade only when you pass 25 services"]
 
 function Side({ headline }: { headline: string }) {
+  const { data: r } = useLoad(loadResults, [])
+  const lat = verdictLatency(r)
   return (
     <aside className="hide-sm" style={{ flex: "1 1 min(420px, 100%)", position: "relative", overflow: "hidden", padding: 48, display: "flex", flexDirection: "column", justifyContent: "center", gap: 24, borderLeft: "1px solid var(--line)",
       background: "radial-gradient(60% 50% at 20% 10%, rgba(var(--lrgb), 0) 0, transparent 100%), radial-gradient(70% 60% at 85% 0%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%), radial-gradient(60% 50% at 0% 100%, color-mix(in srgb, var(--amber) 16%, transparent), transparent 70%), var(--surface-2)" }}>
@@ -51,7 +54,7 @@ function Side({ headline }: { headline: string }) {
         <div className="mono" style={{ fontSize: 13, color: "var(--text-4)" }}>INC-1042</div>
         <div style={{ fontSize: 15 }}>checkout-api 5xx · 14 alerts</div>
         <div className="mono" style={{ display: "flex", gap: 10, marginTop: 10, fontSize: 14 }}>
-          <span style={{ color: "var(--text-4)" }}>Root cause</span><span style={{ color: "var(--accent-text)" }}>config-svc</span><span style={{ marginLeft: "auto" }}>38 ms</span>
+          <span style={{ color: "var(--text-4)" }}>Root cause</span><span style={{ color: "var(--accent-text)" }}>config-svc</span><span style={{ marginLeft: "auto" }} title={lat?.label}>{lat ? lat.text : ""}</span>
         </div>
         <div className="mono" style={{ fontSize: 13, marginTop: 8 }}>config-svc <span style={{ color: "var(--accent-text)" }}>⇢</span> fraud-check → payments → checkout-api</div>
       </div>

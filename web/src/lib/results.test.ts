@@ -1,4 +1,4 @@
-import { proofStrip, pts, type Results } from "./results"
+import { proofStrip, pts, verdictLatency, type Results } from "./results"
 
 const base = (over: Partial<Results> = {}) => ({
   meta: {}, methods: {},
@@ -27,4 +27,13 @@ test("latency and store-swap tiles appear only when their runs exist", () => {
 test("no results, no tiles", () => {
   expect(proofStrip(null)).toEqual([])
   expect(pts(-0.05)).toBe("−5.0 pts")
+})
+
+test("the latency quoted is HydraDB p95 when a HydraDB run exists, and it says which", () => {
+  const ops = { ghostwalk: { verdict_ms_p95: 2.0, verdict_ms_p50: 0.4, mean_checks_to_root: 2, n: 5 } }
+  const mem = base({ ops })
+  expect(verdictLatency(mem)).toEqual({ text: "2.0 ms", label: "in-memory p95" })
+  const hy = base({ ops, store_swap: { reference: "hydradb", hydradb: { status: "ok" }, backends: { hydradb: { description: "", ac1: { point: 0.7, ci95: [0.6, 0.8] }, delta_vs_reference: null, verdict_ms_p95: 31.4 } } } })
+  expect(verdictLatency(hy)).toEqual({ text: "31 ms", label: "HydraDB p95" })
+  expect(verdictLatency(null)).toBeNull()
 })

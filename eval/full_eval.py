@@ -186,6 +186,7 @@ def change_evidence(items, cos, runs_pair, names, n_boot, seed, gamma, tau):
     out = {"flag": "--use-changes", "settings": {"gamma": gamma, "tau_min": tau},
            "tuned_on": tuned["split"] if tuned else None, "dev_gain": tuned["dev_gain"] if tuned else None,
            "grid": {"gamma": [0, 0.25, 0.5, 1], "tau_min": [5, 15, 30]},
+           "grid_edge_note": "best GAMMA at grid edge; larger values unexplored",
            "note": "the DEV optimum (gamma 1, tau 30) sits on the grid corner, so a larger weight was not tried",
            "main": {"without": ci["off"], "with": ci["on"], "gain": d["on - off"]}, "sensitivity": []}
     for p in SENS_P:

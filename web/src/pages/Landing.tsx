@@ -8,7 +8,7 @@ import { Graph, Legend } from "@/components/Graph"
 import { InsideGhostWalk } from "@/components/InsideGhostWalk"
 import { CLOUDFLARE, OUTAGES, savedM } from "@/data/outages"
 import { loadDemo, type Demo } from "@/lib/demo"
-import { loadResults, proofStrip, type Results } from "@/lib/results"
+import { loadResults, proofStrip, verdictLatency, type Results } from "@/lib/results"
 
 const GITHUB = "https://github.com/redcode333/GhostWalk"
 const compact = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n))
@@ -287,10 +287,10 @@ function Mcp({ d }: { d: Demo | null }) {
 }
 
 /* ------------------------------------------------------------------ how */
-const TERM: [string, string][] = [
+const termLines = (latency: string): [string, string][] => [
   ["cmd", "$ docker compose up -d"], ["ok", "✓ hydradb · 2 nodes   ✓ api   ✓ dashboard → localhost:8080"],
   ["cmd", "$ gw map import services.yaml"], ["ok", "✓ 84 services · 212 edges · 3 tiers"],
-  ["cmd", "$ gw why --alerts alerts.json"], ["out", "root   config-svc   0.81   38 ms"], ["out", "path   config-svc ⇢ fraud-check → payments → checkout-api"],
+  ["cmd", "$ gw why --alerts alerts.json"], ["out", `root   config-svc   ${latency}`], ["out", "path   config-svc ⇢ fraud-check → payments → checkout-api"],
   ["cmd", "$ gw learn INC-1042 --root config-svc"], ["out", "+ config-svc ⇢ fraud-check   tentative 0.35"],
 ]
 
@@ -380,7 +380,7 @@ function How({ r, d }: { r: Results | null; d: Demo | null }) {
             </li>))}
           <li style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", fontSize: 14, color: "var(--text-4)" }}>Alerts from <Pill>Alertmanager</Pill><Pill>Grafana</Pill><Pill>PagerDuty</Pill><Pill>Datadog</Pill> or any webhook</li>
         </ol>
-        <div style={{ flex: "1 1 min(480px, 100%)" }}><Terminal title="~/acme · zsh" lines={TERM} loop /></div>
+        <div style={{ flex: "1 1 min(480px, 100%)" }}><Terminal title="~/acme · zsh" lines={termLines(verdictLatency(r) ? `${verdictLatency(r)!.text} (${verdictLatency(r)!.label})` : "")} loop /></div>
       </div>
       <SearchVsWalk r={r} d={d} />
       <StoreTable r={r} />

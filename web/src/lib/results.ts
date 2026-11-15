@@ -38,6 +38,15 @@ export const pts = (x: number) => `${x >= 0 ? "+" : "−"}${Math.abs(x * 100).to
 export const pct = (x: number) => `${Math.round(x * 100)}%`
 export const ms = (x: number) => (x < 10 ? x.toFixed(1) : Math.round(x).toString())
 
+/** The verdict latency to quote anywhere a number is shown: HydraDB p95 when a HydraDB run exists, else the in-memory p95, and it says which. */
+export function verdictLatency(r: Results | null): { text: string; label: string } | null {
+  const h = r?.store_swap?.backends?.hydradb?.verdict_ms_p95
+  if (typeof h === "number") return { text: `${ms(h)} ms`, label: "HydraDB p95" }
+  const g = r?.ops?.ghostwalk
+  if (g && typeof g === "object") return { text: `${ms(g.verdict_ms_p95)} ms`, label: "in-memory p95" }
+  return null
+}
+
 export type Strip = { label: string; value: string; note?: string }[]
 
 /** The proof-strip tiles. The store-swap tile exists only when a real store-swap run is in the file. */
@@ -49,8 +58,8 @@ export function proofStrip(r: Results | null): Strip {
     { label: "of the gap to a perfect map closed by learning", value: pct(r.headline.gap_closed.point),
       note: `95% CI ${pct(r.headline.gap_closed.ci95[0])} to ${pct(r.headline.gap_closed.ci95[1])}` },
   ]
-  const gw = r.ops?.ghostwalk
-  if (gw && typeof gw === "object") out.push({ label: "p95 time to a verdict", value: `${ms(gw.verdict_ms_p95)} ms`, note: String(r.ops?.backend ?? "") })
+  const lat = verdictLatency(r)
+  if (lat) out.push({ label: "p95 time to a verdict", value: lat.text, note: lat.label })
   const kv = r.store_swap?.backends?.kv_1hop?.delta_vs_reference
   if (r.store_swap && kv) {
     const ref = r.store_swap.reference === "hydradb" ? "HydraDB" : "the in-memory graph"

@@ -2781,7 +2781,8 @@
     ],
     "vanishes_at_low_p_root": true,
     "vanishes_at_high_noise": false,
-    "helps_only_when": "helps only when the root's own change is common: reliable gain (95% CI above 0) for p_root in [0.5, 0.8]; at p_root=0.2 the gain is +0.4 pts with a CI that includes 0. Distractor noise up to r_noise=5 does not remove it at p_root=0.5."
+    "helps_only_when": "helps only when the root's own change is common: reliable gain (95% CI above 0) for p_root in [0.5, 0.8]; at p_root=0.2 the gain is +0.4 pts with a CI that includes 0. Distractor noise up to r_noise=5 does not remove it at p_root=0.5.",
+    "grid_edge_note": "best GAMMA at grid edge; larger values unexplored"
   },
   "store_swap": {
     "split": "test",
