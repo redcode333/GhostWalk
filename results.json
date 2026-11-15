@@ -3,10 +3,10 @@
     "split": "test",
     "companies": 30,
     "incidents": 1800,
-    "timestamp_utc": "2026-11-15T12:30:19+00:00",
+    "timestamp_utc": "2026-11-15T13:06:46+00:00",
     "git": {
-      "commit": "35ae4be7c8b3e6adbbc88782d7510c97c8598567",
-      "short": "35ae4be",
+      "commit": "c23af7efb6757a8b6e7908c76912939389dcd90b",
+      "short": "c23af7e",
       "dirty": false
     },
     "command": "eval/full_eval.py --split test",
@@ -75,7 +75,7 @@
     "quick": false,
     "python": "3.12.4",
     "numpy": "2.5.4",
-    "runtime_s": 131.1
+    "runtime_s": 25.7
   },
   "methods": {
     "ghostwalk": {
@@ -1829,34 +1829,39 @@
     "hydradb": null,
     "note": "single-process wall-clock per verdict (graph snapshot + walk); HydraDB latency is measured by the store-swap run when a HydraDB node is reachable",
     "ghostwalk": {
-      "verdict_ms_p50": 0.33114999996541883,
-      "verdict_ms_p95": 1.6470100001811256,
+      "verdict_ms_p50": 0.29755000014120014,
+      "verdict_ms_p95": 1.4895599999363185,
       "mean_checks_to_root": 1.998888888888889,
       "n": 1800
     },
     "learning_off": {
-      "verdict_ms_p50": 0.2832000000125845,
-      "verdict_ms_p95": 1.6002499999785869,
+      "verdict_ms_p50": 0.24184999983845046,
+      "verdict_ms_p95": 1.2006949998749403,
       "mean_checks_to_root": 2.387777777777778,
       "n": 1800
     },
     "deepest": {
-      "verdict_ms_p50": 0.03919999994650425,
-      "verdict_ms_p95": 0.17162000015105147,
+      "verdict_ms_p50": 0.028299999939918052,
+      "verdict_ms_p95": 0.11570500014386198,
       "mean_checks_to_root": 2.487222222222222,
       "n": 1800
     },
     "pagerank": {
-      "verdict_ms_p50": 0.5806499999607695,
-      "verdict_ms_p95": 1.7694449999680724,
+      "verdict_ms_p50": 0.3159000000323431,
+      "verdict_ms_p95": 0.582930000291526,
       "mean_checks_to_root": 3.0388888888888888,
       "n": 1800
     },
     "retrieval": {
-      "verdict_ms_p50": 1.349799999957213,
-      "verdict_ms_p95": 3.813149999871256,
+      "verdict_ms_p50": 0.642799999923227,
+      "verdict_ms_p95": 1.5294500001118647,
       "mean_checks_to_root": 3.4194444444444443,
       "n": 1800
+    },
+    "llm_tokens": {
+      "ghostwalk": 0,
+      "retrieval": 0,
+      "definition": "language-model tokens spent per verdict. Neither the walk nor the TF-IDF search calls a model, so both are 0 by construction (no LLM is imported anywhere in the verdict path)"
     },
     "checks_definition": "1-based rank of the true root in the ranked list (absent from the list = list length + 1)"
   },
@@ -2443,8 +2448,8 @@
           ]
         },
         "delta_vs_reference": null,
-        "verdict_ms_p50": 0.5061409999598254,
-        "verdict_ms_p95": 2.4783199999802714
+        "verdict_ms_p50": 0.24056300003394426,
+        "verdict_ms_p95": 1.138472549882863
       },
       "kv_1hop": {
         "description": "Redis hashes, 1-hop adjacency only (engine max_hops=1)",
@@ -2463,8 +2468,8 @@
           ],
           "p_le_0": 1.0
         },
-        "verdict_ms_p50": 44.910791500001324,
-        "verdict_ms_p95": 73.91182189992377
+        "verdict_ms_p50": 19.45216949980022,
+        "verdict_ms_p95": 29.133762899982685
       },
       "pg_cte": {
         "description": "Postgres tables, multi-hop reach by recursive CTE",
@@ -2483,28 +2488,28 @@
           ],
           "p_le_0": 1.0
         },
-        "verdict_ms_p50": 11.419687000000067,
-        "verdict_ms_p95": 36.644165799930306
+        "verdict_ms_p50": 4.41740350015607,
+        "verdict_ms_p95": 15.382303049909751
       },
       "pgvector": {
         "description": "pgvector: nearest embedded postmortem text names the root (no graph)",
         "ac1": {
-          "point": 0.3883333333333333,
+          "point": 0.3877777777777778,
           "ci95": [
-            0.3449861111111111,
-            0.43444444444444447
+            0.34441666666666665,
+            0.43333333333333335
           ]
         },
         "delta_vs_reference": {
-          "point": -0.37777777777777777,
+          "point": -0.3783333333333333,
           "ci95": [
-            -0.4261111111111111,
-            -0.32776388888888897
+            -0.4266666666666667,
+            -0.3288888888888889
           ],
           "p_le_0": 1.0
         },
-        "verdict_ms_p50": 1.3495714999862685,
-        "verdict_ms_p95": 2.1067120499708376
+        "verdict_ms_p50": 0.6581109998933243,
+        "verdict_ms_p95": 1.1980959501897814
       }
     },
     "note": "\u0394AC@1 is measured against the in-memory reference because no HydraDB result exists yet; see hydradb.status. Embeddings are feature-hashed bags of words (no model)."
