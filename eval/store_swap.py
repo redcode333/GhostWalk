@@ -21,17 +21,25 @@ PG = os.environ.get("PG_URL", "postgresql://gw:gw@127.0.0.1:5433/gw")
 HYDRA_READY = os.environ.get("HYDRA_READY", "http://127.0.0.1:9090/readyz")
 
 
+HYDRA_URL = os.environ.get("HYDRA_URL", "http://127.0.0.1:8443")
+HYDRA_TOKEN = os.environ.get("HYDRA_TOKEN", "local-development-token-32-bytes")
+
+
 def hydra_status():
+    """Probe the node with a real query through the real parser. 'available' only when HydraDB answers and the adapter can read it."""
     try:
-        up = httpx.get(HYDRA_READY, timeout=2).status_code == 200
+        if httpx.get(HYDRA_READY, timeout=3).status_code != 200:
+            return {"status": f"not run: {HYDRA_READY} is not ready"}
     except Exception:
         return {"status": f"not run: no HydraDB node reachable at {HYDRA_READY}"}
-    from ghostwalk.graph import hydra
+    from ghostwalk.graph.hydra import HydraGraph, HydraError
     try:
-        hydra._tabulate({})
-    except NotImplementedError:
-        return {"status": "not run: node is up but ghostwalk/graph/hydra.py cannot parse query responses yet (_tabulate is a stub)"}
-    return {"status": "available" if up else "not run"}
+        hg = HydraGraph(HYDRA_URL, HYDRA_TOKEN, run_id=0)
+        hg._rows("MATCH (n:Component {co: 0}) RETURN n.id AS id")
+        hg.close()
+    except (HydraError, httpx.HTTPError) as e:
+        return {"status": f"not run: node is up but a probe query failed: {str(e)[:160]}"}
+    return {"status": "available", "url": HYDRA_URL, "image": os.environ.get("HYDRADB_IMAGE", "ghcr.io/hydra-db/hydradb:0.4.0")}
 
 
 def main():
@@ -53,7 +61,18 @@ def main():
         runs[label] = {c["name"]: fn(c) for c in cos}
         print(f"  {label:22s} {time.time() - t:6.1f}s", flush=True)
 
+    hstat = hydra_status()
     go("inmemory", lambda c: run_company(c, "ghostwalk"))
+    if hstat["status"] == "available":
+        from ghostwalk.graph.hydra import HydraGraph
+        hg = HydraGraph(HYDRA_URL, HYDRA_TOKEN, run_id=int(time.time()) % 900 + 1)
+
+        def hydra_company(c):
+            try:
+                return run_company(c, "ghostwalk", backend=hg)
+            finally:
+                hg.drop()                                   # keep the node tidy between companies
+        go("hydradb", hydra_company)
     kv = stores.KVGraph(REDIS)
     go("kv_1hop", lambda c: run_company(c, "ghostwalk", backend=kv))
     cte = stores.PgCteGraph(PG)
@@ -62,23 +81,30 @@ def main():
     go("pgvector", lambda c: stores.run_vector_company(c, vec))
 
     tabs = {k: table(v, names) for k, v in runs.items()}
-    ci, diffs = bootstrap(tabs, a.boot, a.seed, [(k, "inmemory") for k in tabs if k != "inmemory"])
-    desc = {"inmemory": "reference: in-process dict graph", "kv_1hop": "Redis hashes, 1-hop adjacency only (engine max_hops=1)",
+    ref = "hydradb" if "hydradb" in tabs else "inmemory"
+    ci, diffs = bootstrap(tabs, a.boot, a.seed, [(k, ref) for k in tabs if k != ref])
+    desc = {"hydradb": "HydraDB v0.4.0 (published image): graph in HydraDB, weighted paths and counters read back every verdict",
+            "inmemory": "in-process dict graph (the parity-tested stand-in for HydraDB)", "kv_1hop": "Redis hashes, 1-hop adjacency only (engine max_hops=1)",
             "pg_cte": "Postgres tables, multi-hop reach by recursive CTE",
             "pgvector": "pgvector: nearest embedded postmortem text names the root (no graph)"}
-    res = {"split": a.split, "reference": "inmemory", "hydradb": hydra_status(), "backends": {}}
+    res = {"split": a.split, "reference": ref, "hydradb": hstat, "backends": {}}
     for k in tabs:
         ms = np.array([r["ms"] for rs in runs[k].values() for r in rs])
-        res["backends"][k] = {"description": desc[k], "ac1": ci[k], "delta_vs_reference": diffs.get(f"{k} - inmemory"),
+        res["backends"][k] = {"description": desc[k], "ac1": ci[k], "delta_vs_reference": diffs.get(f"{k} - {ref}"),
                               "verdict_ms_p50": float(np.percentile(ms, 50)), "verdict_ms_p95": float(np.percentile(ms, 95))}
-    res["note"] = ("ΔAC@1 is measured against the in-memory reference because no HydraDB result exists yet; "
-                   "see hydradb.status. Embeddings are feature-hashed bags of words (no model).")
+    res["note"] = (("ΔAC@1 is measured against HydraDB. " if ref == "hydradb" else "ΔAC@1 is measured against the in-memory reference because HydraDB did not run (see hydradb.status). ")
+                   + "Latency is the whole verdict (snapshot read + walk) per incident. Embeddings are feature-hashed bags of words (no model).")
     for k, v in res["backends"].items():
         d = v["delta_vs_reference"]
         print(f"{k:10s} AC@1 {v['ac1']['point']:.3f}  delta vs reference " + (f"{d['point']:+.3f} [{d['ci95'][0]:+.3f}, {d['ci95'][1]:+.3f}]" if d else "-")
               + f"  p50 {v['verdict_ms_p50']:.1f} ms p95 {v['verdict_ms_p95']:.1f} ms")
     doc = json.loads(out.read_text()) if out.exists() else {}
     doc["store_swap"] = res
+    if "hydradb" in res["backends"]:                 # the measured HydraDB latency, where the Search-vs-walk panel and the Proof page look for it
+        h = res["backends"]["hydradb"]
+        doc.setdefault("ops", {})["hydradb_latency"] = {"verdict_ms_p50": h["verdict_ms_p50"], "verdict_ms_p95": h["verdict_ms_p95"],
+                                                        "n": sum(len(v) for v in runs["hydradb"].values()), "split": a.split, "backend": "HydraDB v0.4.0, local node in docker (loopback)"}
+        doc["ops"].pop("hydradb_latency_note", None)
     out.write_text(json.dumps(doc, indent=2))
     print("merged store_swap into", out)
 

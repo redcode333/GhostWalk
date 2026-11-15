@@ -1,0 +1,80 @@
+{
+ "query_id": "http-query-36",
+ "columns": [
+  "path",
+  "pathCost"
+ ],
+ "rows": [
+  [
+   {
+    "type": "path",
+    "value": {
+     "nodes": [
+      {
+       "id": 500,
+       "labels": [
+        "Component"
+       ],
+       "properties": {
+        "aff": {
+         "Integer": 3
+        },
+        "miss": {
+         "Integer": 1
+        },
+        "rc": {
+         "Integer": 2
+        }
+       }
+      },
+      {
+       "id": 501,
+       "labels": [
+        "Component"
+       ],
+       "properties": {}
+      }
+     ],
+     "relationships": [
+      {
+       "id": null,
+       "edge_type": "DEPENDS_ON",
+       "src": 500,
+       "dst": 501,
+       "properties": {
+        "conf": {
+         "Integer": 0
+        },
+        "cost": {
+         "Float": 0.2357
+        },
+        "cs": {
+         "SignedInteger": -1
+        },
+        "lf": {
+         "SignedInteger": -1
+        },
+        "o": {
+         "Integer": 0
+        },
+        "origin": {
+         "String": "official"
+        },
+        "w": {
+         "Float": 0.79
+        }
+       }
+      }
+     ]
+    }
+   },
+   {
+    "type": "float",
+    "value": 0.2357
+   }
+  ]
+ ],
+ "read_epoch": 19,
+ "next_cursor": null,
+ "bookmark": "sgk:1:64656661756c74:64656661756c74:63656c6c2d30:19"
+}

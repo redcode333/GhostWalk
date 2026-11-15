@@ -2,12 +2,12 @@
 name: ghostwalk
 services:
   hydradb:
-    # Prebuilt by .github/workflows/hydradb-image.yml. To build it yourself: docker compose -f docker-compose.yml -f docker-compose.hydradb-build.yml up --build
-    image: ${HYDRADB_IMAGE:-ghcr.io/redcode333/ghostwalk-hydradb:latest}
-    entrypoint: ["/bin/sh", "-c", "echo local-development-token-32-bytes > /tmp/graph/auth-token && exec graph-node"]
+    # HydraDB's own published image (the one charts/hydradb references; appVersion 0.4.0).
+    image: ${HYDRADB_IMAGE:-ghcr.io/hydra-db/hydradb:0.4.0}
+    entrypoint: ["/bin/sh", "-c", "mkdir -p /var/cache/slatedb/store /var/cache/slatedb/cache && echo local-development-token-32-bytes > /tmp/graph/auth-token && exec graph-node"]
     environment:
       CLOUD_PROVIDER: local
-      LOCAL_PATH: /data/store
+      LOCAL_PATH: /var/cache/slatedb/store
       GRAPH_NAMESPACE: default
       GRAPH_ID: default
       GRAPH_CELL_ID: cell-0
@@ -15,13 +15,13 @@ services:
       GRAPH_NODE_ID: node-0
       GRAPH_BOLT_NODE_ADDRESSES: node-0=hydradb:7687
       GRAPH_ADVERTISED_BOLT_ADDR: hydradb:7687
-      GRAPH_DATA_CACHE_DIR: /data/cache
+      GRAPH_DATA_CACHE_DIR: /var/cache/slatedb/cache
       GRAPH_AUTH_TOKEN_FILE: /tmp/graph/auth-token
       GRAPH_ALLOW_PLAINTEXT: "true"
       RUST_MIN_STACK: "33554432"
       GRAPH_USAGE_REPORT_ENABLED: "false"
     ports: ["8443:8443", "9090:9090"]
-    volumes: ["hydradb-data:/data"]
+    volumes: ["hydradb-data:/var/cache/slatedb"]
     healthcheck: {test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9090"], interval: 3s, timeout: 3s, retries: 40}
   app:
     build: .
@@ -54,7 +54,8 @@ services:
     depends_on:
       redis: {condition: service_healthy}
       postgres: {condition: service_healthy}
-    environment: {REDIS_URL: "redis://redis:6379/0", PG_URL: "postgresql://gw:gw@postgres:5432/gw"}
+      hydradb: {condition: service_healthy}
+    environment: {REDIS_URL: "redis://redis:6379/0", PG_URL: "postgresql://gw:gw@postgres:5432/gw", HYDRA_URL: "http://hydradb:8443", HYDRA_READY: "http://hydradb:9090/readyz"}
     volumes: [".:/app"]
     command: ["python", "eval/store_swap.py", "--split", "test"]
 

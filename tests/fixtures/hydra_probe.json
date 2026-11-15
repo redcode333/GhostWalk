@@ -1,0 +1,17 @@
+{
+ "query_id": "http-query-20",
+ "columns": [
+  "id"
+ ],
+ "rows": [
+  [
+   {
+    "type": "vertex_id",
+    "value": 999998
+   }
+  ]
+ ],
+ "read_epoch": 7,
+ "next_cursor": null,
+ "bookmark": "sgk:1:64656661756c74:64656661756c74:63656c6c2d30:7"
+}

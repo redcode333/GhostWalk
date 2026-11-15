@@ -1,8 +1,0 @@
-# Local-build override: builds graph-node from a hydra-db/hydradb checkout instead of pulling the prebuilt image.
-#   git clone --branch v0.4.0 https://github.com/hydra-db/hydradb ../hydradb
-#   docker compose -f docker-compose.yml -f docker-compose.hydradb-build.yml up --build hydradb
-services:
-  hydradb:
-    build:
-      context: ${HYDRADB_SRC:-../hydradb}
-      dockerfile: ${PWD:-.}/docker/hydradb.Dockerfile
