@@ -371,6 +371,7 @@ class HydraGraph:
         """Delete everything of the current company (components, aliases, meta), in batches of at most 1024 ids."""
         if self.co is None:
             return
+        self._cache = None                      # the revision cache must not outlive the data it describes
         ids = [r[0] for r in self._rows("MATCH (n:Component {co: $co}) RETURN n.id AS id", co=self.co)]
         ids += [r[0] for r in self._rows("MATCH (n:Alias {co: $co}) RETURN n.id AS id", co=self.co)]
         ids += [r[0] for r in self._rows("MATCH (n:GwMeta {co: $co}) RETURN n.id AS id", co=self.co)]

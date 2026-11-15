@@ -120,14 +120,17 @@ def walk(g, alerts, max_hops=5, eps=None, use_prior=True, reach=None, changes=No
         if use_prior:
             s += math.log1p(PRIOR_ROOT * g.root_counts.get(c, 0))
         scores.append((c, s))
-    scores.sort(key=lambda t: -t[1])
+    # Deterministic order: scores equal to 9 decimals are a tie (float summation order differs between implementations at ~1e-14),
+    # and a tie is broken by component id, so every implementation ranks the same.
+    rank_key = lambda t: (-round(t[1], 9), t[0])
+    scores.sort(key=rank_key)
     top = scores[0][1]
     z = sum(math.exp(s - top) for _, s in scores)
     entry = min(A, key=lambda v: (g.components[v]["tier"], onset[v]))
     root = scores[0][0]
     if use_prior and g.shortcuts:  # recurring entry->root pairs nudge the ranking
         bumped = [(c, s + math.log1p(PRIOR_SHORTCUT * g.shortcuts.get((entry, c), 0))) for c, s in scores]
-        bumped.sort(key=lambda t: -t[1])
+        bumped.sort(key=rank_key)
         scores, root = bumped, bumped[0][0]
         top = scores[0][1]
         z = sum(math.exp(s - top) for _, s in scores)

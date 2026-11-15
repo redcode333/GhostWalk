@@ -53,10 +53,34 @@ export default function Proof() {
   const refName = (k: string) => (sw && sw.reference === k ? " (reference)" : "")
   const tiles = [st("hydradb", "HydraDB paths" + refName("hydradb")), st("pg_cte", "Postgres recursive"), st("pgvector", "pgvector search"), st("kv_1hop", "Key-value, 1 hop"), st("inmemory", "In-memory graph" + refName("inmemory"))].filter(Boolean) as { label: string; v: string; sub: string }[]
   const depth = (r as any).depth as Record<string, CI> | undefined
+  const vecB = sw?.backends?.pgvector, graphB = sw?.backends?.[sw?.reference ?? ""]
+  const gv = vecB && graphB ? { graph: graphB.ac1, vec: vecB.ac1 } : null
+  const kvB = sw?.backends?.kv_1hop, cteB = sw?.backends?.pg_cte
+  const refLabel = sw ? (sw.reference === "hydradb" ? "HydraDB" : "the in-memory graph") : ""
+  const sc = r.scale?.path_query?.sizes
+  const scaleRows = sc ? Object.entries(sc).sort((a, b) => +a[0] - +b[0]) : []
   return (
     <Page>
       <H1 title="Proof" sub={`Held-out ${r.meta.split} split: ${r.meta.companies} companies, ${r.meta.incidents.toLocaleString()} incidents. 95% bootstrap intervals.`}
         right={<a className="btn btn-glass" href="/results.json" download>Download results.json</a>} />
+      <p style={{ margin: 0, padding: "14px 18px", border: "1px solid var(--accent)", borderRadius: 14, fontSize: 17, fontWeight: 500, background: "rgba(var(--lrgb), .03)" }}>
+        Evaluated on {r.meta.companies} held-out companies never used for development or tuning; learning starts from zero at each company.
+      </p>
+      {gv && (
+        <section className="card" style={{ padding: 18 }} aria-label="Graph vs vector search">
+          <h2 style={{ margin: 0, fontSize: 16 }}>Graph vs vector search</h2>
+          <p style={{ margin: "2px 0 12px", fontSize: 13, color: "var(--text-4)" }}>Top-1 accuracy on the same held-out incidents, 95% intervals over companies.</p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 24, alignItems: "flex-end" }}>
+            {[["GhostWalk, multi-hop weighted walk", gv.graph, "var(--accent)"], ["Vector search over postmortem text (pgvector)", gv.vec, "var(--text-4)"]].map(([label, v, c]) => (
+              <div key={label as string} style={{ flex: "1 1 min(260px, 100%)" }}>
+                <div className="mono" style={{ fontSize: 40, fontWeight: 600 }}>{((v as CI).point * 100).toFixed(1)}%</div>
+                <div aria-hidden="true" style={{ height: 8, borderRadius: 4, background: "var(--muted)", margin: "6px 0" }}><div style={{ height: "100%", width: `${(v as CI).point * 100}%`, borderRadius: 4, background: c as string }} /></div>
+                <div style={{ fontSize: 14, color: "var(--text-3)" }}>{label as string}</div>
+                <div className="mono" style={{ fontSize: 12, color: "var(--text-4)" }}>95% CI {f3((v as CI).ci95[0])}–{f3((v as CI).ci95[1])}</div>
+              </div>))}
+          </div>
+        </section>
+      )}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
         {strip.map((t) => (
           <div key={t.label} className="card" style={{ flex: "1 1 min(220px, 100%)", padding: "16px 18px" }}>
@@ -99,6 +123,14 @@ export default function Proof() {
       {tiles.length > 0 && (
         <section className="card" style={{ padding: 18 }}>
           <h2 style={{ margin: 0, fontSize: 16 }}>Same incidents, same learner. Only the store changes.</h2>
+          {kvB?.delta_vs_reference && vecB?.delta_vs_reference && (
+            <p style={{ margin: "6px 0 0", fontSize: 15, fontWeight: 500 }}>
+              Replace graph traversal and it fails: key-value (1 hop) {pts(kvB.delta_vs_reference.point)}, vector search {pts(vecB.delta_vs_reference.point)} (vs {refLabel}).
+            </p>)}
+          <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--text-3)" }}>
+            A relational database with recursive queries matches accuracy{cteB?.delta_vs_reference ? ` (${pts(cteB.delta_vs_reference.point)})` : ""}, as expected: the gain comes from multi-hop graph walks, not from which product stores the graph.
+            We use HydraDB for its native weighted path algorithms.
+          </p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 12 }}>
             {tiles.map((t) => (
               <div key={t.label} style={{ flex: "1 1 min(190px, 100%)", border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px" }}>
@@ -128,6 +160,23 @@ export default function Proof() {
               </div>
             </div>
           )}
+        </section>
+      )}
+      {scaleRows.length > 0 && (
+        <section className="card" style={{ padding: 18, overflowX: "auto" }}>
+          <h2 style={{ margin: 0, fontSize: 16 }}>Path queries at scale: HydraDB vs Postgres</h2>
+          <p style={{ margin: "2px 0 10px", fontSize: 13, color: "var(--text-4)" }}>Weighted best path between random reachable pairs, both stores returning the exact same cost every time. Latency only, p50 / p95 in ms, one machine, loopback.</p>
+          <table className="mono" style={{ fontSize: 13, borderCollapse: "collapse", minWidth: 640 }}>
+            <thead><tr style={{ color: "var(--text-4)", textAlign: "left" }}>{["Services", "HydraDB, 3 hops", "Postgres, 3 hops", "HydraDB, 5 hops", "Postgres, 5 hops", "Whole verdict: HydraDB read / in-DB / Postgres"].map((h) => <th key={h} style={{ padding: "6px 14px 6px 0", fontFamily: "Geist", fontWeight: 500 }}>{h}</th>)}</tr></thead>
+            <tbody>{scaleRows.map(([n, e]) => {
+              const c = (h: string, k: "hydradb" | "postgres") => `${ms(e.path_query[h][k].p50)} / ${ms(e.path_query[h][k].p95)}`
+              const pv = r.scale?.postgres_verdict?.sizes?.[n]
+              return (<tr key={n} style={{ borderTop: "1px solid var(--line)" }}><td style={{ padding: "8px 14px 8px 0" }}>{(+n).toLocaleString()}</td>
+                <td style={{ paddingRight: 14 }}>{c("hops_3", "hydradb")}</td><td style={{ paddingRight: 14 }}>{c("hops_3", "postgres")}</td><td style={{ paddingRight: 14 }}>{c("hops_5", "hydradb")}</td><td style={{ paddingRight: 14 }}>{c("hops_5", "postgres")}</td>
+                <td>{ms(e.verdict.cold_read.p50)} / {ms(e.verdict.in_db.p50)} / {pv ? ms(pv.p50) : "n/a"} ms</td></tr>)
+            })}</tbody>
+          </table>
+          <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--text-3)" }}>Postgres keeps up here and is faster at every size; HydraDB's value in this project is native path algorithms, not speed. See <a href="https://github.com/redcode333/GhostWalk/blob/main/docs/graph-vs-sql.md" style={{ textDecoration: "underline" }}>the queries side by side</a>.</p>
         </section>
       )}
       {r.repeat_vs_novel && (

@@ -31,6 +31,11 @@ export type Results = {
     gate: { p95_1000_ms: number | null; p95_5000_ms: number | null; stopped_at_1000: boolean; rust_port: string }
     meta: { git: string | null; cpus: number }
   }
+  scale?: {
+    path_query?: { sizes: Record<string, { services: number; edges: number; path_query: Record<string, { hydradb: { p50: number; p95: number; wrong: number }; postgres: { p50: number; p95: number; wrong: number; timeouts: number } }>;
+      verdict: { cold_read: { p50: number }; in_db: { p50: number } } }> }
+    postgres_verdict?: { sizes: Record<string, { p50: number }> }
+  }
   baseline_fairness?: { pagerank: { settings: Record<string, unknown>; grid_budget: number | null; dev_ac1_tuned: number | null; dev_ac1_untuned_default: number | null } }
 }
 
