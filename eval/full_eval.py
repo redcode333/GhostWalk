@@ -91,7 +91,7 @@ def git_info():
             return subprocess.check_output(["git", *a], text=True, stderr=subprocess.DEVNULL).strip()
         except Exception:
             return None
-    dirty = g("status", "--porcelain", "--", ".", ":!results.json", ":!dev_results.json")
+    dirty = g("status", "--porcelain", "-uno", "--", ".", ":!results.json", ":!dev_results.json")
     return {"commit": g("rev-parse", "HEAD"), "short": g("rev-parse", "--short", "HEAD"), "dirty": bool(dirty)}
 
 
