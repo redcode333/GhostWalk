@@ -31,15 +31,15 @@ services:
       BUCKET: ${HYDRA_BUCKET:-ghostwalk}
     volumes: ["./minio/init.sh:/init.sh:ro"]
 
-  # --- HydraDB. STORAGE=local (default): data on the hydradb-data volume. STORAGE=minio (opt-in, experimental): the graph lives in MinIO, the local volume is only a cache. ---
+  # --- HydraDB. STORAGE=minio (default): the graph lives in MinIO, the local volume is only a cache. STORAGE=local: data on the hydradb-data volume (fallback). ---
   hydradb:
     image: ghcr.io/hydra-db/hydradb@sha256:ab71d651fefee13ebb23eb56d72316065bdca563ff7587442e07be663f2bf880   # = ghcr.io/hydra-db/hydradb:0.4.0
-    restart: unless-stopped
+    restart: "no"          # never restart silently: a restarted HydraDB 0.4.0 rejects writes (409, docs/hydradb-issue.md); restart it on purpose
     entrypoint: ["/bin/sh", "-c", "mkdir -p /var/cache/slatedb/store /var/cache/slatedb/cache && echo \"$$HYDRA_TOKEN\" > /tmp/graph/auth-token && if [ \"$$CLOUD_PROVIDER\" = local ]; then unset AWS_ENDPOINT AWS_BUCKET_NAME AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_ALLOW_HTTP AWS_DEFAULT_REGION; fi && exec graph-node"]
     depends_on:
       minio-init: {condition: service_completed_successfully, required: false}
     environment:
-      CLOUD_PROVIDER: ${HYDRA_CLOUD_PROVIDER:-local}        # local = a folder (the default); aws = S3 API (MinIO, opt-in: STORAGE=minio, see docs/deploy.md)
+      CLOUD_PROVIDER: ${HYDRA_CLOUD_PROVIDER:-aws}          # aws = S3 API (MinIO, the default); local = a folder (STORAGE=local)
       LOCAL_PATH: /var/cache/slatedb/store
       AWS_BUCKET_NAME: ${HYDRA_BUCKET:-ghostwalk}
       AWS_DEFAULT_REGION: us-east-1

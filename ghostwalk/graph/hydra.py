@@ -368,6 +368,9 @@ class HydraGraph:
             except ValueError:
                 raise HydraError(f"{r.status_code}: {r.text[:300]}\n{query}")
             if "error" in page or "rows" not in page:
+                if r.status_code == 409 or "mutation_conflict" in str(page):
+                    import logging
+                    logging.getLogger("uvicorn.error").error("HYDRADB WRITES REJECTED (409 mutation_conflict): HydraDB was probably restarted; see docs/hydradb-issue.md. %s", str(page)[:200])
                 raise HydraError(f"{r.status_code}: {str(page)[:500]}\n{query}")
             first = first or page
             rows += page["rows"]

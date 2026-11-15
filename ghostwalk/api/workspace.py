@@ -149,6 +149,8 @@ class Workspace:
             except Exception as e:                                      # leave the job journalled: the next start replays it
                 self.worker_error = f"{type(e).__name__}: {e}"
                 self.log.append(f"learning writer stopped: {self.worker_error}")
+                import logging
+                logging.getLogger("uvicorn.error").error("LEARNING WRITER STOPPED (the job stays journalled and is replayed on restart): %s", self.worker_error[:300])
                 return
 
     def _run_job(self, job):

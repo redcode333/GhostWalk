@@ -29,8 +29,8 @@ ensure GW_CORS_ORIGINS "${FRONTEND_ORIGIN:-}"
 ensure HYDRA_TOKEN "$(openssl rand -hex 16)"
 ensure GW_ADMIN_TOKEN "$(openssl rand -hex 24)"
 ensure GW_RATE_LIMIT "60/60"
-# object storage for HydraDB: STORAGE=local (default) keeps the data on a docker volume; STORAGE=minio (opt-in, experimental, see docs/deploy.md) keeps it in MinIO on this VM
-STORAGE="${STORAGE:-$(grep '^STORAGE=' "$ENVF" | cut -d= -f2 || true)}"; STORAGE="${STORAGE:-local}"
+# object storage for HydraDB: STORAGE=minio (default) keeps the graph in MinIO on this VM; STORAGE=local keeps it on a docker volume
+STORAGE="${STORAGE:-$(grep '^STORAGE=' "$ENVF" | cut -d= -f2 || true)}"; STORAGE="${STORAGE:-minio}"
 ensure STORAGE "$STORAGE"
 ensure MINIO_ROOT_USER "gwadmin$(openssl rand -hex 4)"
 ensure MINIO_ROOT_PASSWORD "$(openssl rand -hex 24)"
