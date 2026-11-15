@@ -140,6 +140,21 @@ export default function Proof() {
           </table>
         </section>
       )}
+      {r.change_evidence && r.change_evidence.main.gain.ci95[0] > 0 && (
+        <section className="card" style={{ padding: 18, overflowX: "auto" }}>
+          <h2 style={{ margin: 0, fontSize: 16 }}>What changed recently <span className="mono" style={{ fontSize: 11, color: "var(--text-4)" }}>--use-changes</span></h2>
+          <p style={{ margin: "2px 0 10px", fontSize: 13, color: "var(--text-4)" }}>
+            AC@1 {f3(r.change_evidence.main.without.point)} → {f3(r.change_evidence.main.with.point)} ({pts(r.change_evidence.main.gain.point)}, 95% CI {pts(r.change_evidence.main.gain.ci95[0])} to {pts(r.change_evidence.main.gain.ci95[1])}). {r.change_evidence.helps_only_when}
+          </p>
+          <table className="mono" style={{ fontSize: 13, borderCollapse: "collapse", minWidth: 460 }}>
+            <thead><tr style={{ color: "var(--text-4)", textAlign: "left" }}><th style={{ padding: "6px 12px 6px 0", fontFamily: "Geist", fontWeight: 500 }}>root has a change / distractors per incident</th>{[0.5, 2, 5].map((x) => <th key={x} style={{ fontFamily: "Geist", fontWeight: 500, paddingRight: 16 }}>{x}</th>)}</tr></thead>
+            <tbody>{[0.2, 0.5, 0.8].map((p) => (
+              <tr key={p} style={{ borderTop: "1px solid var(--line)" }}><td style={{ padding: "8px 12px 8px 0" }}>{Math.round(p * 100)}%</td>
+                {[0.5, 2, 5].map((n) => { const c = r.change_evidence!.sensitivity.find((x) => x.p_root === p && x.r_noise === n); return <td key={n} style={{ paddingRight: 16, color: c && c.gain.ci95[0] > 0 ? "var(--ink)" : "var(--text-4)" }}>{c ? pts(c.gain.point) : "—"}</td> })}</tr>))}</tbody>
+          </table>
+          <p style={{ margin: "8px 0 0", fontSize: 12, color: "var(--text-4)" }}>Gain in AC@1 over the same engine without change events. Grey = 95% CI includes 0.</p>
+        </section>
+      )}
       {r.poisoning && (
         <section className="card" style={{ padding: 18 }}>
           <h2 style={{ margin: 0, fontSize: 16 }}>When postmortems are wrong</h2>

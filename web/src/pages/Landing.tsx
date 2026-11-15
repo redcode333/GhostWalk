@@ -312,11 +312,11 @@ function SearchVsWalk({ r, d }: { r: Results | null; d: Demo | null }) {
   if (!r || !d) return null
   const tf = r.methods.retrieval?.ac1.point, gw = r.methods.ghostwalk?.ac1.point
   const o = r.ops as any
-  const tok = o?.llm_tokens
+  const tok = o?.tokens_per_verdict ?? o?.llm_tokens
   const foot = (acc: number | undefined, p95: number | undefined, tokens: number | undefined) => (
     <div className="mono" style={{ display: "flex", flexWrap: "wrap", gap: 16, fontSize: 12.5, color: "#A6A5B1", borderTop: "1px solid rgba(255,255,255,.07)", padding: "12px 20px" }}>
       <span>top-1 accuracy <b style={{ color: "#F6F5F1" }}>{acc != null ? f3(acc) : "n/a"}</b></span>
-      <span>LLM tokens <b style={{ color: "#F6F5F1" }}>{tokens ?? "n/a"}</b></span>
+      <span>LLM tokens per verdict <b style={{ color: "#F6F5F1" }}>{tokens ?? "n/a"}</b></span>
       <span>p95 time <b style={{ color: "#F6F5F1" }}>{p95 != null ? `${p95 < 10 ? p95.toFixed(1) : Math.round(p95)} ms` : "n/a"}</b></span>
     </div>)
   const top = d.after.ranking[0]

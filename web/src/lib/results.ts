@@ -19,6 +19,11 @@ export type Results = {
     hydradb: { status: string }
     backends: Record<string, { description: string; ac1: CI; delta_vs_reference: CI | null; verdict_ms_p95: number }>
   }
+  change_evidence?: {
+    settings: { gamma: number; tau_min: number }; helps_only_when: string; note: string
+    main: { without: CI; with: CI; gain: CI & { p_le_0: number } }
+    sensitivity: { p_root: number; r_noise: number; without: CI; with: CI; gain: CI }[]
+  }
   baseline_fairness?: { pagerank: { settings: Record<string, unknown>; grid_budget: number | null; dev_ac1_tuned: number | null; dev_ac1_untuned_default: number | null } }
 }
 
