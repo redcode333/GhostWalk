@@ -28,6 +28,7 @@ import copy
 import math
 import threading
 import types
+import uuid
 from concurrent.futures import ThreadPoolExecutor
 import httpx
 from gwsim.world import official_view
@@ -351,7 +352,10 @@ class HydraGraph:
     def _q(self, query, **params):
         """One request, following pagination to the end: HydraDB pages results (default 1024 rows, max 4096) and a client that ignores `next_cursor`
         silently truncates. Every page re-sends the whole request with page_size, cursor and query_id; a page is fetched exactly once."""
-        body = {"cell_id": self.cell_id, "query": query, "parameters": params, "page_size": PAGE_SIZE}
+        # HydraDB 0.4.0 deduplicates HTTP writes durably by the request's query_id, and when the body has none it numbers them http-query-1, 2, ... from the start of
+        # every process: after a restart those numbers are reused for different statements and every write is rejected (409 mutation_conflict, docs/hydradb-issue.md).
+        # So each request carries its own unique id. A re-sent request (timeout retry below) keeps the same id, which is what makes the retry safe.
+        body = {"cell_id": self.cell_id, "query": query, "parameters": params, "page_size": PAGE_SIZE, "query_id": f"gw-{uuid.uuid4().hex}"}
         first = None
         rows = []
         for _ in range(100_000):
