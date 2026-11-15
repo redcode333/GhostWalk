@@ -103,3 +103,38 @@ def test_drop_removes_company(make_hydra):
     assert hg.snapshot().components
     hg.drop()
     assert hg.snapshot().components == {}
+
+
+def test_in_db_verdict_matches_in_memory(make_hydra):
+    """Two MSpaths requests supply every reach the walk needs; the edges are never read back. Same ranking and scores as the in-memory engine."""
+    from ghostwalk.engine.walk import walk
+    co = dev_picks()[0]
+    hg = make_hydra()
+    g0 = hg.fresh(co)
+    mem = GraphState.from_official(official_view(_View(co)))
+    n = 0
+    for inc in co["incidents"][:25]:
+        want = walk(mem, inc["alerts"]).ranking
+        got = hg.verdict_in_db(inc["alerts"]).ranking
+        assert [c for c, _ in got] == [c for c, _ in want] or all(abs(a - b) < 1e-9 for (_, a), (_, b) in zip(got, want)), inc["seq"]
+        assert len(got) == len(want) and max((abs(a - b) for (_, a), (_, b) in zip(got, want)), default=0) < 1e-9
+        n += 1
+    assert n == 25
+
+
+def test_cached_mode_rereads_only_when_the_revision_changes(make_hydra):
+    co = dev_picks()[0]
+    hg = make_hydra()
+    hg.fresh(co)
+    a = hg.snapshot()
+    assert hg.snapshot() is a and (hg.hits, hg.misses) == (1, 1)             # same revision: no re-read, same object
+    from ghostwalk.learn import update
+    inc = co["incidents"][0]
+    ops = update.propose(a, inc["postmortem"], None, inc["alerts"], a.seq)
+    hg.apply(ops)                                                             # a learner write bumps the revision ...
+    b = hg.snapshot()
+    assert b is not a and b.seq == a.seq + 1 and hg.misses == 2               # ... so the next snapshot re-reads
+    cold = make_hydra()
+    cold.mode = "cold"
+    cold.co = hg.co
+    assert cold.snapshot() is not cold.snapshot()                             # cold mode never caches

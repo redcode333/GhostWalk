@@ -102,7 +102,7 @@ def main():
     doc["store_swap"] = res
     if "hydradb" in res["backends"]:                 # the measured HydraDB latency, where the Search-vs-walk panel and the Proof page look for it
         h = res["backends"]["hydradb"]
-        doc.setdefault("ops", {})["hydradb_latency"] = {"verdict_ms_p50": h["verdict_ms_p50"], "verdict_ms_p95": h["verdict_ms_p95"],
+        doc.setdefault("ops", {})["hydradb_online_loop_test"] = {"verdict_ms_p50": h["verdict_ms_p50"], "verdict_ms_p95": h["verdict_ms_p95"],
                                                         "n": sum(len(v) for v in runs["hydradb"].values()), "split": a.split, "backend": "HydraDB v0.4.0, local node in docker (loopback)"}
         doc["ops"].pop("hydradb_latency_note", None)
     out.write_text(json.dumps(doc, indent=2))

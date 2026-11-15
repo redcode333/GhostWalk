@@ -21,6 +21,7 @@ import math
 import types
 import httpx
 from gwsim.world import official_view
+from ..engine.walk import walk, resolve
 from .state import GraphState, Edge, W0_OFFICIAL
 
 RUN_SPAN = 10_000_000
@@ -29,6 +30,8 @@ ALIAS_BASE = 50_000       # local id space of alias nodes inside a company
 META_LOCAL = 99_999       # local id of the GwMeta node
 MAX_HOPS = 5
 BATCH = 1000              # HydraDB caps a batch at 1024 items
+PAGE_SIZE = 4096          # largest page HydraDB allows; results are always read to the last page
+PATH_LIMIT = 100_000      # HydraDB caps one path response at 100,000 results (native_path_result_limit)
 
 EDGE_PROPS = "{w: $w, cost: $cost, origin: $origin, conf: $conf, lf: $lf, cs: $cs, o: $o}"
 
@@ -86,9 +89,24 @@ def _parse_path(resp, base):
     return [n - base for n in path["nodes"]], float(cost)
 
 
+def _lit(names):
+    """Cypher string-list literal (MSpaths takes string lists and rejects list parameters). Backslashes first, then quotes."""
+    return "[" + ", ".join("'" + n.replace("\\", "\\\\").replace("'", "\\'") + "'" for n in names) + "]"
+
+
 class HydraGraph:
+    """Read modes (HydraDB is always the source of truth):
+      cold    snapshot() reads the whole graph back every time
+      cached  snapshot() reads one number (the revision, GwMeta.seq) and re-reads the graph only when it changed; every learner write bumps it
+      in_db   verdict_in_db(): the walk's reach comes from two algo.MSpaths queries, the graph's edges are never read back
+    """
     def __init__(self, base_url="http://127.0.0.1:8443", token="local-development-token-32-bytes",
-                 run_id=1, graph="default", namespace="default", cell_id="cell-0", batch=BATCH, timeout=60):
+                 run_id=1, graph="default", namespace="default", cell_id="cell-0", batch=BATCH, timeout=60, mode="cached"):
+        assert mode in ("cold", "cached"), "in_db is a method (verdict_in_db), not a snapshot mode"
+        self.mode = mode
+        self._cache = None
+        self.hits = self.misses = 0
+        self.mspaths_requests = 0
         self.run_id = run_id
         self.cell_id = cell_id
         self.batch = min(batch, BATCH)
@@ -102,14 +120,27 @@ class HydraGraph:
         self._http.close()
 
     def _q(self, query, **params):
-        r = self._http.post(self._url, json={"cell_id": self.cell_id, "query": query, "parameters": params})
-        try:
-            body = r.json()
-        except ValueError:
-            raise HydraError(f"{r.status_code}: {r.text[:300]}\n{query}")
-        if "error" in body or "rows" not in body:
-            raise HydraError(f"{r.status_code}: {str(body)[:500]}\n{query}")
-        return body
+        """One request, following pagination to the end: HydraDB pages results (default 1024 rows, max 4096) and a client that ignores `next_cursor`
+        silently truncates. Every page re-sends the whole request with page_size, cursor and query_id; a page is fetched exactly once."""
+        body = {"cell_id": self.cell_id, "query": query, "parameters": params, "page_size": PAGE_SIZE}
+        first = None
+        rows = []
+        for _ in range(100_000):
+            r = self._http.post(self._url, json=body)
+            try:
+                page = r.json()
+            except ValueError:
+                raise HydraError(f"{r.status_code}: {r.text[:300]}\n{query}")
+            if "error" in page or "rows" not in page:
+                raise HydraError(f"{r.status_code}: {str(page)[:500]}\n{query}")
+            first = first or page
+            rows += page["rows"]
+            if page.get("next_cursor") is None:
+                break
+            body = {**body, "cursor": page["next_cursor"], "query_id": page["query_id"]}
+        else:
+            raise HydraError("pagination did not finish")
+        return {**first, "rows": rows}
 
     def _rows(self, query, **params):
         return _tabulate(self._q(query, **params))
@@ -117,6 +148,11 @@ class HydraGraph:
     def _batches(self, rows):
         for i in range(0, len(rows), self.batch):
             yield rows[i:i + self.batch]
+
+    def revision(self):
+        """The graph revision: GwMeta.seq, bumped by every apply()."""
+        r = self._rows("MATCH (m:GwMeta {co: $co}) RETURN m.seq AS seq", co=self._need_co())
+        return r[0][0] if r else 0
 
     def _need_co(self):
         if self.co is None:
@@ -131,13 +167,14 @@ class HydraGraph:
         self._next_company = max(self._next_company, index) + 1
         base = self.run_id * RUN_SPAN + index * CO_SPAN
         self.co = base
+        self._cache = None
         view = official_view(types.SimpleNamespace(components=co["components"], official_edges=co["official_edges"]))
         g = GraphState.from_official(view)
-        nodes = [{"id": base + i, "name": c["name"], "kind": c["kind"], "tier": c["tier"], "co": base, "rc": 0, "aff": 0, "miss": 0}
+        nodes = [{"id": base + i, "name": c["name"], "kind": c["kind"], "tier": c["tier"], "co": base, "rc": 0, "aff": 0, "miss": 0, "key": f"{base}:{c['name']}"}
                  for i, c in g.components.items()]
         for chunk in self._batches(nodes):      # labels and properties first, then the edges
             self._q("UNWIND $rows AS row MERGE (n {id: row.id}) SET n:Component, n.name = row.name, n.kind = row.kind, n.tier = row.tier, "
-                    "n.co = row.co, n.rc = row.rc, n.aff = row.aff, n.miss = row.miss", rows=chunk)
+                    "n.co = row.co, n.rc = row.rc, n.aff = row.aff, n.miss = row.miss, n.key = row.key", rows=chunk)
         for o, ((u, v), e) in enumerate(g.edges.items()):
             self._q(f"MERGE (a:Component {{id: $u}})-[:DEPENDS_ON {EDGE_PROPS}]->(b:Component {{id: $v}})",
                     u=base + u, v=base + v, w=e.w, cost=cost_of(e.w), origin="official", conf=0, lf=-1, cs=-1, o=o)
@@ -150,7 +187,19 @@ class HydraGraph:
 
     # ---- reading --------------------------------------------------------------------------
     def snapshot(self) -> GraphState:
-        """Read the whole company back from HydraDB (no caching) into a GraphState with local ids."""
+        if self.mode == "cold":
+            return self._read_graph()
+        rev = self.revision()
+        if self._cache is not None and self._cache[0] == (self.co, rev):
+            self.hits += 1
+            return self._cache[1]
+        g = self._read_graph()
+        self.misses += 1
+        self._cache = ((self.co, g.seq), g)
+        return g
+
+    def _read_graph(self, with_edges=True) -> GraphState:
+        """Read the whole company back from HydraDB into a GraphState with local ids (edges optional: the in-DB verdict never needs them)."""
         base = self._need_co()
         loc = lambda x: int(x) - base
         g = GraphState(components={})
@@ -168,10 +217,11 @@ class HydraGraph:
             if r[6]:
                 miss[i] = r[6]
         g.root_counts, g.affected, g.missed = rc, aff, miss
-        edges = self._rows("MATCH (a:Component {co: $co})-[e:DEPENDS_ON]->(b:Component) "
-                           "RETURN a.id AS u, b.id AS v, e.w AS w, e.origin AS origin, e.conf AS conf, e.lf AS lf, e.cs AS cs, e.o AS o", co=base)
-        for r in sorted(edges, key=lambda r: r[7]):
-            g.edges[(loc(r[0]), loc(r[1]))] = Edge(float(r[2]), r[3], r[4], r[5], r[6])
+        if with_edges:
+            edges = self._rows("MATCH (a:Component {co: $co})-[e:DEPENDS_ON]->(b:Component) "
+                               "RETURN a.id AS u, b.id AS v, e.w AS w, e.origin AS origin, e.conf AS conf, e.lf AS lf, e.cs AS cs, e.o AS o", co=base)
+            for r in sorted(edges, key=lambda r: r[7]):
+                g.edges[(loc(r[0]), loc(r[1]))] = Edge(float(r[2]), r[3], r[4], r[5], r[6])
         aliases = self._rows("MATCH (a:Alias {co: $co})-[:ALIAS_OF]->(c:Component) RETURN a.id AS aid, a.name AS name, c.id AS cid", co=base)
         for r in sorted(aliases, key=lambda r: r[0]):
             g.names[r[1]] = loc(r[2])
@@ -189,6 +239,59 @@ class HydraGraph:
                        "maxLen: $m, weightProp: 'cost', costProp: 'cost', pathCount: 1}) YIELD path, pathCost RETURN path, pathCost",
                        s=base + src, t=base + dst, m=MAX_HOPS)
         return _parse_path(resp, base)
+
+    def _mspaths(self, sources, targets, g):
+        """algo.MSpaths: the best (min -ln w) path for every (source, target) pair within MAX_HOPS. -> {(src, dst): cost}, local ids.
+        One request answers up to 100,000 paths. A response that comes back full may be truncated, so the sources are halved and re-asked until none is."""
+        base = self._need_co()
+        nm = lambda c: f"{base}:{g.components[c]['name']}"      # MSpaths selects by property, and every company shares one graph: select by a per-company key
+        tl = _lit(nm(c) for c in sorted(targets))
+        out = {}
+
+        def ask(srcs):
+            try:
+                body = self._q("CALL algo.MSpaths({sourceLabel: 'Component', sourceProperty: 'key', sourceValues: " + _lit(nm(c) for c in srcs) +
+                               ", targetValues: " + tl + ", relTypes: ['DEPENDS_ON'], relDirection: 'outgoing', maxLen: "
+                               f"{MAX_HOPS}, weightProp: 'cost', costProp: 'cost', pathCount: 1, pairwise: false, resultLimit: {PATH_LIMIT}}}) YIELD path, pathCost RETURN path, pathCost")
+            except HydraError as e:
+                if "client_cursor_buffer_bytes" in str(e) and len(srcs) > 1:       # the 64 MB result buffer: ask for half the sources at a time
+                    h = len(srcs) // 2
+                    ask(srcs[:h]); ask(srcs[h:])
+                    return
+                raise
+            self.mspaths_requests += 1
+            rows = _tabulate(body)
+            if len(rows) >= PATH_LIMIT and len(srcs) > 1:           # resultLimit reached: split the sources and ask again
+                h = len(srcs) // 2
+                ask(srcs[:h]); ask(srcs[h:])
+                return
+            for path, cost in rows:
+                out[(path["nodes"][0] - base, path["nodes"][-1] - base)] = cost
+        ask(sorted(sources))
+        return out
+
+    def verdict_in_db(self, alerts):
+        """The verdict with HydraDB doing the path work: two MSpaths requests give the walk every reach it needs, and the edges are never read back.
+          1) alerting services -> every component   (what alerts can see: the candidate set, and q(c, v) for alerting v)
+          2) every component -> every candidate     (who would feel a candidate failing, including the services that stayed silent)
+        Python only scores. Rankings and scores equal the in-memory engine's (checked by tests/test_parity.py).
+        The returned verdict has no `path` (that needs the edges); use it for ranking, not for driving the learner."""
+        g = self._read_graph(with_edges=False)
+        A, _, _ = resolve(g, alerts)
+        if not A:
+            return walk(g, alerts)
+        down_cost = self._mspaths(A, g.components, g)
+        down = {v: {v: 1.0} for v in A}
+        cands = set(A)
+        for (v, c), cost in down_cost.items():
+            down[v][c] = math.exp(-cost)
+            cands.add(c)
+        up_cost = self._mspaths(g.components, cands, g)
+        up = {c: {c: 1.0} for c in cands}
+        for (v, c), cost in up_cost.items():
+            up[c][v] = math.exp(-cost)
+        reach = lambda x, d, h: ((down if d == "out" else up)[x], {})
+        return walk(g, alerts, max_hops=MAX_HOPS, reach=reach)
 
     # ---- writing --------------------------------------------------------------------------
     def apply(self, ops):

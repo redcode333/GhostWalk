@@ -37,3 +37,36 @@ def test_no_rows_means_unreachable_and_errors_raise():
         _tabulate({"error": {"code": "invalid_request", "message": "OpenCypher query is not supported yet: x"}})
     with pytest.raises(HydraError, match="unexpected"):
         _tabulate({"detail": "Failed to deserialize the JSON body"})              # the bare-422 envelope has neither rows nor error
+
+
+# ---- pagination: results are paged (default 1024 rows) and a client that ignores next_cursor silently truncates -----------------
+import httpx
+from ghostwalk.graph.hydra import HydraGraph, PAGE_SIZE
+
+
+def paged_graph(total, page=4):
+    seen = []
+
+    def handler(req: httpx.Request):
+        b = json.loads(req.content)
+        seen.append(b)
+        assert b["page_size"] == PAGE_SIZE                           # page_size is re-sent on every page, constant
+        start = b.get("cursor", 0) if "cursor" in b else 0
+        nxt = start + page
+        rows = [[{"type": "vertex_id", "value": i}] for i in range(start, min(nxt, total))]
+        return httpx.Response(200, json={"query_id": "q1", "columns": ["id"], "rows": rows, "next_cursor": nxt if nxt < total else None})
+    hg = HydraGraph()
+    hg._http = httpx.Client(transport=httpx.MockTransport(handler), headers=hg._http.headers)
+    return hg, seen
+
+
+def test_every_page_is_read_and_each_cursor_is_used_once():
+    hg, seen = paged_graph(10)
+    assert [r[0] for r in hg._rows("MATCH (n:T) RETURN n.id AS id")] == list(range(10))
+    assert len(seen) == 3 and [b.get("cursor") for b in seen] == [None, 4, 8]
+    assert all(b["query_id"] == "q1" for b in seen[1:]) and all(b["query"] == seen[0]["query"] for b in seen)    # the whole request is re-sent
+
+
+def test_a_single_page_result_makes_one_request():
+    hg, seen = paged_graph(3)
+    assert len(hg._rows("MATCH (n:T) RETURN n.id AS id")) == 3 and len(seen) == 1

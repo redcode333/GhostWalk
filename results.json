@@ -1924,18 +1924,69 @@
       "note": "ghostwalk and tfidf call no model. No LLM baseline has been run (it needs an API key and spend), so there is no number for it"
     },
     "hydradb_latency": {
-      "verdict_ms_p50": 297.2285499999998,
-      "verdict_ms_p95": 355.9533850018852,
-      "n": 1800,
-      "split": "test",
-      "backend": "HydraDB v0.4.0, local node in docker (loopback)"
+      "split": "dev",
+      "companies": [
+        "layered-1002 (42 services)",
+        "layered-1000 (71 services)",
+        "layered-1004 (105 services)"
+      ],
+      "verdicts": 180,
+      "node": "HydraDB v0.4.0 published image, docker, loopback",
+      "cold": {
+        "p50": 289.10774999894784,
+        "p95": 328.2980300018607,
+        "p99": 336.27097199929267,
+        "n": 180
+      },
+      "cached": {
+        "hit": {
+          "p50": 54.98540000189678,
+          "p95": 63.79981500103895,
+          "p99": 74.27008200011187,
+          "n": 180
+        },
+        "miss": {
+          "p50": 346.2761500013585,
+          "p95": 378.8605899984759,
+          "p99": 389.0941170015504,
+          "n": 180
+        },
+        "note": "in the online loop every incident follows a learner write, so every verdict is a MISS; hits happen when several alerts arrive between postmortems"
+      },
+      "in_db": {
+        "p50": 399.8721000007208,
+        "p95": 509.5416500009378,
+        "p99": 546.5911420015254,
+        "n": 180,
+        "requests_per_verdict": 6,
+        "mspaths_requests": 360,
+        "note": "2 MSpaths + 4 small reads (components, aliases, shortcuts, revision); no edge read"
+      },
+      "walk_only": {
+        "p50": 0.38549999953829683,
+        "p95": 0.751110001510824,
+        "p99": 0.8956790006777764,
+        "n": 180
+      },
+      "in_db_matches_in_memory": {
+        "checked": 180,
+        "mismatches": 0,
+        "tolerance": 1e-09
+      }
     },
     "llm_tokens": {
       "ghostwalk": 0,
       "retrieval": 0,
       "definition": "language-model tokens spent per verdict. Neither the walk nor the TF-IDF search calls a model, so both are 0 by construction (no LLM is imported anywhere in the verdict path)"
     },
-    "checks_definition": "1-based rank of the true root in the ranked list (absent from the list = list length + 1)"
+    "checks_definition": "1-based rank of the true root in the ranked list (absent from the list = list length + 1)",
+    "hydradb_online_loop_test": {
+      "verdict_ms_p50": 297.2285499999998,
+      "verdict_ms_p95": 355.9533850018852,
+      "n": 1800,
+      "split": "test",
+      "backend": "HydraDB v0.4.0, local node in docker (loopback)"
+    }
   },
   "learning_curve": {
     "bin": 5,
@@ -3008,6 +3059,250 @@
       "cpus": 16,
       "platform": "Windows-11-10.0.26300-SP0",
       "command": "eval/bench.py --reference"
+    }
+  },
+  "scale": {
+    "path_query": {
+      "pairs_per_cell": 40,
+      "seed": 5150,
+      "generator": "gwsim layered, tier mix kept",
+      "statement_timeout_ms": 30000,
+      "sizes": {
+        "100": {
+          "services": 100,
+          "edges": 233,
+          "path_query": {
+            "hops_3": {
+              "hydradb": {
+                "p50": 47.6231499997084,
+                "p95": 51.35567999950581,
+                "max": 52.56290000033914,
+                "n": 40,
+                "wrong": 0
+              },
+              "postgres": {
+                "p50": 0.9296000007452676,
+                "p95": 1.549949999207456,
+                "max": 7.679999998799758,
+                "n": 40,
+                "wrong": 0,
+                "timeouts": 0
+              }
+            },
+            "hops_5": {
+              "hydradb": {
+                "p50": 48.17335000007006,
+                "p95": 53.21568500185094,
+                "max": 54.41459999929066,
+                "n": 40,
+                "wrong": 0
+              },
+              "postgres": {
+                "p50": 0.7099000013113255,
+                "p95": 1.4551549991665524,
+                "max": 1.5251000004354864,
+                "n": 40,
+                "wrong": 0,
+                "timeouts": 0,
+                "slowest_pair": {
+                  "ms": 1.5,
+                  "rows_enumerated_by_cte": 224,
+                  "plan_execution_ms": 0.459,
+                  "plan_top": "Aggregate"
+                }
+              }
+            }
+          },
+          "verdict": {
+            "cold_read": {
+              "p50": 264.9600000004284,
+              "p95": 272.36785999994026,
+              "max": 272.3753999998735,
+              "n": 5
+            },
+            "in_db": {
+              "p50": 465.8159999999043,
+              "p95": 491.1214599982486,
+              "max": 493.185799998173,
+              "n": 5,
+              "mspaths_requests_last": 2
+            },
+            "incidents": 5,
+            "ranking_mismatches": 0
+          },
+          "load_hydradb_s": 3.6,
+          "load_postgres_s": 0.07
+        },
+        "1000": {
+          "services": 1000,
+          "edges": 2355,
+          "path_query": {
+            "hops_3": {
+              "hydradb": {
+                "p50": 47.94084999957704,
+                "p95": 52.353470000525704,
+                "max": 59.79719999959343,
+                "n": 40,
+                "wrong": 0
+              },
+              "postgres": {
+                "p50": 0.8390500006498769,
+                "p95": 1.7839000012827437,
+                "max": 3.941099999792641,
+                "n": 40,
+                "wrong": 0,
+                "timeouts": 0
+              }
+            },
+            "hops_5": {
+              "hydradb": {
+                "p50": 48.55285000121512,
+                "p95": 51.51870500030782,
+                "max": 55.26800000006915,
+                "n": 40,
+                "wrong": 0
+              },
+              "postgres": {
+                "p50": 0.7718500000919448,
+                "p95": 1.765884999622358,
+                "max": 2.6868000022659544,
+                "n": 40,
+                "wrong": 0,
+                "timeouts": 0,
+                "slowest_pair": {
+                  "ms": 2.7,
+                  "rows_enumerated_by_cte": 3,
+                  "plan_execution_ms": 0.161,
+                  "plan_top": "Aggregate"
+                }
+              }
+            }
+          },
+          "verdict": {
+            "cold_read": {
+              "p50": 680.7660000013129,
+              "p95": 869.7491000006266,
+              "max": 877.1835000006831,
+              "n": 5
+            },
+            "in_db": {
+              "p50": 1666.1042000014277,
+              "p95": 4526.774680001108,
+              "max": 4531.812000001082,
+              "n": 5,
+              "mspaths_requests_last": 2
+            },
+            "incidents": 5,
+            "ranking_mismatches": 0
+          },
+          "load_hydradb_s": 40.0,
+          "load_postgres_s": 0.1
+        },
+        "5000": {
+          "services": 5000,
+          "edges": 11959,
+          "path_query": {
+            "hops_3": {
+              "hydradb": {
+                "p50": 49.1750500004855,
+                "p95": 59.50122000085685,
+                "max": 61.77820000084466,
+                "n": 40,
+                "wrong": 0
+              },
+              "postgres": {
+                "p50": 0.7712000005994923,
+                "p95": 2.1358899979532,
+                "max": 9.720300000481075,
+                "n": 40,
+                "wrong": 0,
+                "timeouts": 0
+              }
+            },
+            "hops_5": {
+              "hydradb": {
+                "p50": 50.80619999716873,
+                "p95": 56.36753000144381,
+                "max": 64.61710000075982,
+                "n": 40,
+                "wrong": 0
+              },
+              "postgres": {
+                "p50": 0.6616500013478799,
+                "p95": 1.132579998011351,
+                "max": 1.664900002651848,
+                "n": 40,
+                "wrong": 0,
+                "timeouts": 0,
+                "slowest_pair": {
+                  "ms": 1.7,
+                  "rows_enumerated_by_cte": 6,
+                  "plan_execution_ms": 0.082,
+                  "plan_top": "Aggregate"
+                }
+              }
+            }
+          },
+          "verdict": {
+            "cold_read": {
+              "p50": 4235.4317999997875,
+              "p95": 4932.995980000123,
+              "max": 4987.3224000002665,
+              "n": 5
+            },
+            "in_db": {
+              "p50": 102604.86139999921,
+              "p95": 118912.00765999893,
+              "max": 122100.4772999986,
+              "n": 5,
+              "mspaths_requests_last": 4
+            },
+            "incidents": 5,
+            "ranking_mismatches": 0
+          },
+          "load_hydradb_s": 175.0,
+          "load_postgres_s": 0.35
+        }
+      },
+      "meta": {
+        "timestamp_utc": "2026-11-15T18:02:06+00:00",
+        "python": "3.12.4",
+        "hydradb": "ghcr.io/hydra-db/hydradb:0.4.0",
+        "postgres": "pgvector/pgvector:pg16",
+        "note": "both databases in docker on one machine, loopback"
+      }
+    },
+    "postgres_verdict": {
+      "definition": "two batched recursive CTEs per verdict (down from the alerting services, up from every candidate), then the same walk()",
+      "sizes": {
+        "100": {
+          "p50": 4.047900001751259,
+          "p95": 33.38275999922188,
+          "max": 40.11199999877135,
+          "n": 5,
+          "ranking_mismatches": 0,
+          "checked": 5,
+          "timeouts": 0
+        },
+        "1000": {
+          "p50": 34.00870000041323,
+          "p95": 257.83669999946136,
+          "max": 312.6537999996799,
+          "n": 5,
+          "ranking_mismatches": 0,
+          "checked": 5,
+          "timeouts": 0
+        },
+        "5000": {
+          "p50": 220.72070000285748,
+          "p95": 249.4001399994886,
+          "max": 254.59369999953196,
+          "n": 5,
+          "ranking_mismatches": 0,
+          "checked": 5,
+          "timeouts": 0
+        }
+      }
     }
   }
 }
