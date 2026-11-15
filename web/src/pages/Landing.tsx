@@ -341,7 +341,7 @@ function SearchVsWalk({ r, d }: { r: Results | null; d: Demo | null }) {
 function StoreTable({ r }: { r: Results | null }) {
   const sw = r?.store_swap
   if (!sw) return null
-  const rows: [string, string][] = [["kv_1hop", "Key-value, 1 hop"], ["pgvector", "pgvector, nearest postmortem"], ["pg_cte", "Postgres, recursive CTE"]]
+  const rows: [string, string][] = [...(sw.backends.hydradb ? [["hydradb", "HydraDB, weighted paths"] as [string, string]] : []), ["kv_1hop", "Key-value, 1 hop"], ["pgvector", "pgvector, nearest postmortem"], ["pg_cte", "Postgres, recursive CTE"], ...(sw.reference !== "hydradb" ? [["inmemory", "In-memory graph"] as [string, string]] : [])]
   const ms = (x: number) => `${x < 10 ? x.toFixed(1) : Math.round(x)} ms`
   const th: React.CSSProperties = { padding: "8px 10px", fontWeight: 500, textAlign: "left", fontFamily: "Geist", color: "var(--text-4)" }
   return (
@@ -355,7 +355,7 @@ function StoreTable({ r }: { r: Results | null }) {
             {rows.map(([k, label]) => { const b = sw.backends[k]; if (!b) return null
               return <tr key={k} style={{ borderTop: "1px solid var(--line)" }}><td style={{ padding: "9px 10px", fontFamily: "Geist" }}>{label}</td><td style={{ padding: "9px 10px" }}>{f3(b.ac1.point)}</td>
                 <td style={{ padding: "9px 10px", color: "var(--text-3)" }}>{b.delta_vs_reference ? `${b.delta_vs_reference.point >= 0 ? "+" : "−"}${Math.abs(b.delta_vs_reference.point * 100).toFixed(1)} pts` : "reference"}</td><td style={{ padding: "9px 10px" }}>{ms(b.verdict_ms_p95)}</td></tr> })}
-            <tr style={{ borderTop: "1px solid var(--line)" }}><td style={{ padding: "9px 10px", fontFamily: "Geist" }}>HydraDB paths</td><td colSpan={3} style={{ padding: "9px 10px", color: "var(--text-4)", fontFamily: "Geist", fontSize: 12.5 }}>{sw.hydradb.status}</td></tr>
+            {!sw.backends.hydradb && <tr style={{ borderTop: "1px solid var(--line)" }}><td style={{ padding: "9px 10px", fontFamily: "Geist" }}>HydraDB paths</td><td colSpan={3} style={{ padding: "9px 10px", color: "var(--text-4)", fontFamily: "Geist", fontSize: 12.5 }}>{sw.hydradb.status}</td></tr>}
           </tbody>
         </table>
       </div>

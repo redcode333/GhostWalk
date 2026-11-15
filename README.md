@@ -110,9 +110,34 @@ same tier mix as the benchmark, and writes the `latency` section of `results.jso
 Both gates are met without a rewrite: p95 at 1,000 services is under 100 ms, and p95 at 5,000 services is under 250 ms, so there is **no Rust port** and
 no `ghostwalk-fast` wheel. The hygiene that did it: adjacency built once per graph revision and cached (invalidated by every learner write), a per-verdict
 memo, hoisted constants, and a candidate loop that visits only the services a candidate can reach. A parity test keeps the old `walk()` as a reference and
-checks that every incident of every dev and TEST company ranks identically (scores equal to 1e-9) through the whole learning loop. The TEST accuracy numbers
-were therefore not re-run. Profiling also showed the limited Bellman-Ford was only about 15% of a 5,000-service verdict, so porting just that function
+checks that every incident of every dev and TEST company ranks the same (scores equal to 1e-9) through the whole learning loop, allowing exact ties to reorder. One TEST
+incident of 1,800 did reorder a tie after the change (see the HydraDB section), so the headline table and the store swap differ by that one incident. Profiling also showed the limited Bellman-Ford was only about 15% of a 5,000-service verdict, so porting just that function
 would not have met the 250 ms line anyway.
 
-Not done: HydraDB-backed latency (no node, and the adapter's response parser is a stub) and UNWIND batching of HydraDB path queries, which cannot be
-written or tested without one. Path costs (-ln w) were already stored with w on every HydraDB write, and results.json is now parsed once per file version.
+Not done at scale: HydraDB-backed latency on the 100/1,000/5,000-service graphs (its latency on the TEST companies is in the HydraDB section), and UNWIND batching of HydraDB path queries, which this HydraDB version does not allow for edge writes (no batch shape writes edge properties).
+Path costs (-ln w) were already stored with w on every HydraDB write, and results.json is now parsed once per file version.
+
+## HydraDB (live)
+GhostWalk runs against HydraDB's own published image, `ghcr.io/hydra-db/hydradb:0.4.0` (the one `charts/hydradb` references): `docker compose up -d hydradb`.
+`ghostwalk/graph/hydra.py` is written against the dialect in `USING-HYDRADB.md` and checked on a live node. What differs from a naive Cypher port:
+edgeless nodes need the node batch (`UNWIND ... MERGE (n {id: row.id}) SET n:Label, ...`, values must be row fields), writes accept only one-hop edge patterns,
+`MERGE` cannot be followed by another clause so weight changes are `MATCH ... SET`, there is no batch shape that writes edge properties (so each edge is one request),
+and `algo.SPpaths` minimises `weightProp` while `costProp` is only the cost it reports (both are `-ln w`). `RETURN 1 AS x` is not valid in this engine; the saved probe
+(`tests/fixtures/hydra_probe.json`) is the documented MERGE/MATCH smoke test, and the parser has offline tests against the real responses.
+
+- **Parity:** the 6 HydraDB-vs-in-memory tests pass (identical rankings, scores within 1e-9, identical final graph state, path costs equal to the in-memory best path).
+- **Latency (verdict = read the graph back + walk, loopback docker node, all 1,800 TEST incidents):** p50 297 ms, p95 356 ms,
+  against 0.2 / 0.8 ms in-memory. It is dominated by reading the whole graph back (5 queries per verdict, 15 to 40 ms each).
+  Each write costs about 65 ms, so loading and learning are slow: the HydraDB leg of the store swap took 27 minutes. HydraDB was not run in the 1,000/5,000-service scale benchmark.
+
+Store swap on the TEST split, run once, same incidents, ΔAC@1 against HydraDB:
+
+| store | AC@1 | ΔAC@1 vs HydraDB (95% CI, pts) | p50 | p95 |
+|---|---|---|---|---|
+| HydraDB v0.4.0 (published image) | 0.767 | reference | 297.2 ms | 356.0 ms |
+| Postgres recursive CTE | 0.767 | +0.0 (+0.0 to +0.0) | 17.5 ms | 71.8 ms |
+| Key-value, 1 hop (Redis) | 0.632 | -13.4 (-16.7 to -10.3) | 41.8 ms | 62.6 ms |
+| pgvector nearest postmortem | 0.388 | -37.9 (-42.7 to -32.9) | 44.4 ms | 48.3 ms |
+| In-memory graph | 0.767 | +0.0 (+0.0 to +0.0) | 0.2 ms | 0.8 ms |
+
+The store-swap runs use the current engine (after the walk-loop optimisation); the headline methods table was produced by the engine before it (commit f8bf9a8). They differ by one incident of 1,800 on the in-memory graph (1380 vs 1379 top-1 hits, 0.7667 vs 0.7661): the optimised loop sums floats in a different order, which re-ordered an exact tie. HydraDB, in-memory and Postgres-CTE agree with each other exactly. TEST was not re-run for the headline table, by instruction.

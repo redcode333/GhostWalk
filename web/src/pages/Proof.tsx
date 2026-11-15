@@ -50,7 +50,8 @@ export default function Proof() {
     const b = sw?.backends?.[k]
     return b ? { label, v: f3(b.ac1.point), sub: b.delta_vs_reference ? `${pts(b.delta_vs_reference.point)} (${pts(b.delta_vs_reference.ci95[0])} to ${pts(b.delta_vs_reference.ci95[1])})` : "reference" } : null
   }
-  const tiles = [st("inmemory", "In-memory graph (reference)"), st("pg_cte", "Postgres recursive"), st("pgvector", "pgvector search"), st("kv_1hop", "Key-value, 1 hop")].filter(Boolean) as { label: string; v: string; sub: string }[]
+  const refName = (k: string) => (sw && sw.reference === k ? " (reference)" : "")
+  const tiles = [st("hydradb", "HydraDB paths" + refName("hydradb")), st("pg_cte", "Postgres recursive"), st("pgvector", "pgvector search"), st("kv_1hop", "Key-value, 1 hop"), st("inmemory", "In-memory graph" + refName("inmemory"))].filter(Boolean) as { label: string; v: string; sub: string }[]
   const depth = (r as any).depth as Record<string, CI> | undefined
   return (
     <Page>
@@ -107,11 +108,12 @@ export default function Proof() {
                 <div className="mono" style={{ fontSize: 11, color: "var(--text-4)" }}>{t.sub}</div>
               </div>
             ))}
-            <div style={{ flex: "1 1 min(190px, 100%)", border: "1px dashed var(--line)", borderRadius: 12, padding: "12px 14px" }}>
-              <div style={{ fontSize: 13, color: "var(--text-3)" }}>HydraDB paths</div>
-              <div className="mono" style={{ fontSize: 14, marginTop: 6 }}>not run</div>
-              <div style={{ fontSize: 11, color: "var(--text-4)" }}>{sw?.hydradb.status}</div>
-            </div>
+            {!sw?.backends?.hydradb && (
+              <div style={{ flex: "1 1 min(190px, 100%)", border: "1px dashed var(--line)", borderRadius: 12, padding: "12px 14px" }}>
+                <div style={{ fontSize: 13, color: "var(--text-3)" }}>HydraDB paths</div>
+                <div className="mono" style={{ fontSize: 14, marginTop: 6 }}>not run</div>
+                <div style={{ fontSize: 11, color: "var(--text-4)" }}>{sw?.hydradb.status}</div>
+              </div>)}
           </div>
           {depth && (
             <div style={{ marginTop: 18 }}>

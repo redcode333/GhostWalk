@@ -4,7 +4,7 @@
 
 Graphs come from the same generator as the benchmark (tier mix kept: 2 gateways, 16% API, 28% shared infra, the rest domain services).
 Latency is the full per-incident verdict (graph snapshot + walk) in the online loop, so adjacency caching and learning both count.
-HydraDB-backed latency needs a reachable node and a working response parser; neither exists yet, so it is reported as null with the reason.
+HydraDB-backed latency is NOT part of the scale benchmark (loading a big graph through HydraDB's one-request-per-edge writes is impractical); it is measured on the TEST companies by eval/store_swap.py.
 `--reference` also times the previous walk loop (tests/reference_walk.py) on the same incidents, for an honest before/after.
 """
 from __future__ import annotations
@@ -74,8 +74,9 @@ def main():
         print(f"{n:>5} services  p50 {m['p50']:7.1f} ms  p95 {m['p95']:7.1f} ms  p99 {m['p99']:7.1f} ms"
               + (f"   (previous loop p95 {entry['reference_walk_ms']['p95']:.1f} ms)" if a.reference else ""), flush=True)
 
-    out["hydradb"] = ({"status": "node reachable but ghostwalk/graph/hydra.py cannot parse query responses yet (_tabulate is a stub), so it was not benchmarked"}
-                      if hydra_up() else {"status": "not run: no HydraDB node reachable (HYDRA_READY)"})
+    out["hydradb"] = {"status": ("not run at scale: HydraDB is reachable, but a write costs about 65 ms (one request per edge), so loading 1,000 or 5,000 services through it "
+                                 "was not benchmarked. Its latency on the 30 TEST companies is in ops.hydradb_latency")
+                      if hydra_up() else "not run: no HydraDB node reachable (HYDRA_READY)"}
     p1k = out["sizes"].get("1000", {}).get("in_memory_ms", {}).get("p95")
     p5k = out["sizes"].get("5000", {}).get("in_memory_ms", {}).get("p95")
     out["gate"] = {"rule": f"stop if p95 at 1,000 services < {GATE_1K_MS:.0f} ms; port walk()'s Bellman-Ford to Rust only if p95 at 5,000 services > {PORT_5K_MS:.0f} ms",
