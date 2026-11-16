@@ -1,10 +1,19 @@
-# Default profile: the app (api + web). `--profile eval`: real stores + the store-swap run.
+
+# Default: GhostWalk app + HydraDB.
+# --profile eval: store-swap evaluation services.
+
 name: ghostwalk
+
 services:
   hydradb:
-    # HydraDB's own published image (the one charts/hydradb references; appVersion 0.4.0).
+    # HydraDB published image (appVersion 0.4.0).
     image: ${HYDRADB_IMAGE:-ghcr.io/hydra-db/hydradb:0.4.0}
-    entrypoint: ["/bin/sh", "-c", "mkdir -p /var/cache/slatedb/store /var/cache/slatedb/cache && echo local-development-token-32-bytes > /tmp/graph/auth-token && exec graph-node"]
+
+    entrypoint:
+      - /bin/sh
+      - -c
+      - mkdir -p /var/cache/slatedb/store /var/cache/slatedb/cache && echo local-development-token-32-bytes > /tmp/graph/auth-token && exec graph-node
+
     environment:
       CLOUD_PROVIDER: local
       LOCAL_PATH: /var/cache/slatedb/store
@@ -20,48 +29,127 @@ services:
       GRAPH_ALLOW_PLAINTEXT: "true"
       RUST_MIN_STACK: "33554432"
       GRAPH_USAGE_REPORT_ENABLED: "false"
-    ports: ["8443:8443", "9090:9090", "7687:7687"]
-    volumes: ["hydradb-data:/var/cache/slatedb"]
-    healthcheck: {test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9090"], interval: 3s, timeout: 3s, retries: 40}
+
+    ports:
+      - "8443:8443"
+      - "9090:9090"
+      - "7687:7687"
+
+    volumes:
+      - hydradb-data:/var/cache/slatedb
+
+    healthcheck:
+      test:
+        - CMD
+        - bash
+        - -c
+        - exec 3<>/dev/tcp/127.0.0.1/9090
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
   app:
     build: .
-    ports: ["8000:8000"]
+
+    # Wait for HydraDB before starting GhostWalk.
+    depends_on:
+      hydradb:
+        condition: service_healthy
+
+    ports:
+      - "8000:8000"
+
     environment:
       AUTH_MODE: ${AUTH_MODE:-none}
       GW_PUBLIC_URL: ${GW_PUBLIC_URL:-http://localhost:8000}
+
       CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY:-}
       CLERK_JWKS_URL: ${CLERK_JWKS_URL:-}
+
       GITHUB_APP_ID: ${GITHUB_APP_ID:-}
       GITHUB_APP_PRIVATE_KEY: ${GITHUB_APP_PRIVATE_KEY:-}
       GITHUB_APP_SLUG: ${GITHUB_APP_SLUG:-ghostwalk}
       GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
       GITHUB_PR_TOKEN: ${GITHUB_PR_TOKEN:-}
-      GW_STORE: ${GW_STORE:-hydradb}           # HydraDB is the default graph and learning store            # hydradb: the graph and the learner's memory live in HydraDB (start it too: docker compose up -d hydradb app)
+
+      # HydraDB is the default graph and learning-memory store.
+      GW_STORE: ${GW_STORE:-hydradb}
       HYDRA_URL: ${HYDRA_URL:-http://hydradb:8443}
       HYDRA_READY: http://hydradb:9090/readyz
+
       GW_DEMO_INCIDENTS: ${GW_DEMO_INCIDENTS:-30}
-    volumes: ["gw-data:/data"]
+
+    volumes:
+      - gw-data:/data
+
   redis:
     image: redis:7-alpine
-    profiles: [eval]
-    ports: ["6380:6379"]
-    healthcheck: {test: ["CMD", "redis-cli", "ping"], interval: 2s, timeout: 2s, retries: 20}
+    profiles:
+      - eval
+
+    ports:
+      - "6380:6379"
+
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      interval: 2s
+      timeout: 2s
+      retries: 20
+
   postgres:
     image: pgvector/pgvector:pg16
-    profiles: [eval]
-    environment: {POSTGRES_USER: gw, POSTGRES_PASSWORD: gw, POSTGRES_DB: gw}
-    ports: ["5433:5432"]
-    healthcheck: {test: ["CMD-SHELL", "pg_isready -U gw -d gw"], interval: 2s, timeout: 2s, retries: 30}
+    profiles:
+      - eval
+
+    environment:
+      POSTGRES_USER: gw
+      POSTGRES_PASSWORD: gw
+      POSTGRES_DB: gw
+
+    ports:
+      - "5433:5432"
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U gw -d gw
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
   eval:
-    profiles: [eval]
-    build: {context: ., dockerfile: Dockerfile.eval}
+    profiles:
+      - eval
+
+    build:
+      context: .
+      dockerfile: Dockerfile.eval
+
     depends_on:
-      redis: {condition: service_healthy}
-      postgres: {condition: service_healthy}
-      hydradb: {condition: service_healthy}
-    environment: {REDIS_URL: "redis://redis:6379/0", PG_URL: "postgresql://gw:gw@postgres:5432/gw", HYDRA_URL: "http://hydradb:8443", HYDRA_READY: "http://hydradb:9090/readyz"}
-    volumes: [".:/app"]
-    command: ["python", "eval/store_swap.py", "--split", "test"]
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      hydradb:
+        condition: service_healthy
+
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      PG_URL: postgresql://gw:gw@postgres:5432/gw
+      HYDRA_URL: http://hydradb:8443
+      HYDRA_READY: http://hydradb:9090/readyz
+
+    volumes:
+      - .:/app
+
+    command:
+      - python
+      - eval/store_swap.py
+      - --split
+      - test
 
 volumes:
   gw-data:
