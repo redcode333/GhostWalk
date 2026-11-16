@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
-import { api } from "@/lib/api"
+import { api, demoMode } from "@/lib/api"
 import { Btn, Err, KIND_COLOR, Muted, useLoad } from "@/components/common"
 import { H1, Page } from "@/components/AppShell"
 import { useTestAlert } from "./Settings"
@@ -9,7 +9,7 @@ const CONF = { high: "var(--ok)", medium: "var(--amber)", low: "var(--text-4)" }
 const SOURCES = ["docker-compose", "k8s manifests", "Helm values", "env vars"]
 const TABS = ["Grafana", "Alertmanager", "UptimeRobot", "Any webhook"]
 
-function curl(tab: string, url: string) {
+export function alertWebhookExample(tab: string, url: string, tokenRequired: boolean) {
   const body: Record<string, string> = {
     Grafana: `{"alerts":[{"status":"firing","labels":{"alertname":"HighErrorRate","service":"checkout-api"},"startsAt":"2026-01-01T14:02:00Z"}]}`,
     Alertmanager: `{"alerts":[{"status":"firing","labels":{"alertname":"HighErrorRate","service":"checkout-api"},"startsAt":"2026-01-01T14:02:00Z"}]}`,
@@ -17,15 +17,16 @@ function curl(tab: string, url: string) {
     "Any webhook": `{"alerts":[{"name":"checkout-api","signal":"error_rate","t":0}]}`,
   }
   const hint = { Grafana: "Contact point → Webhook → URL", Alertmanager: "receivers: - webhook_configs: - url", UptimeRobot: "Alert contacts → Webhook", "Any webhook": "POST application/json" }[tab]
-  return { hint, cmd: `curl -X POST ${url} -H 'content-type: application/json' -d '${body[tab]}'` }
+  const auth = tokenRequired ? " -H 'Authorization: Bearer <workspace-token>'" : ""
+  return { hint, cmd: `curl -X POST ${url} -H 'content-type: application/json'${auth} -d '${body[tab]}'` }
 }
 
 export default function Onboarding() {
   const nav = useNavigate()
   const [qs] = useSearchParams()
-  const { data: o, reload } = useLoad(() => api("/api/onboarding"), [])
-  const { data: cfg } = useLoad(() => api("/api/config"), [])
-  const { data: st } = useLoad(() => api("/api/settings"), [])
+  const { data: o, error: onError, reload } = useLoad(() => api("/api/onboarding"), [])
+  const { data: cfg, error: configError } = useLoad(() => api("/api/config"), [])
+  const { data: st, error: settingsError } = useLoad(() => api("/api/settings"), [])
   const [checked, setChecked] = useState<Set<string>>(new Set())
   const [err, setErr] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -33,12 +34,25 @@ export default function Onboarding() {
   const [tab, setTab] = useState("Grafana")
   const [pr, setPr] = useState<any>(null)
   const [repo, setRepo] = useState("")
+  const inPublicDemo = demoMode()
   const test = useTestAlert()
   const prop = o?.proposals
 
   useEffect(() => {
     const inst = qs.get("installation_id")
-    if (inst) api("/api/onboarding/github/connect", { method: "POST", json: { installation_id: inst } }).then(() => api("/api/onboarding/scan", { method: "POST", json: { source: "github" } }).then(reload)).catch((e) => setErr(e.message))
+    const state = qs.get("state")
+    if (!inst) return
+    if (!state) { setErr("GitHub returned no installation state. Start the install flow again."); return }
+    try {
+      const prior = sessionStorage.getItem(`gw-github-install:${state}`)
+      const pendingAt = prior?.startsWith("pending:") ? Number(prior.slice("pending:".length)) : NaN
+      if (prior === "done" || (Number.isFinite(pendingAt) && Date.now() - pendingAt < 30_000)) return
+      sessionStorage.setItem(`gw-github-install:${state}`, `pending:${Date.now()}`)
+    } catch { /* private browsing: API state validation still protects the callback */ }
+    api("/api/onboarding/github/connect", { method: "POST", json: { installation_id: inst, state } })
+      .then(() => { reload(); return api("/api/onboarding/scan", { method: "POST", json: { source: "github" } }) })
+      .then(() => { try { sessionStorage.setItem(`gw-github-install:${state}`, "done") } catch { /* private browsing */ }; reload(); nav("/app/onboarding", { replace: true }) })
+      .catch((e) => { try { sessionStorage.removeItem(`gw-github-install:${state}`) } catch { /* private browsing */ }; reload(); setErr(e.message) })
   }, [])
   useEffect(() => { if (prop) setChecked(new Set(prop.edges.filter((e: any) => e.accepted).map((e: any) => e.id))) }, [prop?.edges?.length])
   useEffect(() => { if (o?.repo && !repo) setRepo(o.repo) }, [o?.repo])
@@ -48,7 +62,12 @@ export default function Onboarding() {
   const run = async (fn: () => Promise<any>) => { setBusy(true); setErr(null); try { await fn() } catch (e: any) { setErr(e.message) } finally { setBusy(false) } }
   const scan = (source: string) => run(async () => { await api("/api/onboarding/scan", { method: "POST", json: { source } }); setAccepted(null); reload() })
   const installGithub = () => run(async () => { window.location.href = (await api("/api/onboarding/github/install-url")).url })
-  const accept = () => run(async () => { setAccepted(await api("/api/onboarding/accept", { method: "POST", json: { edge_ids: [...checked] } })); reload() })
+  const accept = () => run(async () => {
+    const hasExistingData = (o?.summary?.services ?? 0) > 0 || (o?.summary?.scored ?? 0) > 0 || (o?.summary?.learned_edges ?? 0) > 0
+    if (hasExistingData && !window.confirm("Replacing the official map will clear this workspace's current graph, incidents, and pending learning. Continue?")) return
+    setAccepted(await api("/api/onboarding/accept", { method: "POST", json: { edge_ids: [...checked], replace_existing: hasExistingData } }))
+    reload()
+  })
   const openPr = () => run(async () => setPr(await api("/api/onboarding/postmortem-pr", { method: "POST", json: { repo } })))
   const url = st?.webhook_url ?? ""
   const step = !prop ? 1 : !accepted && !o.steps.map ? 2 : !o.steps.alert ? 3 : 4
@@ -60,9 +79,16 @@ export default function Onboarding() {
       <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", gap: 16 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 26, fontWeight: 600 }}>Set up your workspace</h1>
-          <p style={{ margin: "4px 0 0", color: "var(--text-3)", fontSize: 15 }}>About 10 minutes. Everything is read-only, and you can skip any step.</p>
+          <p style={{ margin: "4px 0 0", color: "var(--text-3)", fontSize: 15 }}>Repository access is read-only. GhostWalk proposes relationships for your review and applies only the ones you accept.</p>
         </div>
       </div>
+      {onError && <Err>Could not load workspace setup: {onError}</Err>}
+      {!o && !onError && <Muted>Loading workspace setup…</Muted>}
+      {configError && <Err>Could not check GitHub App availability: {configError}</Err>}
+      {settingsError && <Err>Could not load alert webhook settings: {settingsError}</Err>}
+      {inPublicDemo && <section role="note" className="card" style={{ padding: 16, color: "var(--text-3)", fontSize: 14 }}>
+        This is the public sample workspace. Workspace setup and GitHub/webhook writes are restricted here; your changes cannot affect a customer workspace. Explore the preloaded incidents, map, and reviewed learning in the <a href="/app/incidents" style={{ color: "var(--accent-text)", textDecoration: "underline" }}>incident list</a>.
+      </section>}
       <ol style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(180px, 100%), 1fr))", gap: 8 }}>
         {steps.map((s, i) => {
           const n = i + 1, done = n < step, on = n === step
@@ -83,10 +109,12 @@ export default function Onboarding() {
               <h2 id="map-h" style={{ margin: 0, fontSize: 17 }}>Connect GitHub</h2>
               <p style={{ margin: 0, fontSize: 14, color: "var(--text-3)" }}>Install the GhostWalk GitHub App. It asks for read-only access to repository contents and issues, nothing else. We read docker-compose files, Kubernetes Service and Ingress manifests, Helm values and <span className="mono">*_URL</span> variables, and propose a map. Nothing is saved until you accept.</p>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <Btn onClick={installGithub} disabled={busy || !cfg?.github?.configured}>Install the GitHub App</Btn>
-                <Btn variant="glass" onClick={() => scan("sample")} disabled={busy}>Scan the sample acme repos</Btn>
-                <Btn variant="glass" onClick={() => run(async () => { await api("/api/onboarding/load-sample", { method: "POST" }); window.location.assign("/app/incidents") })} disabled={busy}>Load a sample company</Btn>
+                <Btn onClick={installGithub} disabled={busy || !cfg?.github?.configured || inPublicDemo}>Install the GitHub App</Btn>
+                <Btn variant="glass" onClick={() => scan("sample")} disabled={busy || inPublicDemo}>Scan sample repository files</Btn>
+                {o?.installation && <Btn variant="glass" onClick={() => scan("github")} disabled={busy || inPublicDemo}>Scan connected repositories</Btn>}
+                <Btn variant="glass" onClick={() => run(async () => { await api("/api/onboarding/load-sample", { method: "POST" }); window.location.assign("/app/incidents") })} disabled={busy || inPublicDemo}>Load a sample company</Btn>
               </div>
+              {o?.installation && <Muted>GitHub App installation {o.installation.id} is connected to this workspace.</Muted>}
               {cfg && !cfg.github.configured && <Muted>This server has no GitHub App configured (GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY), so only the sample repos can be scanned.</Muted>}
             </div>
           ) : (
@@ -119,7 +147,7 @@ export default function Onboarding() {
                   : <span>Dependencies that live only in code or config files are what GhostWalk learns later from postmortems.</span>}
                 <span style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
                   {accepted ? <Btn to="/app/map" variant="glass">Open in map</Btn> : null}
-                  <Btn onClick={accepted ? () => nav("/app/incidents") : accept} disabled={busy || (!accepted && checked.size === 0)}>{accepted ? "Continue" : `Accept ${checked.size} and continue`}</Btn>
+                  <Btn onClick={accepted ? () => nav("/app/incidents") : accept} disabled={busy || inPublicDemo || (!accepted && checked.size === 0)}>{accepted ? "Continue" : `Accept ${checked.size} and continue`}</Btn>
                 </span>
               </div>
             </>
@@ -134,11 +162,12 @@ export default function Onboarding() {
               {TABS.map((t) => <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)} style={{ minHeight: 30, padding: "0 10px", borderRadius: 7, border: 0, background: tab === t ? "var(--muted)" : "transparent", color: tab === t ? "var(--ink)" : "var(--text-3)", font: "500 13px Geist", cursor: "pointer" }}>{t}</button>)}
             </div>
             <div className="mono" style={{ fontSize: 13, background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 8, padding: "10px 12px", overflowX: "auto", whiteSpace: "nowrap" }}>{url}</div>
-            <div style={{ fontSize: 12, color: "var(--text-4)" }}>{curl(tab, url).hint}</div>
-            <pre className="mono" style={{ margin: 0, fontSize: 11, color: "var(--text-3)", whiteSpace: "pre-wrap", wordBreak: "break-all", background: "var(--surface-2)", padding: 10, borderRadius: 8 }}>{curl(tab, url).cmd}</pre>
+            <div style={{ fontSize: 12, color: "var(--text-4)" }}>{alertWebhookExample(tab, url, !!st?.token_required).hint}</div>
+            <pre className="mono" style={{ margin: 0, fontSize: 11, color: "var(--text-3)", whiteSpace: "pre-wrap", wordBreak: "break-all", background: "var(--surface-2)", padding: 10, borderRadius: 8 }}>{alertWebhookExample(tab, url, !!st?.token_required).cmd}</pre>
+            {st?.token_required && <div style={{ fontSize: 12, color: "var(--text-4)" }}>Replace <span className="mono">&lt;workspace-token&gt;</span> with the one-time token from <a href="/app/settings" style={{ color: "var(--accent-text)", textDecoration: "underline" }}>Settings → API token</a>.</div>}
             <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text-3)" }}>
               {o?.steps.alert ? <><span style={{ width: 8, height: 8, borderRadius: 99, background: "var(--ok)" }} />First alert received</> : <><span className="live" style={{ width: 8, height: 8, borderRadius: 99, background: "var(--amber)" }} />Waiting for the first alert…</>}
-              <span style={{ marginLeft: "auto" }}><Btn variant="glass" onClick={() => test.send().then(reload)} disabled={test.busy}>Send test alert</Btn></span>
+              <span style={{ marginLeft: "auto" }}><Btn variant="glass" onClick={() => test.send().then(reload)} disabled={test.busy || !o?.summary?.services || inPublicDemo}>Send test alert</Btn></span>
             </div>
             {test.msg && <div role="status" className="mono" style={{ fontSize: 12, color: "var(--ok)" }}>✓ {test.msg}{test.id ? <> · <a href={`/app/incidents/${test.id}`} style={{ textDecoration: "underline" }}>open</a></> : null}</div>}
             {test.err && <Err>{test.err}</Err>}
@@ -151,7 +180,7 @@ export default function Onboarding() {
               .github/ISSUE_TEMPLATE/postmortem.yml<br /><span style={{ color: "var(--text-2)" }}>root cause · path · what the map missed</span>
             </div>
             <input className="mono" value={repo} onChange={(e) => setRepo(e.target.value)} placeholder="owner/repo" aria-label="Repository" style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--surface-2)", color: "var(--ink)", fontSize: 13 }} />
-            <Btn variant="glass" onClick={openPr} disabled={busy || !repo.includes("/")}>Open pull request with template</Btn>
+            <Btn variant="glass" onClick={openPr} disabled={busy || inPublicDemo || !repo.includes("/")}>Open pull request with template</Btn>
             {pr?.mode === "pr" && <div role="status" style={{ fontSize: 13 }}>✓ <a href={pr.url} style={{ color: "var(--accent-text)", textDecoration: "underline" }}>Pull request opened</a></div>}
             {pr?.mode === "link" && (
               <div role="status" style={{ fontSize: 13, color: "var(--text-3)", display: "flex", flexDirection: "column", gap: 6 }}>
@@ -159,7 +188,8 @@ export default function Onboarding() {
                 <a href={pr.url} target="_blank" rel="noreferrer" style={{ color: "var(--accent-text)", textDecoration: "underline" }}>Create the file on GitHub →</a>
               </div>
             )}
-            <div style={{ fontSize: 12, color: "var(--text-4)" }}>Webhook for the App: <span className="mono">/api/webhooks/github</span> (Issues event). Proposals land in <a href="/app/learn" style={{ textDecoration: "underline" }}>Learn</a>.</div>
+            <div style={{ fontSize: 12, color: "var(--text-4)" }}>GitHub App webhook URL: <span className="mono">{url.replace("/v1/alerts/acme", "/api/webhooks/github")}</span> (Issues event, HMAC secret required). Proposals land in <a href="/app/learn" style={{ textDecoration: "underline" }}>Learn</a>.</div>
+            {cfg && !cfg.github.webhook_configured && <Muted>GitHub issue learning is unavailable until the server admin configures GITHUB_WEBHOOK_SECRET and sets this webhook on the GitHub App. You can still write a postmortem in Learn.</Muted>}
           </section>
         </aside>
       </div>

@@ -6,7 +6,7 @@ High-level design first, then the low-level design of each part, then the decisi
 
 ![GhostWalk architecture](architecture.png)
 
-Alerts come from Grafana, Alertmanager, PagerDuty and Datadog webhooks, the `gw` CLI and MCP clients. Caddy terminates TLS in front of the GhostWalk API on an AWS EC2 host running Docker Compose. The API holds the engine, the learner and the write-through cache, and keeps the graph and the memory in HydraDB, whose data is on MinIO. The React app on Vercel calls the same API; Clerk issues the sessions. GitHub is a source of postmortem issues. The picture is built by `scripts/render_architecture.py` (Graphviz and the `diagrams` library, with HydraDB as a custom node).
+Alerts arrive through GhostWalk's JSON webhook endpoint. Its normalizer accepts generic alerts and common Alertmanager, Grafana, UptimeRobot and PagerDuty-style payloads; these formats do not create native vendor connections. The `gw` CLI and MCP clients are also supported. Caddy terminates TLS in front of the GhostWalk API on an AWS EC2 host running Docker Compose. The API holds the engine, learner and write-through cache, and keeps the graph and memory in HydraDB, whose data is on MinIO. The React app on Vercel calls the same API; Clerk issues the sessions. GitHub is a source of postmortem issues. The picture is built by `scripts/render_architecture.py` (Graphviz and the `diagrams` library, with HydraDB as a custom node).
 
 ## Components
 

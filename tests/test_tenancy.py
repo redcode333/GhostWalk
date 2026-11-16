@@ -1,5 +1,6 @@
 """Clerk sessions and per-user workspaces: JWT checks, isolation between two accounts, workspace API tokens, the public demo sandbox."""
 import base64, hashlib, hmac, json, time
+from urllib.parse import parse_qs, urlsplit
 import jwt
 import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
@@ -90,7 +91,7 @@ def test_two_accounts_cannot_see_each_other(app_env):
     a, b = bearer("user_a"), bearer("user_b")
     assert c.get("/api/summary", headers=a).json()["services"] == 0                    # a fresh, empty workspace
     assert c.post("/api/onboarding/load-sample", headers=a).json()["services"] == 24
-    inc = c.post("/api/incidents/trigger", headers=a).json()["id"]
+    inc = c.post("/api/test-alert", headers=a).json()["id"]
     sa, sb = c.get("/api/summary", headers=a).json(), c.get("/api/summary", headers=b).json()
     assert sa["services"] == 24 and sb["services"] == 0
     assert c.get(f"/api/incidents/{inc}", headers=a).status_code == 200
@@ -110,6 +111,81 @@ def test_two_accounts_cannot_see_each_other(app_env):
     c.post("/v1/alerts/mine", json=body, headers={"Authorization": "Bearer " + tb})   # B's token lands in B's workspace, never in A's
     assert tb != ta and len(c.get("/api/incidents", headers=a).json()) == n0 + 1
     assert c.get("/api/summary", headers=b).json()["services"] == 0                    # still nothing leaked into B
+
+
+def test_clerk_workspace_scan_alert_rca_and_reviewed_postmortem(app_env):
+    """Exercise the full non-GitHub customer journey through authenticated API routes."""
+    c, _ = app_env
+    a, b = bearer("journey_a"), bearer("journey_b")
+    assert c.get("/api/summary", headers=a).json()["services"] == 0
+    scan = c.post("/api/onboarding/scan", json={"source": "sample"}, headers=a)
+    assert scan.status_code == 200 and scan.json()["source"] == "sample"
+    proposal = scan.json()
+    assert proposal["edges"] and c.get("/api/onboarding", headers=a).json()["steps"]["github"] is False
+    chosen = [e["id"] for e in proposal["edges"] if e["accepted"]]
+    accepted = c.post("/api/onboarding/accept", json={"edge_ids": chosen}, headers=a)
+    assert accepted.status_code == 200 and accepted.json()["dependencies"] == len(chosen)
+    assert c.get("/api/map", headers=a).json()["official"] == len(chosen)
+
+    settings = c.get("/api/settings", headers=a).json()
+    assert settings["token_required"] is True
+    token = c.post("/api/settings/token/rotate", headers=a).json()["token"]
+    nodes = c.get("/api/map", headers=a).json()["nodes"]
+    alerts = {"alerts": [{"name": nodes[0]["name"], "signal": "error_rate", "t": 0},
+                         {"name": nodes[-1]["name"], "signal": "latency", "t": 15}]}
+    denied = c.post("/v1/alerts/acme", json=alerts)
+    received = c.post("/v1/alerts/acme", json=alerts, headers={"Authorization": f"Bearer {token}"})
+    assert denied.status_code == 401 and received.status_code == 200
+    inc_id = received.json()["incident"]
+    inc = c.get(f"/api/incidents/{inc_id}", headers=a).json()
+    assert inc["source"] == "webhook" and inc["verdict"]["root_name"]
+
+    root, entry = inc["verdict"]["root_name"], inc["verdict"]["entry_name"]
+    fields = {"root": root, "path": f"{root} -> {entry}", "missed": f"{entry} depends on {root}"}
+    before = c.get("/api/map", headers=a).json()
+    preview = c.post(f"/api/learn/{inc_id}/preview", json=fields, headers=a)
+    assert preview.status_code == 200 and c.get("/api/map", headers=a).json() == before
+    queued = c.post(f"/api/learn/{inc_id}/queue", json=fields, headers=a).json()
+    assert queued["id"] and c.get("/api/learn/queue", headers=a).json()
+    applied = c.post(f"/api/learn/pending/{queued['id']}/apply", json={"reject": []}, headers=a)
+    assert applied.status_code == 200 and c.get(f"/api/incidents/{inc_id}", headers=a).json()["status"] == "Resolved"
+    assert c.get("/api/incidents", headers=b).json() == [] and c.get("/api/map", headers=b).json()["nodes"] == []
+
+
+def test_github_setup_state_and_signed_issue_webhook_are_workspace_scoped(app_env, monkeypatch):
+    c, _ = app_env
+    monkeypatch.setenv("GITHUB_APP_ID", "12345")
+    monkeypatch.setenv("GITHUB_APP_PRIVATE_KEY", "not-used-by-this-route")
+    monkeypatch.setenv("GITHUB_WEBHOOK_SECRET", "webhook-test-secret")
+    a, b = bearer("github_a"), bearer("github_b")
+    c.post("/api/onboarding/load-sample", headers=a)
+    c.post("/api/onboarding/load-sample", headers=b)
+
+    install = c.get("/api/onboarding/github/install-url", headers=a)
+    assert install.status_code == 200
+    state = parse_qs(urlsplit(install.json()["url"]).query)["state"][0]
+    assert c.post("/api/onboarding/github/connect", json={"installation_id": 8123, "state": "wrong"}, headers=a).status_code == 400
+    connected = c.post("/api/onboarding/github/connect", json={"installation_id": 8123, "state": state}, headers=a)
+    assert connected.status_code == 200
+    assert c.post("/api/onboarding/github/connect", json={"installation_id": 8123, "state": state}, headers=a).status_code == 400
+    assert c.get("/api/onboarding", headers=b).json()["installation"] is None
+    b_install = c.get("/api/onboarding/github/install-url", headers=b).json()
+    b_state = parse_qs(urlsplit(b_install["url"]).query)["state"][0]
+    assert c.post("/api/onboarding/github/connect", json={"installation_id": 8123, "state": b_state}, headers=b).status_code == 409
+
+    inc = c.get("/api/incidents", headers=a).json()[0]
+    root, entry = inc["root"], inc["symptom"].split(" ", 1)[0]
+    issue_body = f"### Actual root cause\n\n{root}\n\n### How it reached the alerting service\n\n{root} -> {entry}\n\n### What the map got wrong (optional)\n\n_No response_\n"
+    payload = {"action": "opened", "installation": {"id": 8123}, "repository": {"full_name": "acme/infra"},
+               "issue": {"number": 9, "title": f"{inc['id']}: investigation", "body": issue_body, "labels": [{"name": "postmortem"}]}}
+    raw = json.dumps(payload).encode()
+    signature = "sha256=" + hmac.new(b"webhook-test-secret", raw, hashlib.sha256).hexdigest()
+    headers = {"x-github-event": "issues", "x-hub-signature-256": signature, "content-type": "application/json"}
+    response = c.post("/api/webhooks/github", content=raw, headers=headers)
+    assert response.status_code == 200 and response.json()["queued"]
+    assert len(c.get("/api/learn/queue", headers=a).json()) == 1
+    assert c.get("/api/learn/queue", headers=b).json() == []
+    assert c.post("/api/webhooks/github", content=raw, headers={**headers, "x-gw-demo": "1"}).status_code == 403
 
 
 def test_a_user_workspace_survives_a_restart_and_the_demo_is_untouched(app_env, tmp_path):

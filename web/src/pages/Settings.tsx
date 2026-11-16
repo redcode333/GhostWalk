@@ -76,8 +76,7 @@ export default function Settings() {
       <section className="card" style={{ padding: 20 }}>
         <h2 style={{ margin: "0 0 8px", fontSize: 17 }}>Coming later</h2>
         <ul style={{ margin: 0, paddingLeft: 18, fontSize: 14, color: "var(--text-3)", lineHeight: 1.8 }}>
-          <li>MCP server, so coding agents can ask “why” during an incident</li>
-          <li>Postmortem import with a language model (proposes edges for review)</li>
+          <li>Import older Markdown and Confluence postmortems into the review queue</li>
           <li>Map discovery from OpenTelemetry traces</li>
         </ul>
       </section>

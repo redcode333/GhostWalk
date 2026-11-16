@@ -370,7 +370,7 @@ function How({ r, d }: { r: Results | null; d: Demo | null }) {
               <span className="mono" style={{ color: "var(--accent-text)", fontSize: 15 }}>{n}</span>
               <div><h3 style={{ margin: 0, fontSize: 20 }}>{t}</h3><p style={{ margin: "4px 0 8px", color: "var(--text-3)" }}>{x}</p><code className="mono" style={{ fontSize: 13, color: "var(--text-2)" }}>{c}</code></div>
             </li>))}
-          <li style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", fontSize: 14, color: "var(--text-4)" }}>Alerts from <Pill>Alertmanager</Pill><Pill>Grafana</Pill><Pill>PagerDuty</Pill><Pill>Datadog</Pill> or any webhook</li>
+          <li style={{ display: "flex", flexWrap: "wrap", gap: 6, alignItems: "center", fontSize: 14, color: "var(--text-4)" }}>JSON webhook payloads <Pill>Alertmanager</Pill><Pill>Grafana</Pill><Pill>UptimeRobot</Pill><Pill>PagerDuty-style</Pill> or your own normalized format</li>
         </ol>
         <div style={{ flex: "1 1 min(480px, 100%)" }}><Terminal title="~/acme · zsh" lines={termLines(verdictLatency(r) ? `${verdictLatency(r)!.text} (${verdictLatency(r)!.label})` : "")} loop /></div>
       </div>

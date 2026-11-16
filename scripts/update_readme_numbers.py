@@ -50,7 +50,7 @@ def mermaid():
     storage = "MinIO (S3-compatible object storage)" if "minio" in B.R.get("ops", {}).get("vm", {}) else "persistent volume"
     arch = f"""flowchart LR
     subgraph SRC[Alert sources]
-        W["Alertmanager and Grafana webhooks"]
+        W["JSON alert webhooks: normalized payload formats"]
         C[gw CLI]
         M["MCP clients: Claude Code, Cursor"]
     end

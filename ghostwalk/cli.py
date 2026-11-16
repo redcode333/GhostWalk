@@ -115,7 +115,7 @@ def map_import(path: Optional[pathlib.Path] = typer.Argument(None, exists=True, 
     ws = workspace(create=True)
     ids = [e["id"] for e in out["edges"] if take_all or e["accepted"]]
     ws.set_proposals(out)
-    r = ws.accept_map(ids)
+    r = ws.accept_map(ids, replace_existing=True)
     ok(f"{r['services']} services · {r['dependencies']} dependencies")
     console.print()
     legend = Text("    ")

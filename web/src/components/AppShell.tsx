@@ -42,7 +42,12 @@ export function AppShell() {
   }
   const trigger = async () => {
     setBusy(true)
-    try { const r = await api("/api/incidents/trigger", { method: "POST" }); nav(`/app/incidents/${r.id}`) } finally { setBusy(false) }
+    setMsg(null)
+    try {
+      const path = s?.mode === "demo" ? "/api/incidents/trigger" : "/api/test-alert"
+      const r = await api(path, { method: "POST" })
+      nav(`/app/incidents/${r.id}`)
+    } catch (e: any) { setMsg(e.message) } finally { setBusy(false) }
   }
 
   return (
@@ -72,7 +77,8 @@ export function AppShell() {
           </form>
           <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
             <Btn to="/app/learn" variant="glass">Write postmortem</Btn>
-            <Btn onClick={trigger} disabled={busy}>Trigger outage</Btn>
+            {s?.services === 0 ? <Btn to="/app/onboarding">Set up workspace</Btn>
+              : <Btn onClick={trigger} disabled={busy}>{s?.mode === "demo" ? "Trigger demo outage" : "Send test alert"}</Btn>}
           </div>
           {msg && <div role="status" style={{ flexBasis: "100%", fontSize: 13, color: "var(--amber)" }}>{msg}</div>}
         </header>

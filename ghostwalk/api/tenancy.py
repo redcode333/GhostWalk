@@ -56,3 +56,24 @@ class Tenancy:
                     ws = self._open(u["id"], u["run"])
                     return ws if secret_matches(secret, ws.token_hash) else None
         return None
+
+    def by_installation(self, installation_id: int):
+        """Resolve a verified GitHub webhook to the workspace that installed this App."""
+        with self.lock:
+            match = None
+            for u in self.reg["users"].values():
+                ws = self._open(u["id"], u["run"])
+                if ws.installation and int(ws.installation.get("id", -1)) == int(installation_id):
+                    if match is not None and match.wsid != ws.wsid:
+                        return None                         # ambiguous ownership: fail closed
+                    match = ws
+            return match
+
+    def can_claim_installation(self, installation_id: int, wsid: str):
+        """An installation belongs to one workspace because GitHub webhooks carry no Clerk user ID."""
+        with self.lock:
+            for u in self.reg["users"].values():
+                ws = self._open(u["id"], u["run"])
+                if ws.installation and int(ws.installation.get("id", -1)) == int(installation_id) and ws.wsid != wsid:
+                    return False
+            return True

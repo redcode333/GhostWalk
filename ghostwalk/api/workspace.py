@@ -58,6 +58,7 @@ class Workspace:
         self.map_proposals = None                # onboarding scan result (not official until accepted)
         self.onboarding = {"github": False, "map": False, "alert": False, "postmortem": False, "first_alert_at": None}
         self.installation = None
+        self.github_state = None            # one-time state for the GitHub App installation callback
         self.repo_for_template = None
         self.log: list[str] = []
         self.changes: list[dict] = []             # deploy/config events: {service, ts (epoch s), kind, ref}
@@ -489,14 +490,21 @@ class Workspace:
             self.map_proposals = proposals
             self.save()
 
-    def accept_map(self, edge_ids):
+    def accept_map(self, edge_ids, replace_existing=False):
         """The accepted edges become the OFFICIAL map: a fresh graph at w=0.7, replacing whatever was there."""
         self.wait_saved()                          # queued learning writes land first
         with self.lock:
             if not self.map_proposals:
                 raise ValueError("nothing scanned yet")
             ids = set(edge_ids)
+            available = {e["id"] for e in self.map_proposals["edges"]}
+            if ids - available:
+                raise ValueError("one or more selected relationships are not in the current scan")
             edges = [e for e in self.map_proposals["edges"] if e["id"] in ids]
+            if not edges:
+                raise ValueError("select at least one discovered relationship to accept")
+            if (self.g.components or self.incidents or any(e.origin == "learned" for e in self.g.edges.values())) and not replace_existing:
+                raise ValueError("this workspace already has incidents or learned relationships; confirm replacement before changing its official map")
             names = sorted({e["src"] for e in edges} | {e["dst"] for e in edges})
             kinds = {s["name"]: s["kind"] for s in self.map_proposals["services"]}
             comps = [{"id": i, "name": n, "kind": kinds.get(n, "service"), "tier": TIER_OF.get(kinds.get(n, "service"), 1)} for i, n in enumerate(names)]
@@ -564,7 +572,7 @@ class Workspace:
     def dump(self):
         g = self.g
         return {"mode": self.mode, "revision": self.revision, "token_hash": self.token_hash, "token_tail": self.token_tail, "wsid": self.wsid, "sample": self.sample, "next_sim": self.next_sim, "onboarding": self.onboarding,
-                "changes": self.changes, "installation": self.installation, "repo_for_template": self.repo_for_template, "map_proposals": self.map_proposals,
+                "changes": self.changes, "installation": self.installation, "github_state": self.github_state, "repo_for_template": self.repo_for_template, "map_proposals": self.map_proposals,
                 "components": {str(i): c for i, c in g.components.items()}, "names": g.names,
                 "edges": [[u, v, e.w, e.origin, e.confirmations, e.learned_from, e.created_seq] for (u, v), e in g.edges.items()],
                 "root_counts": g.root_counts, "affected": g.affected, "missed": g.missed, "seq": g.seq, "learned_by": self.learned_by,
@@ -601,6 +609,7 @@ class Workspace:
             self.sample = d.get("sample")
             self.changes = d.get("changes", [])
             self.next_sim, self.onboarding, self.installation = d["next_sim"], d["onboarding"], d.get("installation")
+            self.github_state = d.get("github_state")
             self.repo_for_template, self.map_proposals = d.get("repo_for_template"), d.get("map_proposals")
             self.incidents, self.pending = d["incidents"], d["pending"]
             self.jobs = d.get("jobs", [])

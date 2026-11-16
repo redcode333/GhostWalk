@@ -90,7 +90,7 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
     @app.middleware("http")
     async def guard(request: Request, call_next):
         path, method = request.url.path, request.method
-        in_sandbox = (getattr(request.state, "gw_kind", None) == "demo") if tenancy else public_demo
+        in_sandbox = (getattr(request.state, "gw_kind", None) == "demo" or request.headers.get("x-gw-demo") == "1") if tenancy else public_demo
         if method != "OPTIONS" and in_sandbox and method not in ("GET", "HEAD") and path.startswith(sandbox_blocked) and path != "/api/demo/reset":
             return JSONResponse({"detail": "this is the public demo: settings, onboarding and webhooks are read-only here"}, status_code=403)
         if limit_n and method != "OPTIONS" and (path.startswith("/v1/") or (method == "POST" and path.startswith("/api/"))):
@@ -138,7 +138,9 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
         @app.middleware("http")
         async def tenant(request: Request, call_next):
             path = request.url.path
-            if not path.startswith(("/api/", "/v1/")) or path.startswith(PUBLIC) or request.method == "OPTIONS":
+            # GitHub authenticates this server-to-server endpoint by HMAC, then the handler
+            # routes each event using its installation ID. It has no Clerk browser session.
+            if not path.startswith(("/api/", "/v1/")) or path.startswith(PUBLIC) or path == "/api/webhooks/github" or request.method == "OPTIONS":
                 return await call_next(request)
             try:
                 w, kind, claims = resolve_workspace(request)
@@ -194,7 +196,8 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
     def config():
         c = gh.env_config()
         return {"auth_mode": AUTH_MODE(), "clerk_publishable_key": os.environ.get("CLERK_PUBLISHABLE_KEY") or os.environ.get("VITE_CLERK_PUBLISHABLE_KEY"),
-                "github": {"configured": bool(c["app_id"] and c["private_key"]), "slug": c["slug"], "pr_token": bool(c["pr_token"])}}
+                "github": {"configured": bool(c["app_id"] and c["private_key"]), "webhook_configured": bool(c["webhook_secret"]),
+                           "slug": c["slug"], "pr_token": bool(c["pr_token"])}}
 
     results_cache = {"mtime": None, "doc": None}
 
@@ -326,11 +329,15 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
 
     @app.post("/api/incidents/trigger")
     def trigger(u=user):
+        if ws.mode != "demo":
+            raise HTTPException(409, "This workspace has no prerecorded demo outage. Send a real alert or use Send test alert.")
         inc = ws.trigger_outage()
         return {"id": inc["id"]}
 
     @app.post("/api/test-alert")
     def test_alert(u=user):
+        if not ws.g.components:
+            raise HTTPException(409, "No services are in this workspace yet. Scan and accept a map first.")
         inc = ws.test_alert()
         return {"id": inc["id"], "root": inc["verdict"]["root_name"], "ms": inc["verdict"]["ms"], "planted_root": inc.get("test_root")}
 
@@ -390,7 +397,8 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
         return {"webhook_url": f"{public_url(request)}/v1/alerts/acme", "token_masked": ws.token_masked,
                 "receiving": bool(ws.onboarding["first_alert_at"]), "store": s["store"],
                 "graph": {"nodes": s["services"], "edges": s["official_edges"] + s["learned_edges"], "learned": s["learned_edges"]},
-                "version": "0.1.0", "auth_mode": AUTH_MODE()}
+                "version": "0.1.0", "auth_mode": AUTH_MODE(),
+                "token_required": AUTH_MODE() == "clerk" or os.environ.get("GW_REQUIRE_TOKEN", "0") == "1"}
 
     @app.post("/api/settings/token/reveal")
     def reveal(u=user):
@@ -414,14 +422,28 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
     @app.get("/api/onboarding/github/install-url")
     def install_url(u=user):
         c = gh.env_config()
-        if not c["app_id"]:
+        if not (c["app_id"] and c["private_key"]):
             raise HTTPException(501, "GitHub App is not configured on this server (GITHUB_APP_ID / GITHUB_APP_PRIVATE_KEY)")
-        return {"url": f"https://github.com/apps/{c['slug']}/installations/new"}
+        ws.github_state = secrets.token_urlsafe(32)
+        ws.save()
+        return {"url": f"https://github.com/apps/{c['slug']}/installations/new?state={ws.github_state}"}
 
     @app.post("/api/onboarding/github/connect")
     async def connect(request: Request, u=user):
         body = await request.json()
-        ws.installation = {"id": int(body["installation_id"])}
+        state = str(body.get("state") or "")
+        if not ws.github_state or not secrets.compare_digest(state, ws.github_state):
+            raise HTTPException(400, "GitHub installation state is missing or invalid. Start the install flow again.")
+        try:
+            installation_id = int(body["installation_id"])
+        except (KeyError, TypeError, ValueError):
+            raise HTTPException(422, "GitHub installation_id must be an integer")
+        if installation_id <= 0:
+            raise HTTPException(422, "GitHub installation_id must be positive")
+        if tenancy is not None and not tenancy.can_claim_installation(installation_id, ws.wsid):
+            raise HTTPException(409, "This GitHub installation is already linked to another workspace")
+        ws.installation = {"id": installation_id}
+        ws.github_state = None
         ws.onboarding["github"] = True
         ws.save()
         return {"ok": True}
@@ -446,9 +468,10 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
             if sum(len(str(f.get("text") or "")) for f in raw if isinstance(f, dict)) > 500_000:
                 raise HTTPException(413, "the files are too large to scan (500 kB in all)")
             files = [(str(f.get("repo") or "pasted/files"), str(f.get("path") or ""), str(f.get("text") or "")) for f in raw if isinstance(f, dict)]
-        else:
+        elif source == "sample":
             files = SAMPLE_FILES
-            ws.onboarding["github"] = True
+        else:
+            raise HTTPException(422, "source must be 'github', 'files', or 'sample'")
         out = proposals(scan_texts(files))
         out["source"] = source
         ws.set_proposals(out)
@@ -460,7 +483,7 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
     async def accept(request: Request, u=user):
         body = await request.json()
         try:
-            return ws.accept_map(body.get("edge_ids", []))
+            return ws.accept_map(body.get("edge_ids", []), replace_existing=body.get("replace_existing") is True)
         except ValueError as e:
             raise HTTPException(400, str(e))
 
@@ -494,12 +517,20 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
         if event == "ping":
             return {"ok": True}
         payload = json.loads(raw)
+        target = ws
+        if tenancy is not None:
+            installation_id = (payload.get("installation") or {}).get("id")
+            if installation_id is None:
+                return {"ignored": True, "reason": "GitHub event has no installation ID"}
+            target = tenancy.by_installation(installation_id)
+            if target is None:
+                raise HTTPException(404, "GitHub installation is not connected to a workspace")
         if event in ("deployment", "deployment_status", "release"):
             ch = issues.change_from_github(event, payload)
             if ch is None:
                 return {"ignored": True}
             try:
-                return {"recorded": ws.add_change(ch["service"], ch["ts"], ch["kind"], ch["ref"])}
+                return {"recorded": target.add_change(ch["service"], ch["ts"], ch["kind"], ch["ref"])}
             except ValueError as e:
                 return {"ignored": True, "reason": str(e)}
         if event != "issues" or not issues.is_postmortem_event(payload):
@@ -508,17 +539,17 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
         fields = issues.parse_issue_form(issue.get("body") or "")
         if not fields["root"]:
             return {"ignored": True, "reason": "root cause field is empty"}
-        pm = ws.make_pm(fields)
+        pm = target.make_pm(fields)
         if pm["root"] is None:
             return {"ignored": True, "reason": f"root cause {fields['root']!r} is not in the map"}
         ref = issues.incident_ref(issue.get("title", ""), issue.get("body", ""))
-        inc = ws.get(ref) if ref else None
+        inc = target.get(ref) if ref else None
         if inc is None:
-            inc = next((i for i in reversed(ws.incidents) if i["status"] != "Resolved"), None)
+            inc = next((i for i in reversed(target.incidents) if i["status"] != "Resolved"), None)
         repo = (payload.get("repository") or {}).get("full_name")
         issue_ref = f"{repo}#{issue.get('number')}"
-        ws.pending[:] = [p for p in ws.pending if p.get("ref") != issue_ref]          # an edited issue replaces its old proposal
-        item = ws.queue(inc, pm, f"GitHub issue {issue_ref}", ref=issue_ref)
+        target.pending[:] = [p for p in target.pending if p.get("ref") != issue_ref] # an edited issue replaces its old proposal
+        item = target.queue(inc, pm, f"GitHub issue {issue_ref}", ref=issue_ref)
         return {"queued": item["id"], "changes": len(item["shown"]), "incident": item["incident"]}
 
     # ---- the built web app ----------------------------------------------------------------

@@ -56,6 +56,10 @@ def test_webhook_formats():
                      {"status": "resolved", "labels": {"service": "old"}, "startsAt": "2026-11-15T14:00:00Z"}]}
     out = normalize(am)
     assert [a["name"] for a in out] == ["payments", "checkout-api"] and out[1]["t"] == 30.0
+    # The generic webhook normalizer accepts a Grafana-shaped alert and the supported
+    # PagerDuty-style nested service summary; neither is a native vendor connection.
+    assert normalize({"alerts": [{"status": "firing", "labels": {"alertname": "HighErrors", "service": "checkout-api"}, "startsAt": "2026-11-15T14:02:30Z"}]})[0]["name"] == "checkout-api"
+    assert normalize({"incident": {"service": {"summary": "payments"}}, "alertType": "trigger"})[0]["name"] == "payments"
     assert normalize({"monitorFriendlyName": "search", "alertType": "down"})[0]["name"] == "search"
     with pytest.raises(ValueError):
         normalize({"alerts": []})
@@ -110,12 +114,16 @@ def test_onboarding_scan_accept_replaces_map_and_test_alert_works():
     assert all({"src", "dst", "repo", "file", "evidence", "confidence"} <= set(e) for e in out["edges"])
     assert w.g.components and len(w.g.components) == 80                    # nothing official yet
     accepted = [e["id"] for e in out["edges"] if e["accepted"]]
-    r = c.post("/api/onboarding/accept", json={"edge_ids": accepted}).json()
+    before = client_map = c.get("/api/map").json()
+    blocked = c.post("/api/onboarding/accept", json={"edge_ids": accepted})
+    assert blocked.status_code == 400 and len(c.get("/api/map").json()["nodes"]) == len(before["nodes"])
+    r = c.post("/api/onboarding/accept", json={"edge_ids": accepted, "replace_existing": True}).json()
     assert w.mode == "imported" and len(w.g.components) == r["services"] and r["dependencies"] == len(accepted)
     assert all(e.origin == "official" and e.w == 0.7 for e in w.g.edges.values())
     t = c.post("/api/test-alert").json()
     assert t["root"] in {x["name"] for x in w.g.components.values()}
     assert c.get("/api/summary").json()["onboarding"]["alert"] is True
+    assert c.get("/api/onboarding").json()["steps"]["github"] is False  # sample repository files are not a GitHub connection
 
 
 def test_postmortem_pr_falls_back_to_link_without_a_write_token(client, monkeypatch):
@@ -175,7 +183,7 @@ def test_there_is_no_service_limit_and_a_burst_is_rate_limited(monkeypatch):
     for mode in ("none", "clerk"):
         monkeypatch.setenv("AUTH_MODE", mode)
         w.map_proposals = big
-        assert c.post("/api/onboarding/accept", json={"edge_ids": ids}).status_code == 200
+        assert c.post("/api/onboarding/accept", json={"edge_ids": ids, "replace_existing": True}).status_code == 200
 
 
 def test_rate_limit_is_a_quiet_429_with_a_plain_message(monkeypatch):
@@ -211,6 +219,6 @@ def test_scan_pasted_files_and_accept_a_large_map(monkeypatch):
     monkeypatch.setenv("AUTH_MODE", "clerk")
     out = c.post("/api/onboarding/scan", json={"source": "files", "files": [{"repo": "acme/infra", "path": "docker-compose.yml", "text": compose}]}).json()
     assert out["summary"]["services"] == 35
-    r = c.post("/api/onboarding/accept", json={"edge_ids": [e["id"] for e in out["edges"]]})
+    r = c.post("/api/onboarding/accept", json={"edge_ids": [e["id"] for e in out["edges"]], "replace_existing": True})
     assert r.status_code == 200 and r.json()["services"] == 35
     assert c.post("/api/onboarding/scan", json={"source": "files", "files": []}).status_code == 422

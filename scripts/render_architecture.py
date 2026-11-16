@@ -18,11 +18,9 @@ from diagrams.custom import Custom
 from diagrams.generic.storage import Storage
 from diagrams.onprem.client import Client
 from diagrams.onprem.container import Docker
-from diagrams.onprem.monitoring import Datadog, Grafana, Prometheus
 from diagrams.onprem.network import Caddy
 from diagrams.onprem.vcs import Github
 from diagrams.programming.framework import FastAPI, React, Vercel
-from diagrams.saas.alerting import Pagerduty
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 HYDRA = str(ROOT / "docs" / "assets" / "hydradb.png")
@@ -42,10 +40,7 @@ def rank(d, *nodes):
 def build(fmt: str):
     with Diagram("", filename=str(ROOT / "docs" / "architecture"), outformat=fmt, show=False, direction="TB", graph_attr=GRAPH, node_attr=NODE, edge_attr=EDGE) as d:
         with Cluster("Alert sources", graph_attr=CLUSTER):
-            grafana = Grafana("Grafana")
-            prom = Prometheus("Alertmanager")
-            pd = Pagerduty("PagerDuty")
-            dd = Datadog("Datadog")
+            webhooks = Node(f"JSON alert webhooks{NL}common normalized payloads", shape="box", style="rounded,filled", fillcolor="#F3F0FF", color="#6A4BFF", width="2.3", height="1.1")
             gw = Client(f"gw CLI and{NL}MCP clients")
         gh = Github(f"GitHub{NL}postmortem issues")
 
@@ -62,12 +57,11 @@ def build(fmt: str):
             hydra = Custom(f"HydraDB{NL}graph and memory", HYDRA)
             store = Storage(f"MinIO{NL}object storage")
 
-        rank(d, grafana, prom, pd, dd, gw)
+        rank(d, webhooks, gw)
         rank(d, gh, web, vercel, clerk)
         rank(d, host, compose, caddy, api, hydra, store)
 
-        for s in (grafana, prom, pd, dd):
-            s >> Edge(label="alerts") >> caddy
+        webhooks >> Edge(label="JSON alerts") >> caddy
         gw >> Edge(label="alerts, why") >> caddy
         gh >> Edge(label="postmortems", style="dashed") >> caddy
         web >> Edge(label="verdicts, paths", color="#6A4BFF") >> caddy
