@@ -142,6 +142,8 @@ docker compose pull && docker compose up -d --build      # the app on http://loc
 docker compose exec app gw doctor --url http://127.0.0.1:8000
 ```
 
+The default Docker setup uses HydraDB for the graph and learning memory; its S3-compatible data is stored by MinIO.
+
 The demo workspace needs no sign-in. Then:
 
 ```bash
