@@ -5,7 +5,7 @@ services:
   web:
     image: shopfront/web
     environment:
-      CATALOG_URL: http://catalog-api:8080
+      CATALOG_URL: http://search-api:8080
       CART_URL: http://cart-api:8080
   catalog-api:
     image: shopfront/catalog
