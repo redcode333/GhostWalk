@@ -94,3 +94,27 @@ a { color: inherit; text-decoration: none; }
 @media (max-width: 720px) { .hide-sm { display: none; } .bento-grid > * { grid-column: auto !important; } }
 
 p a, li a, .prose a { text-decoration: underline; text-underline-offset: 3px; }
+
+/* Logo (components/Logo.tsx). Base = the final frame; .lg-on plays the ~1.6 s sequence. Only transform, opacity and stroke-dashoffset animate. */
+.lg-g, .lg-b, .lg-i, .lg-n, .lg-t, .lg-r { transform-box: fill-box; transform-origin: center; }
+.lg-e { stroke-dasharray: 12 14; } .lg-r { opacity: 0; } .lg-w { position: relative; }
+.lg-w::after { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; background: var(--accent); opacity: 0; transform-origin: left; }
+.lg-i { animation: lg-idle 8s 2.4s infinite; }
+.lg-on .lg-g { animation: lg-rise .2s ease-out both; }
+.lg-on .lg-b { animation: lg-blink .18s .2s both; }
+.lg-on .lg-e { animation: lg-draw .3s .38s both; }
+.lg-on .lg-n { animation: lg-pop .16s .68s both; }
+.lg-on .lg-t { animation: lg-in .12s both; }
+.lg-on .lg-f { animation: lg-fade .15s 1.04s both; }
+.lg-on .lg-r { animation: lg-ring .5s 1.04s forwards; }
+.lg-on .lg-w::after { animation: lg-sweep .45s 1.15s both; }
+@keyframes lg-rise { from { opacity: 0; transform: translateY(2px) } }
+@keyframes lg-blink { 50% { transform: scaleY(.1) } }
+@keyframes lg-draw { from { stroke-dashoffset: 12 } }
+@keyframes lg-pop { from { transform: scale(0) } 70% { transform: scale(1.15) } }
+@keyframes lg-in { from { opacity: 0; transform: scale(.4) } }
+@keyframes lg-fade { from { opacity: 0 } }
+@keyframes lg-ring { from { opacity: .5; transform: scale(1) } to { opacity: 0; transform: scale(2.2) } }
+@keyframes lg-sweep { 0% { opacity: 1; transform: scaleX(0) } 50% { opacity: 1; transform: scaleX(1) } to { opacity: 0; transform: scaleX(1) } }
+@keyframes lg-idle { 0%, 97.7%, 100% { transform: none } 98.8% { transform: scaleY(.1) } }
+@media (prefers-reduced-motion: reduce) { .lg-i, .lg-on .lg-g, .lg-on .lg-b, .lg-on .lg-e, .lg-on .lg-n, .lg-on .lg-t, .lg-on .lg-f, .lg-on .lg-r, .lg-on .lg-w::after { animation: none !important; } }

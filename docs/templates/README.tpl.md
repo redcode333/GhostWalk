@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/logo.svg" alt="GhostWalk" height="64">
+<img src="docs/screenshots/logo-anim.gif" alt="GhostWalk: the ghost blinks, walks an edge to a node, and a dotted trail reaches the root cause" height="84">
 
 # GhostWalk
 

@@ -48,7 +48,7 @@ export function AppShell() {
   return (
     <div className="app dark" style={{ background: "var(--bg)", color: "var(--ink)", minHeight: "100vh", display: "flex", flexWrap: "wrap" }}>
       <aside style={{ flex: "1 1 min(220px, 100%)", maxWidth: 240, borderRight: "1px solid var(--line)", padding: "16px 12px", display: "flex", flexDirection: "column", gap: 4, boxSizing: "border-box" }}>
-        <a href="/" aria-label="GhostWalk home" style={{ padding: "6px 10px 18px" }}><Logo width={36} size={16} /></a>
+        <a href="/" aria-label="GhostWalk home" style={{ padding: "6px 10px 18px" }}><Logo width={36} size={16} once /></a>
         <nav aria-label="App" style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {NAV.map(({ to, label, icon: I }) => (
             <NavLink key={to} to={to} className={({ isActive }) => `side${isActive ? " on" : ""}`}><I size={16} strokeWidth={1.8} />{label}</NavLink>

@@ -2,27 +2,7 @@ import { useEffect, useState, type ReactNode } from "react"
 import { Link } from "react-router-dom"
 import { Moon, Sun } from "lucide-react"
 
-export function Logo({ width = 66, word = true, size = 27 }: { width?: number; word?: boolean; size?: number }) {
-  const h = Math.round((width * 32) / 56)
-  return (
-    <span className="inline-flex items-center gap-2" aria-label="GhostWalk">
-      <svg width={width} height={h} viewBox="0 0 56 32" aria-hidden="true">
-        <path d="M2 14a11 11 0 0 1 22 0v14l-3.6-2.6-3.7 2.6-3.7-2.6-3.7 2.6-3.6-2.6L2 28z" fill="var(--ink)" />
-        <polyline points="7,11 10.5,14 7,17" fill="none" stroke="var(--bg)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-        <line x1="13" y1="18" x2="24" y2="18" stroke="var(--bg)" strokeWidth="2.2" strokeLinecap="round" />
-        <line x1="24" y1="18" x2="36" y2="18" stroke="var(--ink)" strokeWidth="2.2" strokeLinecap="round" />
-        <circle cx="38.5" cy="18" r="2.6" fill="var(--ink)" />
-        <line x1="41" y1="16" x2="50" y2="9" stroke="var(--accent)" strokeWidth="1.8" strokeDasharray="2.5 2.5" />
-        <circle cx="51.5" cy="8" r="2.4" fill="none" stroke="var(--accent)" strokeWidth="1.6" />
-      </svg>
-      {word && (
-        <span className="mono" style={{ fontWeight: 600, fontSize: size }}>
-          ghost<span style={{ color: "var(--accent)" }}>walk</span>
-        </span>
-      )}
-    </span>
-  )
-}
+export { Logo } from "./Logo"
 
 const BG = { light: "#F4F2EC", dark: "#09090E" }
 
