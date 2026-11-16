@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"cartservice\",\"paymentservice\",\"adservice\",\"recommendationservice\",\"frontend\"],\"reason\":\"Cartservice latency likely degraded first, propagating errors to checkoutservice and frontend, while paymentservice and adservice issues appear secondary downstream effects.\"}",
+ "prompt_tokens": 673,
+ "completion_tokens": 167,
+ "latency_ms": 1054.759099999501,
+ "ranking": [
+  "cartservice",
+  "paymentservice",
+  "adservice",
+  "recommendationservice",
+  "frontend"
+ ],
+ "reason": "Cartservice latency likely degraded first, propagating errors to checkoutservice and frontend, while paymentservice and adservice issues appear secondary downstream effects.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "real-5000",
+ "seq": 8,
+ "truth": "config-svc",
+ "prompt_sha": "295610c6a4145f2f"
+}

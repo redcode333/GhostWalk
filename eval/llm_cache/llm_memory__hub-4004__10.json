@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"redis-ratelimit\",\"payments-api\",\"web-bff\",\"coupon-svc\",\"rate-limiter\"],\"reason\":\"The first alert is redis\u2011ratelimit timeouts, and payments\u2011api (which depends on redis\u2011ratelimit) timed out next, followed by web\u2011bff (which depends on payments\u2011api). Coupon\u2011svc later showed timeouts, likely as a downstream effect, while rate\u2011limiter is another shared component that could be impacted.\"}",
+ "prompt_tokens": 2645,
+ "completion_tokens": 387,
+ "latency_ms": 1862.2838000010233,
+ "ranking": [
+  "redis-ratelimit",
+  "payments-api",
+  "web-bff",
+  "coupon-svc",
+  "rate-limiter"
+ ],
+ "reason": "The first alert is redis\u2011ratelimit timeouts, and payments\u2011api (which depends on redis\u2011ratelimit) timed out next, followed by web\u2011bff (which depends on payments\u2011api). Coupon\u2011svc later showed timeouts, likely as a downstream effect, while rate\u2011limiter is another shared component that could be impacted.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4004",
+ "seq": 10,
+ "truth": "redis-ratelimit",
+ "prompt_sha": "8ac86a4cefadae74"
+}

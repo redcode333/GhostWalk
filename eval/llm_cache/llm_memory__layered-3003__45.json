@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"chat-svc\",\"reports-api\",\"orders-db\",\"web-bff\",\"edge-gateway\"],\"reason\":\"Chat\u2011svc error spikes first, causing downstream latency in reports\u2011api, then web\u2011bff and edge\u2011gateway; orders\u2011db is a secondary candidate as it underlies chat\u2011svc.\"}",
+ "prompt_tokens": 1822,
+ "completion_tokens": 108,
+ "latency_ms": 1322.5683999989997,
+ "ranking": [
+  "chat-svc",
+  "reports-api",
+  "orders-db",
+  "web-bff",
+  "edge-gateway"
+ ],
+ "reason": "Chat\u2011svc error spikes first, causing downstream latency in reports\u2011api, then web\u2011bff and edge\u2011gateway; orders\u2011db is a secondary candidate as it underlies chat\u2011svc.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "layered-3003",
+ "seq": 45,
+ "truth": "chat-svc",
+ "prompt_sha": "c137acc081af566a"
+}

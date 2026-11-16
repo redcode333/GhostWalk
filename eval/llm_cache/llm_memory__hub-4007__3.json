@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"shipping-svc\",\"importer-svc\",\"quote-svc\",\"bidding-svc\",\"support-api\"],\"reason\":\"Shipping\u2011svc shows early saturation and is a common dependency for many downstream services that later exhibited errors and timeouts, making it the most probable root cause.\"}",
+ "prompt_tokens": 2168,
+ "completion_tokens": 261,
+ "latency_ms": 1661.5171000012197,
+ "ranking": [
+  "shipping-svc",
+  "importer-svc",
+  "quote-svc",
+  "bidding-svc",
+  "support-api"
+ ],
+ "reason": "Shipping\u2011svc shows early saturation and is a common dependency for many downstream services that later exhibited errors and timeouts, making it the most probable root cause.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4007",
+ "seq": 3,
+ "truth": "importer-svc",
+ "prompt_sha": "850c457e13431923"
+}

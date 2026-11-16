@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"search-index\",\"tracking-svc\",\"pricing-api\",\"catalog-svc\",\"fx-svc\"],\"reason\":\"The initial error_rate on search-index-prod propagates to tracking-svc (which depends on search-index) and later causes saturation in pricing-api, which also relies on shared downstream services like catalog-svc and fx-svc.\"}",
+ "prompt_tokens": 1494,
+ "completion_tokens": 207,
+ "latency_ms": 1245.9240000025602,
+ "ranking": [
+  "search-index",
+  "tracking-svc",
+  "pricing-api",
+  "catalog-svc",
+  "fx-svc"
+ ],
+ "reason": "The initial error_rate on search-index-prod propagates to tracking-svc (which depends on search-index) and later causes saturation in pricing-api, which also relies on shared downstream services like catalog-svc and fx-svc.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "layered-3001",
+ "seq": 25,
+ "truth": "search-index",
+ "prompt_sha": "edeb641421e90761"
+}

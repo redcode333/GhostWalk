@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"service-mesh\",\"feed-svc\",\"kafka-events\",\"config-svc\",\"redis-sessions\"],\"reason\":\"The service-mesh error_rate precedes feed\u2011svc saturation, and feed\u2011svc directly depends on the mesh; downstream dependencies such as kafka-events, config\u2011svc and redis\u2011sessions can amplify the impact.\"}",
+ "prompt_tokens": 2696,
+ "completion_tokens": 153,
+ "latency_ms": 1334.8178999949596,
+ "ranking": [
+  "service-mesh",
+  "feed-svc",
+  "kafka-events",
+  "config-svc",
+  "redis-sessions"
+ ],
+ "reason": "The service-mesh error_rate precedes feed\u2011svc saturation, and feed\u2011svc directly depends on the mesh; downstream dependencies such as kafka-events, config\u2011svc and redis\u2011sessions can amplify the impact.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4008",
+ "seq": 4,
+ "truth": "service-mesh",
+ "prompt_sha": "822953155a921640"
+}

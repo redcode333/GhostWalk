@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"payments-db\",\"config-svc\",\"auth-svc\",\"kafka-events\",\"redis-sessions\"],\"reason\":\"Payments-db errors appear first and affect many downstream services (payout, subscription, ledger, etc.), while config-svc and auth-svc are shared dependencies that later cause timeouts and saturation across ranking, recommend, and webhook services.\"}",
+ "prompt_tokens": 2279,
+ "completion_tokens": 396,
+ "latency_ms": 1350.8030000011786,
+ "ranking": [
+  "payments-db",
+  "config-svc",
+  "auth-svc",
+  "kafka-events",
+  "redis-sessions"
+ ],
+ "reason": "Payments-db errors appear first and affect many downstream services (payout, subscription, ledger, etc.), while config-svc and auth-svc are shared dependencies that later cause timeouts and saturation across ranking, recommend, and webhook services.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4005",
+ "seq": 8,
+ "truth": "payments-db",
+ "prompt_sha": "993539b3c856e99c"
+}

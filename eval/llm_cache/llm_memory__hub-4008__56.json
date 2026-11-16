@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"stripe-api\",\"presence-svc\",\"export-api\",\"search-svc\",\"redis-catalog\"],\"reason\":\"Stripe\u2011api saturation likely triggered errors in presence\u2011svc (its direct dependency), which then cascaded to export\u2011api overload via downstream retries or resource contention, making these services the most probable root causes.\"}",
+ "prompt_tokens": 2901,
+ "completion_tokens": 246,
+ "latency_ms": 1631.5057999963756,
+ "ranking": [
+  "stripe-api",
+  "presence-svc",
+  "export-api",
+  "search-svc",
+  "redis-catalog"
+ ],
+ "reason": "Stripe\u2011api saturation likely triggered errors in presence\u2011svc (its direct dependency), which then cascaded to export\u2011api overload via downstream retries or resource contention, making these services the most probable root causes.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4008",
+ "seq": 56,
+ "truth": "stripe-api",
+ "prompt_sha": "e657b2f12e8b521d"
+}

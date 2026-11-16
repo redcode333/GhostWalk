@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"invoice-svc\",\"catalog-db\",\"inventory-db\",\"seat-svc\",\"shipping-api\"],\"reason\":\"Invoice\u2011svc showed high latency first, and seat\u2011svc depends on it, causing timeouts; downstream datastore issues (catalog\u2011db, inventory\u2011db) could also trigger invoice\u2011svc latency, so they are next likely culprits.\"}",
+ "prompt_tokens": 2335,
+ "completion_tokens": 142,
+ "latency_ms": 1738.7355000028037,
+ "ranking": [
+  "invoice-svc",
+  "catalog-db",
+  "inventory-db",
+  "seat-svc",
+  "shipping-api"
+ ],
+ "reason": "Invoice\u2011svc showed high latency first, and seat\u2011svc depends on it, causing timeouts; downstream datastore issues (catalog\u2011db, inventory\u2011db) could also trigger invoice\u2011svc latency, so they are next likely culprits.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4005",
+ "seq": 45,
+ "truth": "invoice-svc",
+ "prompt_sha": "ecacf71a525adbf1"
+}

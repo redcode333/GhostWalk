@@ -1,0 +1,23 @@
+{
+ "provider": "gemini",
+ "model": "gemini-3.6-flash",
+ "text": "{\n  \"ranking\": [\n    \"chat-svc\",\n    \"consent-svc\",\n    \"profile-svc\",\n    \"redis-cart\",\n    \"reports-api\"\n  ],\n  \"reason\": \"reports-api fired first, causing cascading timeouts to both web-bff and edge-gateway which depend on it. Its immediate downstream dependencies (chat-svc, consent-svc, profile-svc, and redis-cart) are the most likely root causes.\"\n}",
+ "prompt_tokens": 1777,
+ "completion_tokens": 106,
+ "latency_ms": 1737.2341999944183,
+ "ranking": [
+  "chat-svc",
+  "consent-svc",
+  "profile-svc",
+  "redis-cart",
+  "reports-api"
+ ],
+ "reason": "reports-api fired first, causing cascading timeouts to both web-bff and edge-gateway which depend on it. Its immediate downstream dependencies (chat-svc, consent-svc, profile-svc, and redis-cart) are the most likely root causes.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "layered-3003",
+ "seq": 13,
+ "truth": "chat-svc",
+ "prompt_sha": "a9ead7f95a73f10f"
+}

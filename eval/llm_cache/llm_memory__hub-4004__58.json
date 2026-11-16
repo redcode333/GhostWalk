@@ -1,0 +1,28 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"stripe-api\",\"loyalty-svc\",\"account-api\",\"config-svc\",\"auth-svc\"],\"reason\":\"Stripe\u2011api timeouts triggered errors in loyalty\u2011svc, which then increased load on account\u2011api causing saturation; other services are less directly implicated.\"}",
+ "prompt_tokens": 2592,
+ "completion_tokens": 238,
+ "latency_ms": 924.9264000027324,
+ "ranking": [
+  "stripe-api",
+  "loyalty-svc",
+  "account-api",
+  "config-svc",
+  "auth-svc"
+ ],
+ "reason": "Stripe\u2011api timeouts triggered errors in loyalty\u2011svc, which then increased load on account\u2011api causing saturation; other services are less directly implicated.",
+ "attempts": [
+  {
+   "provider": "gemini",
+   "error": "gemini 429 (daily quota)"
+  }
+ ],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4004",
+ "seq": 58,
+ "truth": "stripe-api",
+ "prompt_sha": "73c923322155bb4f"
+}

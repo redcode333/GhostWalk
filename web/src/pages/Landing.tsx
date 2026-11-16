@@ -3,6 +3,7 @@ import { Link } from "react-router-dom"
 import { ArrowRight, Boxes, GitBranch, HelpCircle, MapPinned, Route, Tag } from "lucide-react"
 import { LiquidNavbar } from "@/components/ui/liquid-glass-navbar"
 import { OutageGlobe } from "@/components/ui/outage-globe"
+import { PairedGainChart } from "@/components/LearningCharts"
 import { Btn, Logo, ThemeToggle, useLoad, useTheme } from "@/components/common"
 import { Graph, Legend } from "@/components/Graph"
 import { InsideGhostWalk } from "@/components/InsideGhostWalk"
@@ -30,12 +31,23 @@ const Pill = ({ children }: { children: ReactNode }) => <span className="mono" s
 /* ------------------------------------------------------------------ header + hero */
 function Header() {
   const { dark } = useTheme()
-  const stars = typeof __GH_STARS__ === "number" ? __GH_STARS__ : null
+  const stars = typeof __GH_STARS__ === "number" && __GH_STARS__ > 0 ? __GH_STARS__ : null      // a real count only: never "GitHub · 0"
+  const [compactNav, setCompactNav] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1100px)")
+    const on = () => setCompactNav(mq.matches)
+    on()
+    mq.addEventListener("change", on)
+    return () => mq.removeEventListener("change", on)
+  }, [])
   return (
-    <header style={{ position: "sticky", top: 0, zIndex: 30, display: "flex", alignItems: "center", gap: 12, padding: "12px 24px", background: "linear-gradient(var(--bg) 40%, transparent)" }}>
-      <Link to="/" aria-label="GhostWalk home" style={{ flex: "none" }}><Logo width={66} /></Link>
-      <div style={{ flex: 1, display: "flex", justifyContent: "center", minWidth: 0, overflowX: "auto" }}>
-        <LiquidNavbar tone={dark ? "dark" : "light"} items={[
+    <header className="site-header" style={{ position: "sticky", top: 0, zIndex: 30, display: "flex", alignItems: "center", gap: 12, padding: "10px 24px", background: "linear-gradient(var(--bg) 40%, transparent)" }}>
+      <Link to="/" aria-label="GhostWalk home" style={{ flex: "none", display: "inline-flex" }}>
+        <span className="hide-xs"><Logo width={66} /></span>
+        <span className="show-xs"><Logo width={66} word={false} /></span>
+      </Link>
+      <div className="nav-wrap">
+        <LiquidNavbar tone={dark ? "dark" : "light"} compact={compactNav} items={[
           { label: "Product", href: "#product", icon: <Boxes size={18} />, fx: "pop" },
           { label: "Outages", href: "#outages", icon: <MapPinned size={18} />, fx: "spin" },
           { label: "How it works", href: "#how", icon: <Route size={18} />, fx: "glow" },
@@ -44,8 +56,8 @@ function Header() {
           { label: stars != null ? `GitHub · ${compact(stars)}` : "GitHub", href: GITHUB, icon: <GitBranch size={18} />, fx: "drop" },
         ]} />
       </div>
-      <ThemeToggle />
-      <span className="hide-sm"><Btn to="/signin" variant="ghost">Sign in</Btn></span>
+      <span style={{ marginLeft: "auto", display: "inline-flex" }}><ThemeToggle /></span>
+      <span className="hide-md"><Btn to="/signin" variant="ghost">Sign in</Btn></span>
       <Btn to="/signup">Start free</Btn>
     </header>
   )
@@ -53,19 +65,19 @@ function Header() {
 
 function Hero() {
   return (
-    <div style={{ textAlign: "center", padding: "72px 24px 0", maxWidth: 1000, margin: "0 auto" }}>
+    <div className="hero" style={{ textAlign: "center", padding: "clamp(14px, 3vh, 30px) 24px 0", maxWidth: 1000, margin: "0 auto" }}>
       <span className="btn-glass mono" style={{ display: "inline-flex", alignItems: "center", gap: 8, border: "1px solid var(--line)", borderRadius: 999, padding: "6px 14px", fontSize: 13, color: "var(--text-3)" }}>
         <span style={{ color: "var(--ink)" }}>Open source</span><span style={{ color: "var(--text-4)" }}>·</span>Root cause analysis on HydraDB <ArrowRight size={14} />
       </span>
-      <h1 style={{ margin: "24px 0 0", fontSize: "clamp(44px, 8vw, 84px)", lineHeight: 1.02, letterSpacing: "-0.04em", fontWeight: 600 }}>The outage is never where the pager says.</h1>
-      <p style={{ margin: "22px auto 0", maxWidth: 720, fontSize: "clamp(17px, 2vw, 21px)", color: "var(--text-3)" }}>
+      <h1 style={{ margin: "clamp(10px, 2vh, 16px) 0 0", fontSize: "clamp(40px, 6vw, 84px)", lineHeight: 1.02, letterSpacing: "-0.04em", fontWeight: 600 }}>The outage is never where the pager says.</h1>
+      <p style={{ margin: "clamp(10px, 2vh, 16px) auto 0", maxWidth: 760, fontSize: "clamp(16px, 1.5vw, 20px)", lineHeight: 1.45, color: "var(--text-3)" }}>
         GhostWalk walks your service graph from fourteen alerts to the one broken dependency in milliseconds, and learns the dependencies nobody drew from every postmortem.
       </p>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "center", marginTop: 32 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "center", marginTop: "clamp(14px, 2.6vh, 22px)" }}>
         <Btn to="/signup">Start free</Btn>
         <Btn to="/demo" variant="glass">Watch a live outage <ArrowRight size={16} /></Btn>
       </div>
-      <p className="mono" style={{ margin: "20px 0 0", fontSize: 13, color: "var(--text-4)" }}>Free for 25 services · No card needed · docker compose up</p>
+      <p className="mono" style={{ margin: "clamp(8px, 1.6vh, 14px) 0 0", fontSize: 13, color: "var(--text-4)" }}>Free for 25 services · No card needed · docker compose up</p>
     </div>
   )
 }
@@ -156,27 +168,6 @@ function Tile({ title, children, span = 1 }: { title: string; children?: ReactNo
   )
 }
 
-function Curve({ r }: { r: Results | null }) {
-  const s = r?.learning_curve?.series
-  if (!s?.ghostwalk) return <Small>Held-out curve appears once results.json exists.</Small>
-  const W = 420, H = 110
-  const all = Object.values(s).flat().map((p) => p.ac1)
-  const lo = Math.min(...all) - 0.03, hi = Math.max(...all) + 0.03
-  const path = (k: string) => (s[k] ?? []).map((p, i, a) => `${i ? "L" : "M"}${(i * (W - 8)) / (a.length - 1) + 4},${(H - 6 - ((p.ac1 - lo) / (hi - lo)) * (H - 12)).toFixed(1)}`).join(" ")
-  const line = (k: string, stroke: string, w: number, dash?: string, delay = 0) => (
-    <path d={path(k)} pathLength={1} fill="none" stroke={stroke} strokeWidth={w} strokeDasharray={dash ?? "1"} strokeDashoffset={dash ? 0 : 1}
-      style={dash ? undefined : { animation: `draw 1.8s ease ${delay}s forwards` }} />
-  )
-  return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Accuracy by incident number. GhostWalk rises; learning off and placebo stay flat">
-      {line("oracle", "var(--ink)", 1.4, "3 4")}
-      {line("placebo", "var(--amber)", 1.4, undefined, 0)}
-      {line("learning_off", "var(--text-4)", 1.6, undefined, 0.1)}
-      {line("ghostwalk", "var(--accent)", 2.6, undefined, 0.3)}
-    </svg>
-  )
-}
-
 function Bento({ r, d }: { r: Results | null; d: Demo | null }) {
   const p95 = r?.ops?.ghostwalk
   const g = (id: number, name: string, kind: string, tier: number, extra = {}) => ({ id, name, kind, tier, ...extra })
@@ -212,8 +203,8 @@ function Bento({ r, d }: { r: Results | null; d: Demo | null }) {
         </Tile>
         <Tile title="Proves it gets better" span={2}>
           <span className="mono" style={{ fontSize: 12, color: "var(--text-4)" }}>{r ? `held-out, ${r.meta.companies} companies` : ""}</span>
-          <Curve r={r} />
-          <Small>Accuracy rises with each postmortem on held-out companies. Random postmortems teach nothing, and that flat line is part of the proof.</Small>
+          <PairedGainChart r={r} mini />
+          <Small>Each postmortem adds accuracy on companies it never saw. Random postmortems add nothing.</Small>
         </Tile>
         <Tile title="Plugs into your alerts">
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}><Pill>webhook</Pill><Pill>REST API</Pill><Pill>gw CLI</Pill><a href="#mcp"><Pill>MCP server</Pill></a></div>
@@ -496,7 +487,7 @@ export default function Landing() {
     <div id="top" style={{ background: "var(--bg)", color: "var(--ink)", minHeight: "100vh" }}>
       <Header />
       <Hero />
-      <div id="outages" style={{ marginTop: 40, scrollMarginTop: 90 }}>{ready && <OutageGlobe />}</div>
+      <div id="outages" style={{ marginTop: 8, scrollMarginTop: 90 }}>{ready && <OutageGlobe />}</div>
       <InsideGhostWalk />
       <Story />
       <Bento r={r} d={d} />

@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"ranking-svc\",\"feature-flags\",\"redis-catalog\",\"rating-svc\",\"auth-svc\"],\"reason\":\"Reports\u2011api timed out likely due to a downstream dependency (ranking\u2011svc, feature\u2011flags, redis\u2011catalog or rating\u2011svc) causing back\u2011pressure that propagated to edge\u2011gateway and eventually saturated the rabbit\u2011orders queue.\"}",
+ "prompt_tokens": 1261,
+ "completion_tokens": 327,
+ "latency_ms": 1590.8362999980454,
+ "ranking": [
+  "ranking-svc",
+  "feature-flags",
+  "redis-catalog",
+  "rating-svc",
+  "auth-svc"
+ ],
+ "reason": "Reports\u2011api timed out likely due to a downstream dependency (ranking\u2011svc, feature\u2011flags, redis\u2011catalog or rating\u2011svc) causing back\u2011pressure that propagated to edge\u2011gateway and eventually saturated the rabbit\u2011orders queue.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4009",
+ "seq": 23,
+ "truth": "survey-svc",
+ "prompt_sha": "4e7113b4047274af"
+}

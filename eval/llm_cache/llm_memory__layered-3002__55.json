@@ -1,0 +1,23 @@
+{
+ "provider": "gemini",
+ "model": "gemini-3.6-flash",
+ "text": "{\n  \"ranking\": [\n    \"auth-svc\",\n    \"session-svc\",\n    \"export-svc\",\n    \"payments-api\",\n    \"account-api\"\n  ],\n  \"reason\": \"The auth-svc component fired the earliest timeout alert at +0s and is a foundational shared tier-3 dependency that downstream services like session-svc, export-svc, and account-api rely on directly or indirectly. As auth-svc degraded, errors and timeouts cascaded upstream to critical tier-0 entry points like edge-gateway and web-bff.\"\n}",
+ "prompt_tokens": 1826,
+ "completion_tokens": 126,
+ "latency_ms": 1929.0668000030564,
+ "ranking": [
+  "auth-svc",
+  "session-svc",
+  "export-svc",
+  "payments-api",
+  "account-api"
+ ],
+ "reason": "The auth-svc component fired the earliest timeout alert at +0s and is a foundational shared tier-3 dependency that downstream services like session-svc, export-svc, and account-api rely on directly or indirectly. As auth-svc degraded, errors and timeouts cascaded upstream to critical tier-0 entry points like edge-gateway and web-bff.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "layered-3002",
+ "seq": 55,
+ "truth": "auth-svc",
+ "prompt_sha": "5664d65ba964e27d"
+}

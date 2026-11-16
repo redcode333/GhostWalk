@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"ranking-svc\",\"feature-flags\",\"rating-svc\",\"redis-catalog\",\"auth-svc\"],\"reason\":\"reports-api timeouts point to a degraded downstream dependency; ranking-svc and feature-flags have historically caused similar edge\u2011gateway issues and are direct dependencies of reports\u2011api, making them the most likely culprits.\"}",
+ "prompt_tokens": 1485,
+ "completion_tokens": 304,
+ "latency_ms": 1826.0536000016145,
+ "ranking": [
+  "ranking-svc",
+  "feature-flags",
+  "rating-svc",
+  "redis-catalog",
+  "auth-svc"
+ ],
+ "reason": "reports-api timeouts point to a degraded downstream dependency; ranking-svc and feature-flags have historically caused similar edge\u2011gateway issues and are direct dependencies of reports\u2011api, making them the most likely culprits.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4009",
+ "seq": 23,
+ "truth": "survey-svc",
+ "prompt_sha": "de7d87967f7ee33c"
+}

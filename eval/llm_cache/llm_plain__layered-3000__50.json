@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"users-db\",\"ads-svc\",\"redis-sessions\",\"config-svc\",\"kafka-events\"],\"reason\":\"The initial users-db error_rate propagates to dependent services (label, geo, admin, catalog, shipping, web-bff), and ads\u2011svc shows latency spikes, making them the most probable sources of the cascade.\"}",
+ "prompt_tokens": 1088,
+ "completion_tokens": 130,
+ "latency_ms": 849.9592000007397,
+ "ranking": [
+  "users-db",
+  "ads-svc",
+  "redis-sessions",
+  "config-svc",
+  "kafka-events"
+ ],
+ "reason": "The initial users-db error_rate propagates to dependent services (label, geo, admin, catalog, shipping, web-bff), and ads\u2011svc shows latency spikes, making them the most probable sources of the cascade.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "layered-3000",
+ "seq": 50,
+ "truth": "users-db",
+ "prompt_sha": "3268eea4706bb78c"
+}

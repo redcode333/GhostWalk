@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"kafka-events\",\"search-svc\",\"notify-api\",\"web-bff\",\"scheduler-svc\"],\"reason\":\"The initial alert is kafka-events saturation, which then caused timeouts in dependent services (search\u2011svc, shipping\u2011svc, etc.) and propagated up the dependency chain to notify\u2011api, web\u2011bff and scheduler\u2011svc.\"}",
+ "prompt_tokens": 1221,
+ "completion_tokens": 144,
+ "latency_ms": 1542.4992000043858,
+ "ranking": [
+  "kafka-events",
+  "search-svc",
+  "notify-api",
+  "web-bff",
+  "scheduler-svc"
+ ],
+ "reason": "The initial alert is kafka-events saturation, which then caused timeouts in dependent services (search\u2011svc, shipping\u2011svc, etc.) and propagated up the dependency chain to notify\u2011api, web\u2011bff and scheduler\u2011svc.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4006",
+ "seq": 46,
+ "truth": "kafka-events",
+ "prompt_sha": "ac5e730c11cf41d0"
+}

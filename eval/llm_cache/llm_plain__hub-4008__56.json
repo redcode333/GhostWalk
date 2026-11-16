@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"stripe-api\",\"presence-svc\",\"export-api\",\"feed-svc\",\"payment-svc\"],\"reason\":\"Stripe API saturation directly impacts presence\u2011svc (which depends on stripe\u2011api) and can cascade to services that rely on payment processing, while export\u2011api saturation suggests downstream feed\u2011svc pressure, making stripe\u2011api the most likely root cause.\"}",
+ "prompt_tokens": 2705,
+ "completion_tokens": 335,
+ "latency_ms": 2015.1895000017248,
+ "ranking": [
+  "stripe-api",
+  "presence-svc",
+  "export-api",
+  "feed-svc",
+  "payment-svc"
+ ],
+ "reason": "Stripe API saturation directly impacts presence\u2011svc (which depends on stripe\u2011api) and can cascade to services that rely on payment processing, while export\u2011api saturation suggests downstream feed\u2011svc pressure, making stripe\u2011api the most likely root cause.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4008",
+ "seq": 56,
+ "truth": "stripe-api",
+ "prompt_sha": "c618f190017b660b"
+}

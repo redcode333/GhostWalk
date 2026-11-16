@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"service-mesh\",\"redis-sessions\",\"auth-svc\",\"config-svc\",\"ranking-svc\"],\"reason\":\"A shared dependency (service-mesh) or its downstream caches (redis-sessions) likely became a bottleneck, causing seat\u2011svc saturation first and then cascading to session\u2011svc via its reliance on redis\u2011sessions and ranking\u2011svc.\"}",
+ "prompt_tokens": 1253,
+ "completion_tokens": 416,
+ "latency_ms": 2395.6809000010253,
+ "ranking": [
+  "service-mesh",
+  "redis-sessions",
+  "auth-svc",
+  "config-svc",
+  "ranking-svc"
+ ],
+ "reason": "A shared dependency (service-mesh) or its downstream caches (redis-sessions) likely became a bottleneck, causing seat\u2011svc saturation first and then cascading to session\u2011svc via its reliance on redis\u2011sessions and ranking\u2011svc.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4009",
+ "seq": 6,
+ "truth": "seat-svc",
+ "prompt_sha": "b43dbf006645eb81"
+}

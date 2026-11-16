@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"moderation-svc-2\",\"kyc-svc-2\",\"license-svc\",\"quote-svc\",\"inventory-svc\"],\"reason\":\"The cascade starts with moderation-svc-2 error_rate, which other services depend on; its downstream dependencies (kyc-svc-2, license-svc, quote-svc) also show saturation and latency, propagating errors to inventory-svc and many higher\u2011tier services.\"}",
+ "prompt_tokens": 2968,
+ "completion_tokens": 324,
+ "latency_ms": 1526.2263999975403,
+ "ranking": [
+  "moderation-svc-2",
+  "kyc-svc-2",
+  "license-svc",
+  "quote-svc",
+  "inventory-svc"
+ ],
+ "reason": "The cascade starts with moderation-svc-2 error_rate, which other services depend on; its downstream dependencies (kyc-svc-2, license-svc, quote-svc) also show saturation and latency, propagating errors to inventory-svc and many higher\u2011tier services.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4004",
+ "seq": 37,
+ "truth": "dns-internal",
+ "prompt_sha": "3e0fe37e075cd8f3"
+}

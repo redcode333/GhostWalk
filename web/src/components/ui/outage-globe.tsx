@@ -60,8 +60,9 @@ export function OutageGlobe() {
   const timer = useRef<number | null>(null)
   const raf = useRef(0)
   const kick = useRef<() => void>(() => {})
-  const H = 500
+  const H = w > 0 && w < 600 ? 400 : 500
   const D = Math.round(Math.min(1100, Math.max(640, w * 1.15)))     // a square wider than the crop, so only the upper part shows: a horizon
+  const SHIFT = Math.round(D * 0.1) - 6                              // the sphere starts about a tenth of the square below its top: that empty band is moved out, so the horizon sits right under the CTAs
 
   useLayoutEffect(() => {
     const el = root.current
@@ -226,7 +227,8 @@ export function OutageGlobe() {
   return (
     <div>
       <div ref={root} onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up}
-        style={{ position: "relative", height: H, overflow: "hidden", maxWidth: 1240, margin: "0 auto", touchAction: "pan-y", cursor: "grab" }}>
+        style={{ position: "relative", height: H - SHIFT, overflow: "hidden", maxWidth: 1240, margin: "0 auto", touchAction: "pan-y", cursor: "grab" }}>
+        <div style={{ position: "absolute", left: 0, right: 0, top: -SHIFT, height: H }}>
         {gl === "unavailable" && <div aria-hidden="true" style={{ position: "absolute", left: "50%", top: 60, width: 760, height: 760, marginLeft: -380, borderRadius: "50%", background: "radial-gradient(circle at 35% 30%, var(--surface), var(--muted))", border: "1px solid var(--line)" }} />}
         <div ref={host} aria-hidden="true" style={{ position: "absolute", top: 0, left: "50%", width: D, height: D, transform: "translateX(-50%)" }} />
         <svg aria-hidden="true" width="100%" height={H} style={{ position: "absolute", inset: 0, pointerEvents: "none", overflow: "visible" }}>
@@ -241,7 +243,7 @@ export function OutageGlobe() {
             <span aria-hidden="true" style={{ position: "absolute", inset: 3, borderRadius: 99, background: i === ix ? "var(--accent)" : "var(--amber)", boxShadow: "0 0 0 2px var(--bg)" }} />
           </button>
         ))}
-        <div ref={card} data-snip role="status" aria-live="polite" style={{ position: "absolute", left: 0, top: 0, width: "min(300px, calc(100% - 24px))", padding: "14px 16px", borderRadius: 16, zIndex: 40,
+        <div ref={card} className="gw-card" data-snip role="status" aria-live="polite" style={{ position: "absolute", left: 0, top: 0, width: "min(300px, calc(100% - 24px))", padding: "14px 16px", borderRadius: 16, zIndex: 40,
           border: "1px solid var(--line)", background: "linear-gradient(180deg, rgba(var(--lrgb),.08), rgba(var(--lrgb),.03))", backdropFilter: "blur(14px)", WebkitBackdropFilter: "blur(14px)",
           boxShadow: "inset 0 1px 0 rgba(255,255,255,.22), 0 20px 40px -22px rgba(0,0,0,.5)", transition: "opacity .25s" }}>
           <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}><strong style={{ fontSize: 15 }}>{o.company}</strong><span className="mono" style={{ fontSize: 12, color: "var(--text-4)" }}>{o.when}</span></div>
@@ -251,6 +253,7 @@ export function OutageGlobe() {
           </div>
           {o.cost && <a href={o.costSource} target="_blank" rel="noreferrer" className="mono" style={{ display: "block", marginTop: 6, fontSize: 12, color: "var(--amber-text)" }}>{o.cost}</a>}
           <a href={o.source} target="_blank" rel="noreferrer" style={{ display: "inline-block", marginTop: 6, fontSize: 12, color: "var(--text-4)", textDecoration: "underline" }}>source</a>
+        </div>
         </div>
         <div aria-hidden="true" style={{ position: "absolute", inset: "auto 0 0 0", height: 150, background: "linear-gradient(to bottom, transparent, var(--bg))", pointerEvents: "none", zIndex: 20 }} />
       </div>

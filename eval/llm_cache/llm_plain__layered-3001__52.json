@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"catalog-svc\",\"auth-svc\",\"config-svc\",\"fx-svc\",\"webhook-svc\"],\"reason\":\"The initial latency spike in catalog-svc propagates to many dependent services, and shared components like auth-svc, config-svc, fx-svc, and webhook-svc further amplify the cascade of saturations and timeouts.\"}",
+ "prompt_tokens": 1624,
+ "completion_tokens": 191,
+ "latency_ms": 1268.1054000058793,
+ "ranking": [
+  "catalog-svc",
+  "auth-svc",
+  "config-svc",
+  "fx-svc",
+  "webhook-svc"
+ ],
+ "reason": "The initial latency spike in catalog-svc propagates to many dependent services, and shared components like auth-svc, config-svc, fx-svc, and webhook-svc further amplify the cascade of saturations and timeouts.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "layered-3001",
+ "seq": 52,
+ "truth": "catalog-svc",
+ "prompt_sha": "fa8fa1cdc49a9e1a"
+}

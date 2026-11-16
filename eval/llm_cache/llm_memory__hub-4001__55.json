@@ -1,0 +1,28 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"fraud-svc\",\"ads-svc\",\"session-svc\",\"survey-svc\",\"reviews-api\"],\"reason\":\"Fraud\u2011svc saturated first, causing timeouts in ads\u2011svc and cascading errors through dependent services, matching the observed alert sequence.\"}",
+ "prompt_tokens": 2178,
+ "completion_tokens": 129,
+ "latency_ms": 1020.7077000013669,
+ "ranking": [
+  "fraud-svc",
+  "ads-svc",
+  "session-svc",
+  "survey-svc",
+  "reviews-api"
+ ],
+ "reason": "Fraud\u2011svc saturated first, causing timeouts in ads\u2011svc and cascading errors through dependent services, matching the observed alert sequence.",
+ "attempts": [
+  {
+   "provider": "gemini",
+   "error": "gemini 429 (daily quota)"
+  }
+ ],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4001",
+ "seq": 55,
+ "truth": "fraud-svc",
+ "prompt_sha": "ffce1b39a76c5959"
+}

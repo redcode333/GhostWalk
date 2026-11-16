@@ -1,0 +1,23 @@
+{
+ "provider": "gemini",
+ "model": "gemini-3.6-flash",
+ "text": "{\n  \"ranking\": [\n    \"payout-svc\",\n    \"quote-svc\",\n    \"scheduler-svc\",\n    \"kafka-events\",\n    \"redis-sessions\"\n  ],\n  \"reason\": \"The alert sequence started with payout-svc showing saturation at +0s, followed by downstream latency and saturation symptoms in quote-svc and scheduler-svc. As payout-svc is the earliest component alerting in the dependency chain, it is the primary root cause.\"\n}",
+ "prompt_tokens": 3015,
+ "completion_tokens": 106,
+ "latency_ms": 3760.1501000026474,
+ "ranking": [
+  "payout-svc",
+  "quote-svc",
+  "scheduler-svc",
+  "kafka-events",
+  "redis-sessions"
+ ],
+ "reason": "The alert sequence started with payout-svc showing saturation at +0s, followed by downstream latency and saturation symptoms in quote-svc and scheduler-svc. As payout-svc is the earliest component alerting in the dependency chain, it is the primary root cause.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4000",
+ "seq": 52,
+ "truth": "payout-svc",
+ "prompt_sha": "08dbda35d1d96fd9"
+}

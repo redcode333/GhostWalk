@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"kafka-events\",\"quote-svc\",\"config-svc\",\"sms-svc\",\"auth-svc\"],\"reason\":\"kafka-events degradation can overload downstream services like loyalty\u2011api (causing saturation) and later surface as timeouts in shared components such as secrets\u2011vault; quote\u2011svc is a known direct cause of loyalty\u2011api issues and also stresses shared resources, while config\u2011svc, sms\u2011svc, and auth\u2011svc are other plausible upstream dependencies.\"}",
+ "prompt_tokens": 2859,
+ "completion_tokens": 408,
+ "latency_ms": 2058.3030999987386,
+ "ranking": [
+  "kafka-events",
+  "quote-svc",
+  "config-svc",
+  "sms-svc",
+  "auth-svc"
+ ],
+ "reason": "kafka-events degradation can overload downstream services like loyalty\u2011api (causing saturation) and later surface as timeouts in shared components such as secrets\u2011vault; quote\u2011svc is a known direct cause of loyalty\u2011api issues and also stresses shared resources, while config\u2011svc, sms\u2011svc, and auth\u2011svc are other plausible upstream dependencies.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4008",
+ "seq": 24,
+ "truth": "loyalty-api",
+ "prompt_sha": "5a04ae34a4e953d2"
+}

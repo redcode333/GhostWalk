@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"auth-svc\",\"profile-svc\",\"catalog-svc\",\"export-svc\",\"trial-svc\"],\"reason\":\"Catalog\u2011svc timed out first and depends on auth\u2011svc and profile\u2011svc; failures there propagate to export\u2011svc, trial\u2011svc and downstream services, matching the alert cascade.\"}",
+ "prompt_tokens": 1823,
+ "completion_tokens": 388,
+ "latency_ms": 1861.4382000014302,
+ "ranking": [
+  "auth-svc",
+  "profile-svc",
+  "catalog-svc",
+  "export-svc",
+  "trial-svc"
+ ],
+ "reason": "Catalog\u2011svc timed out first and depends on auth\u2011svc and profile\u2011svc; failures there propagate to export\u2011svc, trial\u2011svc and downstream services, matching the alert cascade.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "layered-3005",
+ "seq": 35,
+ "truth": "catalog-svc",
+ "prompt_sha": "9e50cac9682ae42a"
+}

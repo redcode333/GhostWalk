@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"auth-svc\",\"config-svc\",\"redis-sessions\",\"dns-internal\",\"rate-limiter\"],\"reason\":\"Both web\u2011bff and trial\u2011svc rely on shared tier\u20113 services; a failure in auth\u2011svc would cause timeouts in web\u2011bff\u2019s downstream APIs and also affect trial\u2011svc which authenticates calls, making it the most likely root cause.\"}",
+ "prompt_tokens": 2100,
+ "completion_tokens": 486,
+ "latency_ms": 2709.8488000046927,
+ "ranking": [
+  "auth-svc",
+  "config-svc",
+  "redis-sessions",
+  "dns-internal",
+  "rate-limiter"
+ ],
+ "reason": "Both web\u2011bff and trial\u2011svc rely on shared tier\u20113 services; a failure in auth\u2011svc would cause timeouts in web\u2011bff\u2019s downstream APIs and also affect trial\u2011svc which authenticates calls, making it the most likely root cause.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4007",
+ "seq": 5,
+ "truth": "wishlist-svc",
+ "prompt_sha": "0ea82258e13181d3"
+}

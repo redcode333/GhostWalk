@@ -1,0 +1,23 @@
+{
+ "provider": "gemini",
+ "model": "gemini-3.6-flash",
+ "text": "{\n  \"ranking\": [\n    \"rabbit-orders\",\n    \"shipping-svc\",\n    \"feeds-api\",\n    \"web-bff\",\n    \"pricing-svc\"\n  ],\n  \"reason\": \"The incident began with timeouts in rabbit-orders, causing cascading errors up the dependency graph into shipping-svc, which then saturated feeds-api and resulted in high error rates on the edge service web-bff.\"\n}",
+ "prompt_tokens": 1925,
+ "completion_tokens": 95,
+ "latency_ms": 6653.5956999941845,
+ "ranking": [
+  "rabbit-orders",
+  "shipping-svc",
+  "feeds-api",
+  "web-bff",
+  "pricing-svc"
+ ],
+ "reason": "The incident began with timeouts in rabbit-orders, causing cascading errors up the dependency graph into shipping-svc, which then saturated feeds-api and resulted in high error rates on the edge service web-bff.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4001",
+ "seq": 10,
+ "truth": "rabbit-orders",
+ "prompt_sha": "90c0d0dd0e2ff01b"
+}

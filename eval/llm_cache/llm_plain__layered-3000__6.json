@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"config-svc\",\"redis-sessions\",\"coupon-svc\",\"ads-svc\",\"feature-flags\"],\"reason\":\"Config and session stores are common dependencies for the services showing latency and errors, making them the most likely upstream cause.\"}",
+ "prompt_tokens": 1039,
+ "completion_tokens": 364,
+ "latency_ms": 1749.4020000012824,
+ "ranking": [
+  "config-svc",
+  "redis-sessions",
+  "coupon-svc",
+  "ads-svc",
+  "feature-flags"
+ ],
+ "reason": "Config and session stores are common dependencies for the services showing latency and errors, making them the most likely upstream cause.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "layered-3000",
+ "seq": 6,
+ "truth": "feature-flags",
+ "prompt_sha": "4e22615bc02474d5"
+}

@@ -1,0 +1,23 @@
+{
+ "provider": "gemini",
+ "model": "gemini-3.6-flash",
+ "text": "{\n  \"ranking\": [\n    \"payout-svc\",\n    \"quote-svc\",\n    \"scheduler-svc\",\n    \"webhook-svc-2\",\n    \"kafka-events\"\n  ],\n  \"reason\": \"payout-svc fired the earliest saturation alert (+0s) and directly propagates dependencies to quote-svc and scheduler-svc through shared components like kafka-events, session-svc, and webhook-svc-2.\"\n}",
+ "prompt_tokens": 2781,
+ "completion_tokens": 100,
+ "latency_ms": 2328.9039000010234,
+ "ranking": [
+  "payout-svc",
+  "quote-svc",
+  "scheduler-svc",
+  "webhook-svc-2",
+  "kafka-events"
+ ],
+ "reason": "payout-svc fired the earliest saturation alert (+0s) and directly propagates dependencies to quote-svc and scheduler-svc through shared components like kafka-events, session-svc, and webhook-svc-2.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4000",
+ "seq": 52,
+ "truth": "payout-svc",
+ "prompt_sha": "f0303d94c0d4f5ad"
+}

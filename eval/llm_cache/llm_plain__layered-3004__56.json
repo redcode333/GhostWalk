@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"billing-svc\",\"ledger-db\",\"returns-svc\",\"warehouse-svc\",\"payments-api\"],\"reason\":\"Payments\u2011api timeouts likely stem from its downstream dependencies; billing\u2011svc and ledger\u2011db are critical for payment processing, with returns\u2011svc and warehouse\u2011svc also possible blockers, causing the observed web\u2011bff latency.\"}",
+ "prompt_tokens": 2025,
+ "completion_tokens": 184,
+ "latency_ms": 984.5895999969798,
+ "ranking": [
+  "billing-svc",
+  "ledger-db",
+  "returns-svc",
+  "warehouse-svc",
+  "payments-api"
+ ],
+ "reason": "Payments\u2011api timeouts likely stem from its downstream dependencies; billing\u2011svc and ledger\u2011db are critical for payment processing, with returns\u2011svc and warehouse\u2011svc also possible blockers, causing the observed web\u2011bff latency.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "layered-3004",
+ "seq": 56,
+ "truth": "billing-svc",
+ "prompt_sha": "55938647ff5c4a8d"
+}

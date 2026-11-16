@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"dns-internal\",\"label-svc\",\"notify-api\",\"seat-svc\",\"user-svc\"],\"reason\":\"dns-internal saturates first and is a common upstream dependency causing downstream errors; label\u2011svc errors follow, and notify\u2011api, seat\u2011svc and user\u2011svc errors are likely consequences of the upstream degradation.\"}",
+ "prompt_tokens": 1084,
+ "completion_tokens": 109,
+ "latency_ms": 1281.148399997619,
+ "ranking": [
+  "dns-internal",
+  "label-svc",
+  "notify-api",
+  "seat-svc",
+  "user-svc"
+ ],
+ "reason": "dns-internal saturates first and is a common upstream dependency causing downstream errors; label\u2011svc errors follow, and notify\u2011api, seat\u2011svc and user\u2011svc errors are likely consequences of the upstream degradation.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "layered-3006",
+ "seq": 58,
+ "truth": "dns-internal",
+ "prompt_sha": "c6ef9fcec89ed36d"
+}

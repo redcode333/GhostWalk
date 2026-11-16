@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"dns-internal\",\"auth-svc\",\"feature-flags\",\"redis-sessions\",\"config-svc\"],\"reason\":\"The initial latency spike in dns-internal propagates to services that depend on it (ads-svc, auth-api, etc.), and subsequent error spikes in auth-svc, feature-flags, redis-sessions, and config-svc amplify the cascade across the dependency graph.\"}",
+ "prompt_tokens": 2671,
+ "completion_tokens": 167,
+ "latency_ms": 1248.771200000192,
+ "ranking": [
+  "dns-internal",
+  "auth-svc",
+  "feature-flags",
+  "redis-sessions",
+  "config-svc"
+ ],
+ "reason": "The initial latency spike in dns-internal propagates to services that depend on it (ads-svc, auth-api, etc.), and subsequent error spikes in auth-svc, feature-flags, redis-sessions, and config-svc amplify the cascade across the dependency graph.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4003",
+ "seq": 25,
+ "truth": "dns-internal",
+ "prompt_sha": "22ce718df0c3c8ee"
+}

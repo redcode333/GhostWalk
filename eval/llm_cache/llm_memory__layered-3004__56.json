@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"trial-svc\",\"refund-svc\",\"returns-svc\",\"payments-api\",\"web-bff\"],\"reason\":\"Payments\u2011api timeouts propagate to web\u2011bff latency and the dependency chain payments\u2011api\u2192returns\u2011svc\u2192refund\u2011svc\u2192trial\u2011svc matches the known failure pattern.\"}",
+ "prompt_tokens": 2167,
+ "completion_tokens": 241,
+ "latency_ms": 1644.8924000069383,
+ "ranking": [
+  "trial-svc",
+  "refund-svc",
+  "returns-svc",
+  "payments-api",
+  "web-bff"
+ ],
+ "reason": "Payments\u2011api timeouts propagate to web\u2011bff latency and the dependency chain payments\u2011api\u2192returns\u2011svc\u2192refund\u2011svc\u2192trial\u2011svc matches the known failure pattern.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "layered-3004",
+ "seq": 56,
+ "truth": "billing-svc",
+ "prompt_sha": "eec8abe3448ff600"
+}

@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"redis-cart\",\"cartservice\",\"productcatalogservice\",\"frontend\",\"dns-internal\"],\"reason\":\"Redis\u2011cart latency spikes first, causing cartservice errors, which then propagate to frontend latency; downstream services like productcatalogservice and shared dns-internal are less direct but could contribute.\"}",
+ "prompt_tokens": 463,
+ "completion_tokens": 150,
+ "latency_ms": 1187.524000000849,
+ "ranking": [
+  "redis-cart",
+  "cartservice",
+  "productcatalogservice",
+  "frontend",
+  "dns-internal"
+ ],
+ "reason": "Redis\u2011cart latency spikes first, causing cartservice errors, which then propagate to frontend latency; downstream services like productcatalogservice and shared dns-internal are less direct but could contribute.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "real-5006",
+ "seq": 53,
+ "truth": "redis-cart",
+ "prompt_sha": "1dd37c82cbda3f2f"
+}

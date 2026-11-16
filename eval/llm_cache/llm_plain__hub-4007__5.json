@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"trial-svc\",\"admin-api\",\"webhook-svc\",\"experiment-svc\",\"auth-svc\"],\"reason\":\"The trial-svc timed out first and is a direct dependency of admin\u2011api (used by web\u2011bff) and of webhook\u2011svc and experiment\u2011svc, making it the most likely source of the cascading web\u2011bff timeout.\"}",
+ "prompt_tokens": 1902,
+ "completion_tokens": 232,
+ "latency_ms": 2353.651900004479,
+ "ranking": [
+  "trial-svc",
+  "admin-api",
+  "webhook-svc",
+  "experiment-svc",
+  "auth-svc"
+ ],
+ "reason": "The trial-svc timed out first and is a direct dependency of admin\u2011api (used by web\u2011bff) and of webhook\u2011svc and experiment\u2011svc, making it the most likely source of the cascading web\u2011bff timeout.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4007",
+ "seq": 5,
+ "truth": "wishlist-svc",
+ "prompt_sha": "ea1404416fc2f4f1"
+}

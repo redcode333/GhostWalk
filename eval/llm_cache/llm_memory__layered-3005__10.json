@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"ledger-db\",\"scheduler-svc\",\"ledger-svc\",\"audit-svc\",\"report-svc\"],\"reason\":\"ledger-db saturation directly caused scheduler-svc timeouts; services that depend on or interact with ledger-db are the most likely origins of the overload.\"}",
+ "prompt_tokens": 1965,
+ "completion_tokens": 334,
+ "latency_ms": 2704.435999999987,
+ "ranking": [
+  "ledger-db",
+  "scheduler-svc",
+  "ledger-svc",
+  "audit-svc",
+  "report-svc"
+ ],
+ "reason": "ledger-db saturation directly caused scheduler-svc timeouts; services that depend on or interact with ledger-db are the most likely origins of the overload.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "layered-3005",
+ "seq": 10,
+ "truth": "ledger-db",
+ "prompt_sha": "3c9b16ecd19e6707"
+}

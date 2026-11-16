@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"shipping-svc\",\"config-svc\",\"kafka-events\",\"subscription-svc\",\"survey-svc\"],\"reason\":\"Shipping\u2011svc is a common dependency for subscription\u2011svc, survey\u2011svc, admin\u2011api and edge\u2011gateway; its degradation would first increase latency in subscription\u2011svc, then cause timeouts in survey\u2011svc and admin\u2011api, propagating to edge\u2011gateway and finally raising error rates in web\u2011bff.\"}",
+ "prompt_tokens": 1935,
+ "completion_tokens": 332,
+ "latency_ms": 1548.0116000035196,
+ "ranking": [
+  "shipping-svc",
+  "config-svc",
+  "kafka-events",
+  "subscription-svc",
+  "survey-svc"
+ ],
+ "reason": "Shipping\u2011svc is a common dependency for subscription\u2011svc, survey\u2011svc, admin\u2011api and edge\u2011gateway; its degradation would first increase latency in subscription\u2011svc, then cause timeouts in survey\u2011svc and admin\u2011api, propagating to edge\u2011gateway and finally raising error rates in web\u2011bff.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4007",
+ "seq": 59,
+ "truth": "subscription-svc",
+ "prompt_sha": "2a1a3604c21ae335"
+}

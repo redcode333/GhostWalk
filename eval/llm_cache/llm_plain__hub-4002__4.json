@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"kafka-events\",\"redis-sessions\",\"config-svc\",\"service-mesh\",\"auth-svc\"],\"reason\":\"Multiple alerts involve services that depend on kafka-events and redis-sessions, and the cascade of latency and error-rate spikes suggests a bottleneck in these shared infrastructure components.\"}",
+ "prompt_tokens": 1952,
+ "completion_tokens": 278,
+ "latency_ms": 1088.5839000038686,
+ "ranking": [
+  "kafka-events",
+  "redis-sessions",
+  "config-svc",
+  "service-mesh",
+  "auth-svc"
+ ],
+ "reason": "Multiple alerts involve services that depend on kafka-events and redis-sessions, and the cascade of latency and error-rate spikes suggests a bottleneck in these shared infrastructure components.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4002",
+ "seq": 4,
+ "truth": "kafka-events",
+ "prompt_sha": "26f041be3e9fb288"
+}

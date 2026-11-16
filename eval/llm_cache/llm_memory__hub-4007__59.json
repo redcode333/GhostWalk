@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"subscription-svc\",\"admin-api\",\"edge-gateway\",\"web-bff\",\"survey-svc\"],\"reason\":\"The first alert shows latency in subscription-svc, which is a direct dependency of admin\u2011api; admin\u2011api then times out, causing downstream timeouts in edge\u2011gateway and errors in web\u2011bff, while survey\u2011svc degradation appears later and is likely a secondary effect.\"}",
+ "prompt_tokens": 2199,
+ "completion_tokens": 294,
+ "latency_ms": 1745.0822000027983,
+ "ranking": [
+  "subscription-svc",
+  "admin-api",
+  "edge-gateway",
+  "web-bff",
+  "survey-svc"
+ ],
+ "reason": "The first alert shows latency in subscription-svc, which is a direct dependency of admin\u2011api; admin\u2011api then times out, causing downstream timeouts in edge\u2011gateway and errors in web\u2011bff, while survey\u2011svc degradation appears later and is likely a secondary effect.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4007",
+ "seq": 59,
+ "truth": "subscription-svc",
+ "prompt_sha": "d34bafe821505451"
+}

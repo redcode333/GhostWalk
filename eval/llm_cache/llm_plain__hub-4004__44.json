@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"inventory-svc\",\"inventory-db\",\"orders-db\",\"consent-svc\",\"fx-svc\"],\"reason\":\"Inventory\u2011svc is the first alert and is a common dependency for many downstream services that later show latency, saturation and timeout issues; a failure there can cascade to its datastore (inventory\u2011db) and pressure orders\u2011db, while services like consent\u2011svc and fx\u2011svc directly depend on inventory\u2011svc, explaining their later alerts.\"}",
+ "prompt_tokens": 2518,
+ "completion_tokens": 411,
+ "latency_ms": 1772.7605999971274,
+ "ranking": [
+  "inventory-svc",
+  "inventory-db",
+  "orders-db",
+  "consent-svc",
+  "fx-svc"
+ ],
+ "reason": "Inventory\u2011svc is the first alert and is a common dependency for many downstream services that later show latency, saturation and timeout issues; a failure there can cascade to its datastore (inventory\u2011db) and pressure orders\u2011db, while services like consent\u2011svc and fx\u2011svc directly depend on inventory\u2011svc, explaining their later alerts.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4004",
+ "seq": 44,
+ "truth": "inventory-svc",
+ "prompt_sha": "2d735afc18470515"
+}

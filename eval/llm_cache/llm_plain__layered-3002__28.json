@@ -1,0 +1,23 @@
+{
+ "provider": "gemini",
+ "model": "gemini-3.6-flash",
+ "text": "{\n  \"ranking\": [\n    \"auth-svc\",\n    \"subscription-svc\",\n    \"warehouse-svc\",\n    \"account-api\",\n    \"geo-api\"\n  ],\n  \"reason\": \"The initial alert triggered directly on auth-svc for error_rate at +0s. Because downstream services relying on auth-svc (such as subscription-svc, warehouse-svc, and account-api) subsequently experienced timeouts, latency, and cascading errors up to the API and gateway tiers, auth-svc is the root cause.\"\n}",
+ "prompt_tokens": 1577,
+ "completion_tokens": 120,
+ "latency_ms": 2617.765100003453,
+ "ranking": [
+  "auth-svc",
+  "subscription-svc",
+  "warehouse-svc",
+  "account-api",
+  "geo-api"
+ ],
+ "reason": "The initial alert triggered directly on auth-svc for error_rate at +0s. Because downstream services relying on auth-svc (such as subscription-svc, warehouse-svc, and account-api) subsequently experienced timeouts, latency, and cascading errors up to the API and gateway tiers, auth-svc is the root cause.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "layered-3002",
+ "seq": 28,
+ "truth": "auth-svc",
+ "prompt_sha": "a6f5f26f06fd98b3"
+}

@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"kafka-events\",\"trial-svc\",\"chat-svc\",\"seat-svc\",\"fraud-svc\"],\"reason\":\"Kafka-events degradation propagates through trial-svc (which feeds chat-svc), then to chat-svc, seat-svc, and fraud-svc, matching the observed cascade of alerts.\"}",
+ "prompt_tokens": 1625,
+ "completion_tokens": 242,
+ "latency_ms": 1075.1584000026924,
+ "ranking": [
+  "kafka-events",
+  "trial-svc",
+  "chat-svc",
+  "seat-svc",
+  "fraud-svc"
+ ],
+ "reason": "Kafka-events degradation propagates through trial-svc (which feeds chat-svc), then to chat-svc, seat-svc, and fraud-svc, matching the observed cascade of alerts.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4009",
+ "seq": 38,
+ "truth": "service-mesh",
+ "prompt_sha": "4e1dad0cfd8a523c"
+}

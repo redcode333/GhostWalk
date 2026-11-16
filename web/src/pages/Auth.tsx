@@ -113,9 +113,9 @@ function DemoForm({ up }: { up: boolean }) {
   )
 }
 
-export function DemoEntry() {
-  setDemoMode(true)
-  return <Navigate to="/app/incidents" replace />
+export function DemoEntry({ to = "/app/incidents" }: { to?: string }) {
+  setDemoMode(true)                                                          // /demo and /proof are public: they open the shared sandbox, no sign-in
+  return <Navigate to={to} replace />
 }
 
 export function SignInPage() {

@@ -1,0 +1,23 @@
+{
+ "provider": "gemini",
+ "model": "gemini-3.6-flash",
+ "text": "{\n  \"ranking\": [\n    \"rabbit-orders\",\n    \"seat-svc\",\n    \"dispute-svc\",\n    \"chat-svc-2\",\n    \"promo-api\"\n  ],\n  \"reason\": \"The initial alert triggered on rabbit-orders due to saturation. rabbit-orders is a dependency of seat-svc, which propagates up through dispute-svc/webhook-svc and chat-svc-2 directly into promo-api, leading to high latency.\"\n}",
+ "prompt_tokens": 2781,
+ "completion_tokens": 107,
+ "latency_ms": 3297.935900001903,
+ "ranking": [
+  "rabbit-orders",
+  "seat-svc",
+  "dispute-svc",
+  "chat-svc-2",
+  "promo-api"
+ ],
+ "reason": "The initial alert triggered on rabbit-orders due to saturation. rabbit-orders is a dependency of seat-svc, which propagates up through dispute-svc/webhook-svc and chat-svc-2 directly into promo-api, leading to high latency.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4000",
+ "seq": 21,
+ "truth": "rabbit-orders",
+ "prompt_sha": "9f42db135d105b72"
+}

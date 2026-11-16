@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"users-db\",\"geo-svc\",\"label-svc\",\"admin-api\",\"catalog-api\"],\"reason\":\"The initial users-db error_rate triggered downstream timeouts and saturations; geo\u2011svc (which depends on users-db) then timed out, causing label\u2011svc failures, which propagated to admin\u2011api and catalog\u2011api.\"}",
+ "prompt_tokens": 1324,
+ "completion_tokens": 215,
+ "latency_ms": 1003.3732000010787,
+ "ranking": [
+  "users-db",
+  "geo-svc",
+  "label-svc",
+  "admin-api",
+  "catalog-api"
+ ],
+ "reason": "The initial users-db error_rate triggered downstream timeouts and saturations; geo\u2011svc (which depends on users-db) then timed out, causing label\u2011svc failures, which propagated to admin\u2011api and catalog\u2011api.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "layered-3000",
+ "seq": 50,
+ "truth": "users-db",
+ "prompt_sha": "47584316f7d0d73f"
+}

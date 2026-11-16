@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"fraud-svc\",\"ads-svc\",\"session-svc\",\"reviews-api\",\"chat-svc\"],\"reason\":\"Fraud-svc saturated first, causing downstream timeouts in ads-svc and errors in session-svc, which then propagated to reviews-api and chat-svc, leading to the observed cascade of alerts.\"}",
+ "prompt_tokens": 1971,
+ "completion_tokens": 115,
+ "latency_ms": 1382.665500001167,
+ "ranking": [
+  "fraud-svc",
+  "ads-svc",
+  "session-svc",
+  "reviews-api",
+  "chat-svc"
+ ],
+ "reason": "Fraud-svc saturated first, causing downstream timeouts in ads-svc and errors in session-svc, which then propagated to reviews-api and chat-svc, leading to the observed cascade of alerts.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4001",
+ "seq": 55,
+ "truth": "fraud-svc",
+ "prompt_sha": "334043aa34e48579"
+}

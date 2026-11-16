@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"user\",\"user-db\",\"orders\",\"catalogue\",\"carts\"],\"reason\":\"The first alert is a timeout in the user service, which directly impacts front\u2011end latency observed later; downstream dependencies like user\u2011db and services that call user (orders) are the next most likely contributors.\"}",
+ "prompt_tokens": 432,
+ "completion_tokens": 121,
+ "latency_ms": 1278.7347000048612,
+ "ranking": [
+  "user",
+  "user-db",
+  "orders",
+  "catalogue",
+  "carts"
+ ],
+ "reason": "The first alert is a timeout in the user service, which directly impacts front\u2011end latency observed later; downstream dependencies like user\u2011db and services that call user (orders) are the next most likely contributors.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "real-5005",
+ "seq": 30,
+ "truth": "user",
+ "prompt_sha": "bc592e5329ef85b0"
+}

@@ -1,0 +1,23 @@
+{
+ "provider": "gemini",
+ "model": "gemini-3.6-flash",
+ "text": "{\n  \"ranking\": [\n    \"rabbit-orders\",\n    \"seat-svc\",\n    \"dispute-svc\",\n    \"invoice-svc\",\n    \"fraud-svc\"\n  ],\n  \"reason\": \"The alert sequence started directly with rabbit-orders saturation at +0s. Dependent components such as seat-svc and downstream services propagating through dispute-svc and invoice-svc subsequently showed elevated saturation and latency.\"\n}",
+ "prompt_tokens": 3004,
+ "completion_tokens": 95,
+ "latency_ms": 4338.964899994608,
+ "ranking": [
+  "rabbit-orders",
+  "seat-svc",
+  "dispute-svc",
+  "invoice-svc",
+  "fraud-svc"
+ ],
+ "reason": "The alert sequence started directly with rabbit-orders saturation at +0s. Dependent components such as seat-svc and downstream services propagating through dispute-svc and invoice-svc subsequently showed elevated saturation and latency.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4000",
+ "seq": 21,
+ "truth": "rabbit-orders",
+ "prompt_sha": "c11b4b169a29e998"
+}

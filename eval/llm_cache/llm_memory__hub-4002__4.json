@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"service-mesh\",\"kafka-events\",\"auth-svc\",\"tax-svc\",\"coupon-svc\"],\"reason\":\"Multiple alerts trace back to shared dependencies; the earliest error in shipping\u2011svc points to its coupon\u2011svc \u2192 service\u2011mesh chain, and later latency spikes in attribution, survey and trial services all involve kafka\u2011events, while web\u2011bff and edge\u2011gateway saturation are consistent with auth\u2011svc or tax\u2011svc issues, making service\u2011mesh the most likely root cause.\"}",
+ "prompt_tokens": 2154,
+ "completion_tokens": 427,
+ "latency_ms": 1977.6406999953906,
+ "ranking": [
+  "service-mesh",
+  "kafka-events",
+  "auth-svc",
+  "tax-svc",
+  "coupon-svc"
+ ],
+ "reason": "Multiple alerts trace back to shared dependencies; the earliest error in shipping\u2011svc points to its coupon\u2011svc \u2192 service\u2011mesh chain, and later latency spikes in attribution, survey and trial services all involve kafka\u2011events, while web\u2011bff and edge\u2011gateway saturation are consistent with auth\u2011svc or tax\u2011svc issues, making service\u2011mesh the most likely root cause.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4002",
+ "seq": 4,
+ "truth": "kafka-events",
+ "prompt_sha": "05476249a82e0ee8"
+}

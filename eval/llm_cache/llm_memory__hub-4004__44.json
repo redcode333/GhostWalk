@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"inventory-svc\",\"config-svc\",\"auth-svc\",\"payments-db\",\"redis-sessions\"],\"reason\":\"The first alert is on inventory-svc and many subsequent alerts involve services that depend (directly or indirectly) on inventory-svc, indicating it as the primary source of degradation.\"}",
+ "prompt_tokens": 2684,
+ "completion_tokens": 318,
+ "latency_ms": 1207.6249000019743,
+ "ranking": [
+  "inventory-svc",
+  "config-svc",
+  "auth-svc",
+  "payments-db",
+  "redis-sessions"
+ ],
+ "reason": "The first alert is on inventory-svc and many subsequent alerts involve services that depend (directly or indirectly) on inventory-svc, indicating it as the primary source of degradation.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4004",
+ "seq": 44,
+ "truth": "inventory-svc",
+ "prompt_sha": "6e3805ea05776c7e"
+}

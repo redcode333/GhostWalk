@@ -1,0 +1,23 @@
+{
+ "provider": "gemini",
+ "model": "gemini-3.6-flash",
+ "text": "{\n  \"ranking\": [\n    \"reports-api\",\n    \"profile-svc\",\n    \"consent-svc\",\n    \"chat-svc\",\n    \"redis-cart\"\n  ],\n  \"reason\": \"reports-api is the first service to alert with timeouts (+0s), which quickly cascaded upstream to web-bff (+28s) and edge-gateway (+53s). The root cause is either reports-api itself or one of its direct dependencies such as profile-svc, consent-svc, chat-svc, or redis-cart.\"\n}",
+ "prompt_tokens": 1552,
+ "completion_tokens": 125,
+ "latency_ms": 1840.3160000016214,
+ "ranking": [
+  "reports-api",
+  "profile-svc",
+  "consent-svc",
+  "chat-svc",
+  "redis-cart"
+ ],
+ "reason": "reports-api is the first service to alert with timeouts (+0s), which quickly cascaded upstream to web-bff (+28s) and edge-gateway (+53s). The root cause is either reports-api itself or one of its direct dependencies such as profile-svc, consent-svc, chat-svc, or redis-cart.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "layered-3003",
+ "seq": 13,
+ "truth": "chat-svc",
+ "prompt_sha": "71631e2e0575ee5b"
+}

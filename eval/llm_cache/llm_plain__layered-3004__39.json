@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"stripe-api\",\"users-db\",\"redis-ratelimit\",\"refund-svc\",\"dispute-svc\"],\"reason\":\"Stripe API latency can cause scheduler timeouts and downstream web\u2011BFF timeouts, while a users\u2011DB issue explains the account\u2011API error rate; related rate\u2011limit caches and refund processing amplify the impact.\"}",
+ "prompt_tokens": 2033,
+ "completion_tokens": 652,
+ "latency_ms": 2492.695699998876,
+ "ranking": [
+  "stripe-api",
+  "users-db",
+  "redis-ratelimit",
+  "refund-svc",
+  "dispute-svc"
+ ],
+ "reason": "Stripe API latency can cause scheduler timeouts and downstream web\u2011BFF timeouts, while a users\u2011DB issue explains the account\u2011API error rate; related rate\u2011limit caches and refund processing amplify the impact.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "layered-3004",
+ "seq": 39,
+ "truth": "account-api",
+ "prompt_sha": "363af122c130bf25"
+}

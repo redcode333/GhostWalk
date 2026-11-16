@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"stripe-api\",\"loyalty-svc\",\"account-api\",\"payments-api\",\"auth-svc\"],\"reason\":\"The initial timeout in the external stripe-api propagates to loyalty-svc (which directly depends on stripe) and then impacts upstream services like account-api, while related auth and payment services also experience downstream strain.\"}",
+ "prompt_tokens": 2430,
+ "completion_tokens": 261,
+ "latency_ms": 1048.419400001876,
+ "ranking": [
+  "stripe-api",
+  "loyalty-svc",
+  "account-api",
+  "payments-api",
+  "auth-svc"
+ ],
+ "reason": "The initial timeout in the external stripe-api propagates to loyalty-svc (which directly depends on stripe) and then impacts upstream services like account-api, while related auth and payment services also experience downstream strain.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4004",
+ "seq": 58,
+ "truth": "stripe-api",
+ "prompt_sha": "a67ab090c5034f7f"
+}

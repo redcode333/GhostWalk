@@ -235,8 +235,11 @@ def doctor(url: Optional[str] = typer.Option(None, "--url", help="the GhostWalk 
             bad.append(label)
             return False
 
+    token = os.environ.get("GW_TOKEN")                        # a workspace token checks that workspace; without one the public demo workspace is checked
+    hdr = {"authorization": f"Bearer {token}"} if token else {"x-gw-demo": "1"}
+
     def get(path):
-        r = httpx.get(url + path, timeout=15)
+        r = httpx.get(url + path, headers=hdr, timeout=15)
         r.raise_for_status()
         return r.json()
     check("api", lambda: f"{url} " + str(get("/api/health")))
@@ -268,7 +271,7 @@ def why_edge_cmd(src: str = typer.Argument(..., help="the service that depends o
     prompt_line(f"gw why-edge {src} {dst}")
     if url:
         import httpx
-        r = httpx.get(f"{url.rstrip('/')}/v1/edges/{src}/{dst}/why", headers={"authorization": f"Bearer {token or ''}"}, timeout=30)
+        r = httpx.get(f"{url.rstrip('/')}/v1/edges/{src}/{dst}/why", headers=({"authorization": f"Bearer {token}"} if token else {}), timeout=30)
         if r.status_code >= 400:
             fail(r.json().get("detail", r.text))
         res = r.json()
@@ -483,7 +486,7 @@ def diff_cmd(base: str = typer.Option("main", "--base", help="git ref to compare
 # ---- mcp --------------------------------------------------------------------------------------
 @app.command("mcp")
 def mcp_cmd():
-    """Run the MCP server on stdio (tools: why, path, blast_radius, propose_edge). Read-only; GW_URL + GW_TOKEN for hosted mode."""
+    """Run the MCP server on stdio (tools: why, path, blast_radius, why_edge, lesson_impact, propose_edge). Read-only; GW_URL + GW_TOKEN for hosted mode."""
     from .mcp_server import main as serve
     serve()
 

@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"auth-svc\",\"feature\u2011flags\",\"config\u2011svc\",\"catalog\u2011svc\",\"redis\u2011sessions\"],\"reason\":\"Many of the alerted services (kyc\u2011svc, thumbnail\u2011svc, loyalty\u2011svc, audit\u2011svc) depend directly on auth\u2011svc or on shared components that auth\u2011svc also uses; a failure in auth\u2011svc would cascade to those services and manifest as the observed timeouts, saturations, and error\u2011rates.\"}",
+ "prompt_tokens": 2533,
+ "completion_tokens": 345,
+ "latency_ms": 1344.1764999952284,
+ "ranking": [
+  "auth-svc",
+  "feature\u2011flags",
+  "config\u2011svc",
+  "catalog\u2011svc",
+  "redis\u2011sessions"
+ ],
+ "reason": "Many of the alerted services (kyc\u2011svc, thumbnail\u2011svc, loyalty\u2011svc, audit\u2011svc) depend directly on auth\u2011svc or on shared components that auth\u2011svc also uses; a failure in auth\u2011svc would cascade to those services and manifest as the observed timeouts, saturations, and error\u2011rates.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4003",
+ "seq": 16,
+ "truth": "kyc-svc",
+ "prompt_sha": "7c07dcd64e26342a"
+}

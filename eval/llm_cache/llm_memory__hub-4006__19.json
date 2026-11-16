@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"kafka-events\",\"scheduler-svc\",\"catalog-api\",\"edge-gateway\",\"subscription-svc\"],\"reason\":\"The initial alert is on kafka-events latency, and subsequent alerts follow services that depend on it, matching past postmortems where kafka-events degradation caused cascading failures.\"}",
+ "prompt_tokens": 1187,
+ "completion_tokens": 100,
+ "latency_ms": 1440.2187000014237,
+ "ranking": [
+  "kafka-events",
+  "scheduler-svc",
+  "catalog-api",
+  "edge-gateway",
+  "subscription-svc"
+ ],
+ "reason": "The initial alert is on kafka-events latency, and subsequent alerts follow services that depend on it, matching past postmortems where kafka-events degradation caused cascading failures.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4006",
+ "seq": 19,
+ "truth": "kafka-events",
+ "prompt_sha": "10a83a1cf0b5ce2b"
+}

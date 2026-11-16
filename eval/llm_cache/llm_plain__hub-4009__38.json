@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"service-mesh\",\"redis-sessions\",\"kafka-events\",\"auth-svc\",\"config-svc\"],\"reason\":\"The initial timeout in service-mesh triggers downstream latency and saturation across dependent services, and shared resources like redis-sessions, kafka-events, auth-svc, and config-svc amplify the cascade.\"}",
+ "prompt_tokens": 1391,
+ "completion_tokens": 155,
+ "latency_ms": 1007.3623999996926,
+ "ranking": [
+  "service-mesh",
+  "redis-sessions",
+  "kafka-events",
+  "auth-svc",
+  "config-svc"
+ ],
+ "reason": "The initial timeout in service-mesh triggers downstream latency and saturation across dependent services, and shared resources like redis-sessions, kafka-events, auth-svc, and config-svc amplify the cascade.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4009",
+ "seq": 38,
+ "truth": "service-mesh",
+ "prompt_sha": "fcbf3ab16eae849a"
+}

@@ -1,44 +1,11 @@
 import { apiUrl } from "@/lib/api"
+import { CumulativeChart, PairedGainChart } from "@/components/LearningCharts"
 import { loadResults, METHOD_LABEL, ms, pct, proofStrip, pts, type CI, type Results } from "@/lib/results"
 import { Err, Muted, useLoad } from "@/components/common"
 import { H1, Page } from "@/components/AppShell"
 
 const f3 = (x: number) => x.toFixed(3)
 const ci = (c: CI) => `${f3(c.ci95[0])}–${f3(c.ci95[1])}`
-
-function CurveChart({ r }: { r: Results }) {
-  const lc = r.learning_curve
-  if (!lc) return <Muted>No learning-curve series in results.json.</Muted>
-  const W = 720, H = 260, L = 44, B = 28, T = 10
-  const series: [string, string, string?][] = [["ghostwalk", "var(--accent)"], ["learning_off", "var(--text-3)"], ["placebo", "var(--amber)", "4 3"], ["oracle", "var(--ink)", "2 3"]]
-  const all = series.flatMap(([k]) => lc.series[k] ?? [])
-  const lo = Math.floor(Math.min(...all.map((p) => p.ci95[0])) * 10) / 10, hi = Math.min(1, Math.ceil(Math.max(...all.map((p) => p.ci95[1])) * 10) / 10)
-  const n = (lc.series.ghostwalk ?? []).length
-  const x = (i: number) => L + (i * (W - L - 12)) / Math.max(1, n - 1)
-  const y = (v: number) => T + ((hi - v) * (H - T - B)) / (hi - lo)
-  const line = (k: string) => (lc.series[k] ?? []).map((p, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(p.ac1).toFixed(1)}`).join(" ")
-  const band = (lc.series.ghostwalk ?? [])
-  const bandPath = band.length ? `${band.map((p, i) => `${i ? "L" : "M"}${x(i)},${y(p.ci95[1])}`).join(" ")} ${[...band].reverse().map((p, i) => `L${x(band.length - 1 - i)},${y(p.ci95[0])}`).join(" ")} Z` : ""
-  return (
-    <div>
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img" aria-label="Top-1 accuracy by incident number">
-        {Array.from({ length: Math.round((hi - lo) / 0.1) + 1 }, (_, i) => lo + i * 0.1).map((v) => (
-          <g key={v}><line x1={L} x2={W - 12} y1={y(v)} y2={y(v)} stroke="var(--line)" /><text x={L - 8} y={y(v) + 4} textAnchor="end" fontSize="11" fill="var(--text-4)" fontFamily="Geist Mono">{v.toFixed(1)}</text></g>
-        ))}
-        {band.map((p, i) => (i % 2 === 0 ? <text key={i} x={x(i)} y={H - 8} textAnchor="middle" fontSize="11" fill="var(--text-4)" fontFamily="Geist Mono">{p.from}</text> : null))}
-        <path d={bandPath} fill="var(--accent)" opacity="0.14" />
-        {series.map(([k, c, d]) => <path key={k} d={line(k)} fill="none" stroke={c} strokeWidth={k === "ghostwalk" ? 2.4 : 1.6} strokeDasharray={d} />)}
-      </svg>
-      <div className="mono" style={{ display: "flex", flexWrap: "wrap", gap: 16, fontSize: 12, color: "var(--text-3)" }}>
-        {[["GhostWalk, 95% band", "var(--accent)"], ["Learning off", "var(--text-3)"], ["Placebo postmortems", "var(--amber)"], ["Perfect map", "var(--ink)"]].map(([l, c]) => (
-          <span key={l} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><span style={{ width: 14, height: 2, background: c }} />{l}</span>
-        ))}
-        <span style={{ marginLeft: "auto" }}>incident number, bins of {lc.bin}</span>
-      </div>
-    </div>
-  )
-}
-
 
 function MemorySchema() {
   const box = (x: number, y: number, label: string, hot = false) => (
@@ -222,10 +189,15 @@ export default function Proof() {
           </div>
         ))}
       </div>
-      <section className="card" style={{ padding: 18 }}>
-        <h2 style={{ margin: 0, fontSize: 16 }}>Learning curve</h2>
-        <p style={{ margin: "2px 0 10px", fontSize: 13, color: "var(--text-4)" }}>top-1 accuracy by incident number</p>
-        <CurveChart r={r} />
+      <section className="card" style={{ padding: 18 }} aria-label="What learning adds">
+        <h2 style={{ margin: 0, fontSize: 16 }}>What learning adds</h2>
+        <p style={{ margin: "2px 0 12px", fontSize: 13, color: "var(--text-4)" }}>{r.meta.companies} held-out companies, {r.meta.incidents.toLocaleString()} incidents. Shared incident difficulty cancels out in the paired difference.</p>
+        <PairedGainChart r={r} />
+      </section>
+      <section className="card" style={{ padding: 18 }} aria-label="Accuracy as it learns">
+        <h2 style={{ margin: 0, fontSize: 16 }}>Accuracy as it learns</h2>
+        <p style={{ margin: "2px 0 12px", fontSize: 13, color: "var(--text-4)" }}>Top-1 accuracy over each company's incidents up to that number, learning from zero at every company.</p>
+        <CumulativeChart r={r} />
       </section>
       <section className="card" style={{ padding: 18, overflowX: "auto" }}>
         <h2 style={{ margin: "0 0 10px", fontSize: 16 }}>Against baselines</h2>

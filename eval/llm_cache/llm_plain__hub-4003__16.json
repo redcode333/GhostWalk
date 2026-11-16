@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"auth-svc\",\"redis-sessions\",\"feature-flags\",\"config-svc\",\"payments-db\"],\"reason\":\"Auth\u2011svc is a common upstream for kyc\u2011svc, thumbnail\u2011svc, loyalty\u2011svc and many others, and its failure would cascade to timeouts, errors and saturation across the observed services; redis\u2011sessions and feature\u2011flags are the next most shared dependencies affecting audit\u2011svc and others.\"}",
+ "prompt_tokens": 2306,
+ "completion_tokens": 357,
+ "latency_ms": 1559.8182999965502,
+ "ranking": [
+  "auth-svc",
+  "redis-sessions",
+  "feature-flags",
+  "config-svc",
+  "payments-db"
+ ],
+ "reason": "Auth\u2011svc is a common upstream for kyc\u2011svc, thumbnail\u2011svc, loyalty\u2011svc and many others, and its failure would cascade to timeouts, errors and saturation across the observed services; redis\u2011sessions and feature\u2011flags are the next most shared dependencies affecting audit\u2011svc and others.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4003",
+ "seq": 16,
+ "truth": "kyc-svc",
+ "prompt_sha": "7466377089cbef49"
+}

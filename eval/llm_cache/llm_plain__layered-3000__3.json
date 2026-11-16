@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"ads-svc\",\"payments-db\",\"kafka-events\",\"config-svc\",\"dns-internal\"],\"reason\":\"Ads\u2011svc is a common upstream for refund, catalog, shipping and many other services, so its degradation would first surface as latency in refund\u2011svc and then cascade to moderation, recommend, catalog, shipping\u2011api and finally web\u2011bff. Payments\u2011db, kafka\u2011events, config\u2011svc and dns\u2011internal are also shared dependencies that could contribute, but ads\u2011svc is the most likely root cause.\"}",
+ "prompt_tokens": 1038,
+ "completion_tokens": 346,
+ "latency_ms": 1467.2414000015124,
+ "ranking": [
+  "ads-svc",
+  "payments-db",
+  "kafka-events",
+  "config-svc",
+  "dns-internal"
+ ],
+ "reason": "Ads\u2011svc is a common upstream for refund, catalog, shipping and many other services, so its degradation would first surface as latency in refund\u2011svc and then cascade to moderation, recommend, catalog, shipping\u2011api and finally web\u2011bff. Payments\u2011db, kafka\u2011events, config\u2011svc and dns\u2011internal are also shared dependencies that could contribute, but ads\u2011svc is the most likely root cause.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "layered-3000",
+ "seq": 3,
+ "truth": "dns-internal",
+ "prompt_sha": "bf77e9060c0a214c"
+}

@@ -1,0 +1,23 @@
+{
+ "provider": "gemini",
+ "model": "gemini-3.6-flash",
+ "text": "{\n  \"ranking\": [\n    \"auth-svc\",\n    \"session-svc\",\n    \"subscription-svc\",\n    \"presence-svc\",\n    \"bidding-svc\"\n  ],\n  \"reason\": \"auth-svc fired the initial timeout alert at +0s and directly cascades failures to downstream dependencies like session-svc, subscription-svc, and presence-svc, ultimately causing tier-0 gateway errors. session-svc and subscription-svc closely followed as direct dependents of auth-svc.\"\n}",
+ "prompt_tokens": 1560,
+ "completion_tokens": 112,
+ "latency_ms": 2352.851700001338,
+ "ranking": [
+  "auth-svc",
+  "session-svc",
+  "subscription-svc",
+  "presence-svc",
+  "bidding-svc"
+ ],
+ "reason": "auth-svc fired the initial timeout alert at +0s and directly cascades failures to downstream dependencies like session-svc, subscription-svc, and presence-svc, ultimately causing tier-0 gateway errors. session-svc and subscription-svc closely followed as direct dependents of auth-svc.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "layered-3002",
+ "seq": 55,
+ "truth": "auth-svc",
+ "prompt_sha": "f207e7afe87f60d3"
+}

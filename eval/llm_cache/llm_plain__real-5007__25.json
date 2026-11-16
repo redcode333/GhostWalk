@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"orders-db\",\"orders\",\"front-end\",\"shipping\",\"carts\"],\"reason\":\"The orders-db saturation directly caused errors in the orders service, which then propagated latency to the front\u2011end; downstream services like shipping and carts are next\u2011most likely to be impacted.\"}",
+ "prompt_tokens": 454,
+ "completion_tokens": 173,
+ "latency_ms": 1403.7594999972498,
+ "ranking": [
+  "orders-db",
+  "orders",
+  "front-end",
+  "shipping",
+  "carts"
+ ],
+ "reason": "The orders-db saturation directly caused errors in the orders service, which then propagated latency to the front\u2011end; downstream services like shipping and carts are next\u2011most likely to be impacted.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "real-5007",
+ "seq": 25,
+ "truth": "orders-db",
+ "prompt_sha": "f42f629f758f92a2"
+}

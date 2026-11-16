@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"redis-ratelimit\",\"rate-limiter\",\"kyc-svc-2\",\"payments-api\",\"coupon-svc\"],\"reason\":\"The initial timeout in redis\u2011ratelimit likely blocked rate\u2011limiting checks, causing downstream services like payments\u2011api and coupon\u2011svc to time out and eventually saturating web\u2011bff.\"}",
+ "prompt_tokens": 2439,
+ "completion_tokens": 120,
+ "latency_ms": 1014.4317000012961,
+ "ranking": [
+  "redis-ratelimit",
+  "rate-limiter",
+  "kyc-svc-2",
+  "payments-api",
+  "coupon-svc"
+ ],
+ "reason": "The initial timeout in redis\u2011ratelimit likely blocked rate\u2011limiting checks, causing downstream services like payments\u2011api and coupon\u2011svc to time out and eventually saturating web\u2011bff.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4004",
+ "seq": 10,
+ "truth": "redis-ratelimit",
+ "prompt_sha": "d17e2926fb690896"
+}

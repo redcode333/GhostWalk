@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"returns-svc\",\"audit-svc\",\"config-svc\",\"orders-db\",\"chat-svc\"],\"reason\":\"The initial error_rate in chat-svc likely stems from its downstream dependencies, especially returns-svc (via config-svc) or audit-svc, and the cascade affects reports\u2011api, web\u2011bff and edge\u2011gateway latency.\"}",
+ "prompt_tokens": 1570,
+ "completion_tokens": 225,
+ "latency_ms": 1672.1728999982588,
+ "ranking": [
+  "returns-svc",
+  "audit-svc",
+  "config-svc",
+  "orders-db",
+  "chat-svc"
+ ],
+ "reason": "The initial error_rate in chat-svc likely stems from its downstream dependencies, especially returns-svc (via config-svc) or audit-svc, and the cascade affects reports\u2011api, web\u2011bff and edge\u2011gateway latency.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "layered-3003",
+ "seq": 45,
+ "truth": "chat-svc",
+ "prompt_sha": "865dbb66da301cfa"
+}

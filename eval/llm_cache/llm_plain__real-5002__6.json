@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"cartservice\",\"adservice\",\"recommendationservice\",\"productcatalogservice\",\"shippingservice\"],\"reason\":\"Frontend latency spikes are most often caused by slow downstream services; cartservice is a primary dependency with cache and config calls, followed by adservice and recommendationservice which also rely on config and DNS, then productcatalogservice and shippingservice.\"}",
+ "prompt_tokens": 448,
+ "completion_tokens": 173,
+ "latency_ms": 1368.5871999987285,
+ "ranking": [
+  "cartservice",
+  "adservice",
+  "recommendationservice",
+  "productcatalogservice",
+  "shippingservice"
+ ],
+ "reason": "Frontend latency spikes are most often caused by slow downstream services; cartservice is a primary dependency with cache and config calls, followed by adservice and recommendationservice which also rely on config and DNS, then productcatalogservice and shippingservice.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "real-5002",
+ "seq": 6,
+ "truth": "adservice",
+ "prompt_sha": "0117517360aaeabb"
+}

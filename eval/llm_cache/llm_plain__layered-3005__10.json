@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"scheduler-svc\",\"ledger-svc\",\"audit-svc\",\"report-svc\",\"payment-svc\"],\"reason\":\"Scheduler\u2011svc directly hits ledger\u2011db and its timeouts follow the ledger\u2011db saturation, while the other services either write to ledger\u2011db or trigger load that can cascade to it.\"}",
+ "prompt_tokens": 1773,
+ "completion_tokens": 386,
+ "latency_ms": 1801.7666000014287,
+ "ranking": [
+  "scheduler-svc",
+  "ledger-svc",
+  "audit-svc",
+  "report-svc",
+  "payment-svc"
+ ],
+ "reason": "Scheduler\u2011svc directly hits ledger\u2011db and its timeouts follow the ledger\u2011db saturation, while the other services either write to ledger\u2011db or trigger load that can cascade to it.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "layered-3005",
+ "seq": 10,
+ "truth": "ledger-db",
+ "prompt_sha": "948d2cfb6722b424"
+}

@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"auth-svc\",\"config-svc\",\"feature-flags\",\"dns-internal\",\"kafka-events\"],\"reason\":\"These shared tier\u20113 services are common dependencies across many tier\u20112 and tier\u20111 services, so a failure there would quickly propagate and trigger error_rate alerts.\"}",
+ "prompt_tokens": 783,
+ "completion_tokens": 120,
+ "latency_ms": 1060.029799999029,
+ "ranking": [
+  "auth-svc",
+  "config-svc",
+  "feature-flags",
+  "dns-internal",
+  "kafka-events"
+ ],
+ "reason": "These shared tier\u20113 services are common dependencies across many tier\u20112 and tier\u20111 services, so a failure there would quickly propagate and trigger error_rate alerts.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "layered-3006",
+ "seq": 11,
+ "truth": "ads-svc",
+ "prompt_sha": "7ec7bc5c33dd48f1"
+}

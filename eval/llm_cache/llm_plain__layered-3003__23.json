@@ -1,0 +1,23 @@
+{
+ "provider": "gemini",
+ "model": "gemini-3.6-flash",
+ "text": "{\n  \"ranking\": [\n    \"returns-svc\",\n    \"attribution-svc\",\n    \"transcode-svc\",\n    \"config-svc\",\n    \"ledger-svc\"\n  ],\n  \"reason\": \"returns-svc fired the first alert with saturation at +0s and directly cascades upstream into attribution-svc, transcode-svc, and downstream path dependencies leading up to edge-gateway. Its immediate downstream impact across multiple dependent tier-2 services points to it being the primary root cause.\"\n}",
+ "prompt_tokens": 1628,
+ "completion_tokens": 112,
+ "latency_ms": 1918.4028999952716,
+ "ranking": [
+  "returns-svc",
+  "attribution-svc",
+  "transcode-svc",
+  "config-svc",
+  "ledger-svc"
+ ],
+ "reason": "returns-svc fired the first alert with saturation at +0s and directly cascades upstream into attribution-svc, transcode-svc, and downstream path dependencies leading up to edge-gateway. Its immediate downstream impact across multiple dependent tier-2 services points to it being the primary root cause.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "layered-3003",
+ "seq": 23,
+ "truth": "returns-svc",
+ "prompt_sha": "9bccfc59cef153ff"
+}

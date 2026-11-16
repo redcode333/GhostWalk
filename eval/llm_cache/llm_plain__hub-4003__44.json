@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"auth-svc\",\"quote-svc\",\"warehouse-svc\",\"feed-svc\",\"media-svc\"],\"reason\":\"The cascade starts with auth-svc error_rate, quickly affecting dependent services (quote-svc, warehouse-svc, feed-svc, media-svc) whose alerts follow, indicating auth-svc as the primary failure point.\"}",
+ "prompt_tokens": 2523,
+ "completion_tokens": 129,
+ "latency_ms": 700.8697999990545,
+ "ranking": [
+  "auth-svc",
+  "quote-svc",
+  "warehouse-svc",
+  "feed-svc",
+  "media-svc"
+ ],
+ "reason": "The cascade starts with auth-svc error_rate, quickly affecting dependent services (quote-svc, warehouse-svc, feed-svc, media-svc) whose alerts follow, indicating auth-svc as the primary failure point.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4003",
+ "seq": 44,
+ "truth": "auth-svc",
+ "prompt_sha": "dc8fef1295dc2021"
+}

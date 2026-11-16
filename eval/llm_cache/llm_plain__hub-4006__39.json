@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"kafka-events\",\"search-svc\",\"subscription-svc\",\"catalog-api\",\"shipping-svc\"],\"reason\":\"The initial p99 latency spike in kafka-events creates back\u2011pressure that saturates dependent services (shipping-svc, catalog-api, subscription-svc) and leads to timeouts in search\u2011svc and notify\u2011api, making kafka-events the most likely root cause.\"}",
+ "prompt_tokens": 970,
+ "completion_tokens": 236,
+ "latency_ms": 1426.8001999953412,
+ "ranking": [
+  "kafka-events",
+  "search-svc",
+  "subscription-svc",
+  "catalog-api",
+  "shipping-svc"
+ ],
+ "reason": "The initial p99 latency spike in kafka-events creates back\u2011pressure that saturates dependent services (shipping-svc, catalog-api, subscription-svc) and leads to timeouts in search\u2011svc and notify\u2011api, making kafka-events the most likely root cause.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4006",
+ "seq": 39,
+ "truth": "kafka-events",
+ "prompt_sha": "619b60b7a62aeaaf"
+}

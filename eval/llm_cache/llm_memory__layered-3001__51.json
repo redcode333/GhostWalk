@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"dns-internal\",\"reports-api\",\"notify-api\",\"edge-gateway\",\"web-bff\"],\"reason\":\"The first alert is dns\u2011internal latency, and many downstream services (reports\u2011api, email\u2011svc, etc.) depend on it, causing their degradation and propagating up to edge\u2011gateway and web\u2011bff.\"}",
+ "prompt_tokens": 1794,
+ "completion_tokens": 245,
+ "latency_ms": 971.5452000018558,
+ "ranking": [
+  "dns-internal",
+  "reports-api",
+  "notify-api",
+  "edge-gateway",
+  "web-bff"
+ ],
+ "reason": "The first alert is dns\u2011internal latency, and many downstream services (reports\u2011api, email\u2011svc, etc.) depend on it, causing their degradation and propagating up to edge\u2011gateway and web\u2011bff.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "layered-3001",
+ "seq": 51,
+ "truth": "dns-internal",
+ "prompt_sha": "eb6e23bdf2b4a2f1"
+}

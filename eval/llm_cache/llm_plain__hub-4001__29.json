@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"dns-internal\",\"consent-svc\",\"ledger-svc\",\"sqs-email\",\"email-svc\"],\"reason\":\"Dns-internal errors appear first and affect services like consent-svc and ledger-svc, which in turn cause downstream latency and timeouts that surface as sqs-email latency and ledger timeouts.\"}",
+ "prompt_tokens": 1919,
+ "completion_tokens": 290,
+ "latency_ms": 1832.5731000004453,
+ "ranking": [
+  "dns-internal",
+  "consent-svc",
+  "ledger-svc",
+  "sqs-email",
+  "email-svc"
+ ],
+ "reason": "Dns-internal errors appear first and affect services like consent-svc and ledger-svc, which in turn cause downstream latency and timeouts that surface as sqs-email latency and ledger timeouts.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4001",
+ "seq": 29,
+ "truth": "subscription-svc",
+ "prompt_sha": "d5555c820bdd05a8"
+}

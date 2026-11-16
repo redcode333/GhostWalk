@@ -1,0 +1,23 @@
+{
+ "provider": "gemini",
+ "model": "gemini-3.6-flash",
+ "text": "{\n  \"ranking\": [\n    \"webhook-svc-2\",\n    \"payout-svc\",\n    \"dispute-svc\",\n    \"scheduler-svc\",\n    \"chat-svc-2\"\n  ],\n  \"reason\": \"webhook-svc-2 was the first service to alert with an increased error rate, directly causing downstream failures and error/saturation alerts in dependent services such as dispute-svc, payout-svc, and scheduler-svc.\"\n}",
+ "prompt_tokens": 3027,
+ "completion_tokens": 103,
+ "latency_ms": 2705.617899999197,
+ "ranking": [
+  "webhook-svc-2",
+  "payout-svc",
+  "dispute-svc",
+  "scheduler-svc",
+  "chat-svc-2"
+ ],
+ "reason": "webhook-svc-2 was the first service to alert with an increased error rate, directly causing downstream failures and error/saturation alerts in dependent services such as dispute-svc, payout-svc, and scheduler-svc.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4000",
+ "seq": 40,
+ "truth": "webhook-svc-2",
+ "prompt_sha": "51c3a8fb2ab57866"
+}

@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"config-svc\",\"fraud-svc\",\"auth-svc\",\"kafka-events\",\"redis-sessions\"],\"reason\":\"A failure in config-svc propagates to many dependent services (importer, fraud, bidding, ranking, etc.), causing latency and timeouts that cascade through the dependency graph.\"}",
+ "prompt_tokens": 1091,
+ "completion_tokens": 220,
+ "latency_ms": 1511.9727999990573,
+ "ranking": [
+  "config-svc",
+  "fraud-svc",
+  "auth-svc",
+  "kafka-events",
+  "redis-sessions"
+ ],
+ "reason": "A failure in config-svc propagates to many dependent services (importer, fraud, bidding, ranking, etc.), causing latency and timeouts that cascade through the dependency graph.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4006",
+ "seq": 43,
+ "truth": "config-svc",
+ "prompt_sha": "c49f23111074661d"
+}

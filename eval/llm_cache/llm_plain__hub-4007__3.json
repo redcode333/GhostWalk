@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"shipping-svc\",\"importer-svc\",\"tax-svc\",\"support-api\",\"admin-api\"],\"reason\":\"Shipping\u2011svc shows early saturation and is a common dependency for many downstream services (tax\u2011svc, promo\u2011api, survey\u2011svc, etc.), so its degradation propagates to the later alerts; importer\u2011svc\u2019s initial error likely contributed to shipping\u2011svc overload, and the subsequent failures in tax\u2011svc, support\u2011api and admin\u2011api follow the dependency chain.\"}",
+ "prompt_tokens": 2063,
+ "completion_tokens": 231,
+ "latency_ms": 1640.1458000036655,
+ "ranking": [
+  "shipping-svc",
+  "importer-svc",
+  "tax-svc",
+  "support-api",
+  "admin-api"
+ ],
+ "reason": "Shipping\u2011svc shows early saturation and is a common dependency for many downstream services (tax\u2011svc, promo\u2011api, survey\u2011svc, etc.), so its degradation propagates to the later alerts; importer\u2011svc\u2019s initial error likely contributed to shipping\u2011svc overload, and the subsequent failures in tax\u2011svc, support\u2011api and admin\u2011api follow the dependency chain.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4007",
+ "seq": 3,
+ "truth": "importer-svc",
+ "prompt_sha": "9e55412a537504e9"
+}

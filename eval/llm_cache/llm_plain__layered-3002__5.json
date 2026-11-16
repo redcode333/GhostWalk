@@ -1,0 +1,23 @@
+{
+ "provider": "gemini",
+ "model": "gemini-3.6-flash",
+ "text": "{\n  \"ranking\": [\n    \"inventory-svc\",\n    \"ledger-svc\",\n    \"bidding-svc\",\n    \"label-svc\",\n    \"loyalty-api\"\n  ],\n  \"reason\": \"The failure propagates through web-bff and loyalty-api. loyalty-api depends directly on inventory-svc (and label-svc), making inventory-svc or its immediate unmonitored downstream dependencies (like ledger-svc or bidding-svc) the most probable root cause of the latency and saturation.\"\n}",
+ "prompt_tokens": 1462,
+ "completion_tokens": 116,
+ "latency_ms": 1821.6468000027817,
+ "ranking": [
+  "inventory-svc",
+  "ledger-svc",
+  "bidding-svc",
+  "label-svc",
+  "loyalty-api"
+ ],
+ "reason": "The failure propagates through web-bff and loyalty-api. loyalty-api depends directly on inventory-svc (and label-svc), making inventory-svc or its immediate unmonitored downstream dependencies (like ledger-svc or bidding-svc) the most probable root cause of the latency and saturation.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "layered-3002",
+ "seq": 5,
+ "truth": "sqs-email",
+ "prompt_sha": "d1b8e8bcef09386c"
+}

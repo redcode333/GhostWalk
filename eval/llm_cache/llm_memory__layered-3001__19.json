@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"dns-internal\",\"coupon-svc\",\"reports-api\",\"edge-gateway\",\"payment-svc\"],\"reason\":\"dns-internal saturation appears first and is a direct dependency of reports-api, coupon-svc, and other services, propagating latency and errors downstream; subsequent alerts follow the dependency chain.\"}",
+ "prompt_tokens": 1835,
+ "completion_tokens": 235,
+ "latency_ms": 1352.6253000018187,
+ "ranking": [
+  "dns-internal",
+  "coupon-svc",
+  "reports-api",
+  "edge-gateway",
+  "payment-svc"
+ ],
+ "reason": "dns-internal saturation appears first and is a direct dependency of reports-api, coupon-svc, and other services, propagating latency and errors downstream; subsequent alerts follow the dependency chain.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "layered-3001",
+ "seq": 19,
+ "truth": "dns-internal",
+ "prompt_sha": "7d75f7c54770c396"
+}

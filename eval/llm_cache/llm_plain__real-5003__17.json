@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"orders\",\"orders-db\",\"carts\",\"user\",\"payment\"],\"reason\":\"The latency alert originates from the orders service, so its own performance and its direct dependencies (orders-db, carts, user, payment) are the most likely contributors.\"}",
+ "prompt_tokens": 442,
+ "completion_tokens": 115,
+ "latency_ms": 1048.428199996124,
+ "ranking": [
+  "orders",
+  "orders-db",
+  "carts",
+  "user",
+  "payment"
+ ],
+ "reason": "The latency alert originates from the orders service, so its own performance and its direct dependencies (orders-db, carts, user, payment) are the most likely contributors.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "real-5003",
+ "seq": 17,
+ "truth": "orders-db",
+ "prompt_sha": "71939da41be14a1a"
+}

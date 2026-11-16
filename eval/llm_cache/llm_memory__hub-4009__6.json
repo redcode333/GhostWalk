@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"ranking-svc\",\"redis-sessions\",\"feature-flags\",\"auth-svc\",\"chat-svc\"],\"reason\":\"Both seat\u2011svc and session\u2011svc depend on ranking\u2011svc (directly or via redis\u2011sessions); saturation of these services points to overload in ranking\u2011svc, with redis\u2011sessions, feature\u2011flags, auth\u2011svc and chat\u2011svc as secondary likely contributors.\"}",
+ "prompt_tokens": 1479,
+ "completion_tokens": 254,
+ "latency_ms": 1260.1503999976558,
+ "ranking": [
+  "ranking-svc",
+  "redis-sessions",
+  "feature-flags",
+  "auth-svc",
+  "chat-svc"
+ ],
+ "reason": "Both seat\u2011svc and session\u2011svc depend on ranking\u2011svc (directly or via redis\u2011sessions); saturation of these services points to overload in ranking\u2011svc, with redis\u2011sessions, feature\u2011flags, auth\u2011svc and chat\u2011svc as secondary likely contributors.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4009",
+ "seq": 6,
+ "truth": "seat-svc",
+ "prompt_sha": "7086ca4330590456"
+}

@@ -1,0 +1,22 @@
+# Structural tokens the claim audit lets through in a template's prose (one regular expression per line). Anything else with a digit is a typed number and fails the audit.
+^\s*\d+\.\s
+\d+\.\d+\.\d+
+[Tt]op-\d
+95%
+\d+-second
+\bS3\b
+SOC \d
+PyO\d
+AC@\d
+hit@\d
+related@\d
+\bp\d\d\b
+\dxx
+\$49
+\d+-hop\b
+\d+ hops?\b
+\bv\d
+\bgw_live_
+\bL\d+\b
+http-query-\d
+x \d

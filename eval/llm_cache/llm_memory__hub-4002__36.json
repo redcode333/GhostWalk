@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"booking-api\",\"edge-gateway\",\"web-bff\",\"checkout-api\",\"promo-api\"],\"reason\":\"Booking\u2011api timed\u2011out first, causing downstream latency in edge\u2011gateway and saturation in web\u2011bff; subsequent services are ranked by their direct dependency on booking\u2011api and their exposure in the alert chain.\"}",
+ "prompt_tokens": 2005,
+ "completion_tokens": 141,
+ "latency_ms": 761.0839999979362,
+ "ranking": [
+  "booking-api",
+  "edge-gateway",
+  "web-bff",
+  "checkout-api",
+  "promo-api"
+ ],
+ "reason": "Booking\u2011api timed\u2011out first, causing downstream latency in edge\u2011gateway and saturation in web\u2011bff; subsequent services are ranked by their direct dependency on booking\u2011api and their exposure in the alert chain.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4002",
+ "seq": 36,
+ "truth": "booking-api",
+ "prompt_sha": "d360de64a1f36160"
+}

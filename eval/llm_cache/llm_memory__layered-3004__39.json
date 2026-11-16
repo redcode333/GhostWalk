@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"account-api\",\"dispute-svc\",\"scheduler-svc\",\"warehouse-svc\",\"auth-svc\"],\"reason\":\"account-api error appears first and directly impacts web-bff; similar past incidents point to its dependencies (e.g., dispute-svc) and downstream services like scheduler-svc can exacerbate the cascade.\"}",
+ "prompt_tokens": 2210,
+ "completion_tokens": 362,
+ "latency_ms": 1968.2606999995187,
+ "ranking": [
+  "account-api",
+  "dispute-svc",
+  "scheduler-svc",
+  "warehouse-svc",
+  "auth-svc"
+ ],
+ "reason": "account-api error appears first and directly impacts web-bff; similar past incidents point to its dependencies (e.g., dispute-svc) and downstream services like scheduler-svc can exacerbate the cascade.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "layered-3004",
+ "seq": 39,
+ "truth": "account-api",
+ "prompt_sha": "5981df5e99e20618"
+}

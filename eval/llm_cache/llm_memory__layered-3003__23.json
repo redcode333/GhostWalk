@@ -1,0 +1,28 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"returns-svc\",\"attribution-svc\",\"transcode-svc\",\"ledger-svc\",\"survey-svc\"],\"reason\":\"Returns\u2011svc saturated first, causing latency in attribution\u2011svc (which depends on returns\u2011svc), then errors in transcode\u2011svc, ledger\u2011svc, and survey\u2011svc, eventually propagating to notify\u2011api, web\u2011bff and edge\u2011gateway.\"}",
+ "prompt_tokens": 1846,
+ "completion_tokens": 294,
+ "latency_ms": 1561.5000999969197,
+ "ranking": [
+  "returns-svc",
+  "attribution-svc",
+  "transcode-svc",
+  "ledger-svc",
+  "survey-svc"
+ ],
+ "reason": "Returns\u2011svc saturated first, causing latency in attribution\u2011svc (which depends on returns\u2011svc), then errors in transcode\u2011svc, ledger\u2011svc, and survey\u2011svc, eventually propagating to notify\u2011api, web\u2011bff and edge\u2011gateway.",
+ "attempts": [
+  {
+   "provider": "gemini",
+   "error": "gemini 429"
+  }
+ ],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "layered-3003",
+ "seq": 23,
+ "truth": "returns-svc",
+ "prompt_sha": "b316db6e01d11dde"
+}

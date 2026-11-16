@@ -1,7 +1,7 @@
 PY ?= python
 COMPOSE ?= docker compose
 
-.PHONY: data eval eval-quick eval-stores test up down web bench durability-demo
+.PHONY: data eval eval-quick eval-stores test up down web bench durability-demo bench-hydra loadtest
 
 data:
 	$(PY) -m gwsim.cli --out data
@@ -40,3 +40,11 @@ bench:
 # Delete ONLY HydraDB local data on the stack in deploy/ (MinIO volume kept), restart, and check ranking + why-edge are identical.
 durability-demo:
 	$(PY) deploy/durability_demo.py --api $(or $(API),https://localhost) $(if $(INSECURE),--insecure,)
+
+# HydraDB per query and per verdict next to Postgres (needs: docker compose --profile eval up -d hydradb postgres)
+bench-hydra:
+	$(PY) eval/hydra_warm.py
+
+# Verdict endpoint under load: concurrency 1, 10, 50, 100 (start the API with GW_RATE_LIMIT=0)
+loadtest:
+	$(PY) eval/loadtest.py --url $(or $(URL),http://127.0.0.1:8000)

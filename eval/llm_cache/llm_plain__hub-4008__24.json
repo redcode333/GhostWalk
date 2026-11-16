@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"secrets-vault\",\"config-svc\",\"quote-svc\",\"sms-svc\",\"warehouse-svc\"],\"reason\":\"The secrets-vault timeout directly impacts loyalty\u2011api which relies on it for credentials, causing saturation; downstream services it depends on (config\u2011svc, quote\u2011svc, sms\u2011svc, warehouse\u2011svc) are also likely contributors.\"}",
+ "prompt_tokens": 2694,
+ "completion_tokens": 209,
+ "latency_ms": 1479.0444000027492,
+ "ranking": [
+  "secrets-vault",
+  "config-svc",
+  "quote-svc",
+  "sms-svc",
+  "warehouse-svc"
+ ],
+ "reason": "The secrets-vault timeout directly impacts loyalty\u2011api which relies on it for credentials, causing saturation; downstream services it depends on (config\u2011svc, quote\u2011svc, sms\u2011svc, warehouse\u2011svc) are also likely contributors.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4008",
+ "seq": 24,
+ "truth": "loyalty-api",
+ "prompt_sha": "893cee8311760cdb"
+}

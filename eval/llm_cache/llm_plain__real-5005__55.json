@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"dns-internal\",\"shipping\",\"orders\",\"front-end\",\"user\"],\"reason\":\"dns-internal saturates first and is a direct dependency of shipping, which then impacts orders and front\u2011end; the cascade makes dns-internal the most likely root cause.\"}",
+ "prompt_tokens": 453,
+ "completion_tokens": 147,
+ "latency_ms": 1133.4295999986352,
+ "ranking": [
+  "dns-internal",
+  "shipping",
+  "orders",
+  "front-end",
+  "user"
+ ],
+ "reason": "dns-internal saturates first and is a direct dependency of shipping, which then impacts orders and front\u2011end; the cascade makes dns-internal the most likely root cause.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "real-5005",
+ "seq": 55,
+ "truth": "dns-internal",
+ "prompt_sha": "4fb25366310ffdbb"
+}

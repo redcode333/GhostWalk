@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"orders-db\",\"orders\",\"carts-db\",\"catalogue-db\",\"user-db\"],\"reason\":\"The first alert is an error_rate on prod-orders-db, indicating a direct failure in the orders database; this would cascade to increased latency in the orders service, making orders-db the most probable root cause, followed by the orders service itself and other downstream datastores.\"}",
+ "prompt_tokens": 437,
+ "completion_tokens": 134,
+ "latency_ms": 1225.881300000765,
+ "ranking": [
+  "orders-db",
+  "orders",
+  "carts-db",
+  "catalogue-db",
+  "user-db"
+ ],
+ "reason": "The first alert is an error_rate on prod-orders-db, indicating a direct failure in the orders database; this would cascade to increased latency in the orders service, making orders-db the most probable root cause, followed by the orders service itself and other downstream datastores.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "real-5001",
+ "seq": 6,
+ "truth": "orders-db",
+ "prompt_sha": "c3e9e50a5bb428f3"
+}

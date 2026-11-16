@@ -1,0 +1,23 @@
+{
+ "provider": "gemini",
+ "model": "gemini-3.6-flash",
+ "text": "{\n  \"ranking\": [\n    \"auth-svc\",\n    \"warehouse-svc\",\n    \"subscription-svc\",\n    \"account-api\",\n    \"geo-api\"\n  ],\n  \"reason\": \"The initial alert triggered directly on auth-svc, which is a core tier-3 shared service. Multiple dependent upstream services including warehouse-svc, subscription-svc, account-api, payments-api, and edge-gateway subsequently fired alerts as the degradation cascaded through the system.\"\n}",
+ "prompt_tokens": 1878,
+ "completion_tokens": 110,
+ "latency_ms": 2331.406800003606,
+ "ranking": [
+  "auth-svc",
+  "warehouse-svc",
+  "subscription-svc",
+  "account-api",
+  "geo-api"
+ ],
+ "reason": "The initial alert triggered directly on auth-svc, which is a core tier-3 shared service. Multiple dependent upstream services including warehouse-svc, subscription-svc, account-api, payments-api, and edge-gateway subsequently fired alerts as the degradation cascaded through the system.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "layered-3002",
+ "seq": 28,
+ "truth": "auth-svc",
+ "prompt_sha": "2311ecd34400286e"
+}

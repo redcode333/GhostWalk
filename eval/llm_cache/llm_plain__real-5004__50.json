@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"paymentservice\",\"dns-internal\",\"config-svc\",\"cartservice\",\"shippingservice\"],\"reason\":\"paymentservice timed out first and is a direct dependency of checkoutservice, making it the most likely cause; shared dependencies (dns-internal, config-svc) and other services it relies on are secondary possibilities.\"}",
+ "prompt_tokens": 453,
+ "completion_tokens": 138,
+ "latency_ms": 1227.4608000006992,
+ "ranking": [
+  "paymentservice",
+  "dns-internal",
+  "config-svc",
+  "cartservice",
+  "shippingservice"
+ ],
+ "reason": "paymentservice timed out first and is a direct dependency of checkoutservice, making it the most likely cause; shared dependencies (dns-internal, config-svc) and other services it relies on are secondary possibilities.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "real-5004",
+ "seq": 50,
+ "truth": "paymentservice",
+ "prompt_sha": "8f146a09af2f4d1e"
+}

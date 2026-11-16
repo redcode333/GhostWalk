@@ -32,13 +32,14 @@ def values():
     n_inc = META["incidents"]
     v["companies"], v["incidents"] = str(META["companies"]), num(n_inc)
     g = M["ghostwalk"]
-    v["gw_ac1"], v["gw_ac1_ci"] = pct(g["ac1"]["point"]), pci(g["ac1"])
+    v["gw_ac1"] = pct(g["ac1"]["point"])
+    v["gw_ac1_ci"] = f"{g['ac1']['ci95'][0] * 100:.1f} to {g['ac1']['ci95'][1] * 100:.1f}%"
     v["gw_ac3_ci"] = pci(g["ac3"])
     v["off_ac1"], v["placebo_ac1"], v["oracle_ac1"] = pct(M["learning_off"]["ac1"]["point"]), pct(M["placebo"]["ac1"]["point"]), pct(M["oracle"]["ac1"]["point"])
     v["learn_gain"] = ptsci(P["ac1"]["ghostwalk - learning_off"])
     v["placebo_gain"] = pts(M["placebo"]["ac1"]["point"] - M["learning_off"]["ac1"]["point"])
     h = R["headline"]
-    v["best_baseline"] = LABEL[h["best_baseline"]]
+    v["best_baseline"] = {"pagerank": "tuned personalized PageRank", "deepest": "the deepest-alert rule", "retrieval": "TF-IDF retrieval"}.get(h["best_baseline"], h["best_baseline"])
     v["best_baseline_ac1"] = pct(h["best_baseline_ac1"]["point"])
     v["gain_vs_best"] = ptsci(h["gain_vs_best"])
     v["gap_closed"] = f"{h['gap_closed']['point'] * 100:.0f}%"
@@ -52,14 +53,14 @@ def values():
     lap = R["ops"]["hydradb_latency"]["warm"]
     if "minio" in vm:
         mm = vm["minio"]["machine"]
-        v["vm_name"] = f"AWS {mm.get('instance_type') or 'VM'} ({mm['logical_cpus']} vCPU, {mm['ram_gb']:.0f} GB)"
+        v["vm_name"] = f"AWS {mm.get('instance_type') or 'VM'} ({mm['logical_cpus']} vCPU, {mm['ram_gb']} GB)"
         v["verdict_headline"] = f"{ms(vm['minio']['online_loop']['verdict_ms']['p50'])} p50 / {ms(vm['minio']['online_loop']['verdict_ms']['p95'])} p95 per verdict, HydraDB on MinIO, learning on, on the {v['vm_name']}"
     else:
         v["vm_name"] = "VM (not measured)"
         v["verdict_headline"] = f"{ms(R['store_swap']['backends']['hydradb']['verdict_ms_p50'])} p50 / {ms(R['store_swap']['backends']['hydradb']['verdict_ms_p95'])} p95 per verdict, HydraDB, learning on, on the laptop"
     v["laptop_name"] = f"laptop ({lap['machine']['platform'].split('-SP')[0]}, {lap['machine']['cpus']} logical CPUs, {lap['machine']['ram_gb']} GB)"
     v["engine_p95_5000"] = ms(R["latency"]["gate"]["p95_5000_ms"])
-    v["w_tent"], v["w_conf"] = f"{META['learner']['W_TENTATIVE']:.2f}", f"{SW['hydradb']['ac1']['point'] * 0 + 0.7:.2f}"
+    v["w_tent"] = f"{META['learner']['W_TENTATIVE']:.2f}"
     from ghostwalk.graph.state import W_CONFIRMED
     v["w_conf"] = f"{W_CONFIRMED:.2f}"
     v["drop_below"], v["decay_wrong"], v["eta_up"] = f"{META['learner']['DROP_BELOW']:.2f}", f"{META['learner']['DECAY_WRONG']:.2f}", f"{META['learner']['ETA_UP']:.1f}"
@@ -72,7 +73,6 @@ def values():
     mr = R["memory_retrieval"]["arms"]
     v["mem_graph_hit"], v["mem_vec_hit"], v["mem_kw_hit"] = pct(mr["graph"]["hit5_repeat"]["point"]), pct(mr["vector"]["hit5_repeat"]["point"]), pct(mr["keyword"]["hit5_repeat"]["point"])
     v["checks_to_root"] = f"{R['ops']['ghostwalk']['mean_checks_to_root']:.1f}"
-    v["tests"] = str(test_count())
     v["loom"] = LINKS.get("loom")
     v["live_demo"] = LINKS.get("live_demo", "https://ghostwalk-henna.vercel.app/demo")
     v["live_site"] = LINKS.get("live_site", "https://ghostwalk-henna.vercel.app")
@@ -106,35 +106,99 @@ def table_main():
     return md_table(["method", "AC@1 [95% CI]", "AC@3 [95% CI]", "mean checks to root"], rows)
 
 
+def _neg(c):
+    return {"point": -c["point"], "ci95": [-c["ci95"][1], -c["ci95"][0]]}
+
+
+def _lat(b):
+    return f"{ms(b['verdict_ms_p50'])} / {ms(b['verdict_ms_p95'])}" if b else ""
+
+
 def table_compare():
-    ops = R["ops"]
-    lat = lambda b: f"{ms(b['verdict_ms_p50'])} / {ms(b['verdict_ms_p95'])}"
+    """One table on the same TEST incidents: approach | AC@1 (95% CI) | delta vs GhostWalk | verdict latency | tokens per verdict | learns from postmortems?
+    (the LLM rows are on the marked subset; the next table puts every method on that subset)."""
+    ops, llm = R["ops"], R.get("llm_baseline")
+    toks = lambda k: num(round(llm["arms"][k]["tokens_per_incident"]["mean"]))
     rows = [
-        ["**GhostWalk on HydraDB**", pci(SW["hydradb"]["ac1"]), "reference", lat(SW["hydradb"]), "0", "yes"],
-        ["GhostWalk on Postgres (recursive CTE)", pci(SW["pg_cte"]["ac1"]), ptsci(SW["pg_cte"]["delta_vs_reference"]), lat(SW["pg_cte"]), "0", "yes"],
-        ["GhostWalk in memory", pci(SW["inmemory"]["ac1"]), ptsci(SW["inmemory"]["delta_vs_reference"]), lat(SW["inmemory"]), "0", "yes"],
-        ["Key-value store (Redis), 1 hop", pci(SW["kv_1hop"]["ac1"]), ptsci(SW["kv_1hop"]["delta_vs_reference"]), lat(SW["kv_1hop"]), "0", "yes (1 hop only)"],
-        ["Vector search over postmortems (pgvector)", pci(SW["pgvector"]["ac1"]), ptsci(SW["pgvector"]["delta_vs_reference"]), lat(SW["pgvector"]), "0", "adds text, no graph"],
-        ["TF-IDF retrieval of past postmortems", pci(M["retrieval"]["ac1"]), ptsci(P["ac1"]["ghostwalk - retrieval"]).replace(pts(P["ac1"]["ghostwalk - retrieval"]["point"]), pts(-P["ac1"]["ghostwalk - retrieval"]["point"])), lat(ops["retrieval"]), R["ops"]["llm_tokens"]["retrieval"], "adds text, no graph"],
-        ["Personalized PageRank (tuned on DEV)", pci(M["pagerank"]["ac1"]), "", lat(ops["pagerank"]), "0", "no"],
-        ["Deepest alerting service", pci(M["deepest"]["ac1"]), "", lat(ops["deepest"]), "0", "no"],
-        ["LLM baseline", "not run", "", "", "needs an API key and spend", "n/a"],
+        ["**GhostWalk on HydraDB**", pci(SW["hydradb"]["ac1"]), "reference", _lat(SW["hydradb"]), "0", "yes: lessons in HydraDB, linked to evidence"],
+        ["Same engine on Postgres (recursive CTE)", pci(SW["pg_cte"]["ac1"]), ptsci(SW["pg_cte"]["delta_vs_reference"]) + ": matches accuracy; the gain comes from multi-hop graph walks; Postgres is faster on raw path queries at our sizes", _lat(SW["pg_cte"]), "0", "yes"],
+        ["Same engine in memory (no store)", pci(SW["inmemory"]["ac1"]), ptsci(SW["inmemory"]["delta_vs_reference"]), _lat(SW["inmemory"]), "0", "yes"],
+        ["Key-value store (Redis), 1 hop", pci(SW["kv_1hop"]["ac1"]), ptsci(SW["kv_1hop"]["delta_vs_reference"]), _lat(SW["kv_1hop"]), "0", "yes, 1 hop only"],
+        ["Vector search over postmortems (pgvector)", pci(SW["pgvector"]["ac1"]), ptsci(SW["pgvector"]["delta_vs_reference"]), _lat(SW["pgvector"]), "0", "adds text, no graph"],
+        ["Keyword retrieval (TF-IDF) of past postmortems", pci(M["retrieval"]["ac1"]), ptsci(_neg(P["ac1"]["ghostwalk - retrieval"])), _lat(ops["retrieval"]), "0", "adds text, no graph"],
+        ["Deepest alerting service", pci(M["deepest"]["ac1"]), ptsci(_neg(P["ac1"]["ghostwalk - deepest"])), _lat(ops["deepest"]), "0", "no"],
+        ["Personalized PageRank (tuned on DEV)", pci(M["pagerank"]["ac1"]), ptsci(_neg(P["ac1"]["ghostwalk - pagerank"])), _lat(ops["pagerank"]), "0", "no"],
+        ["Random", pci(M["random"]["ac1"]), pts(M["random"]["ac1"]["point"] - M["ghostwalk"]["ac1"]["point"]), _lat(ops.get("random")), "0", "no"],
+        ["GhostWalk with learning off", pci(M["learning_off"]["ac1"]), ptsci(_neg(P["ac1"]["ghostwalk - learning_off"])), "", "0", "no (the learning proof)"],
+        ["GhostWalk with placebo postmortems", pci(M["placebo"]["ac1"]), ptsci(_neg(P["ac1"]["ghostwalk - placebo"])), "", "0", "learns noise (the learning proof)"],
     ]
-    return md_table(["system", "AC@1 [95% CI]", "Δ vs GhostWalk on HydraDB", "verdict p50 / p95 (laptop)", "LLM tokens per verdict", "learns the graph from postmortems"], rows)
+    if llm:
+        n = llm["n_incidents"]
+        for k, label in (("llm_plain", "LLM, plain"), ("llm_memory", "LLM + memory (five past postmortems)")):
+            a = llm["arms"][k]
+            rows.append([f"{label} (n={n} subset)", pci(a["ac1"]), ptsci(_neg(llm["paired_ac1"][f"ghostwalk_minus_{k}"])) + " on the subset", f"{ms(a['latency_ms']['p50'])} / {ms(a['latency_ms']['p95'])}", toks(k), "no"])
+    else:
+        rows.append(["LLM, plain / + memory", "not run", "", "", "", "no"])
+    return md_table(["approach", "AC@1 (95% CI)", "Δ vs GhostWalk", "verdict p50 / p95", "tokens per verdict", "learns from postmortems?"], rows)
+
+
+def table_llm():
+    """Every method on the SAME LLM subset, with AC@1 and AC@3, paired CIs vs GhostWalk, tokens, latency, invalid-output rate and provider share."""
+    llm = R.get("llm_baseline")
+    if not llm:
+        return "The LLM baseline has not been run."
+    names = {"ghostwalk": "GhostWalk", "learning_off": "GhostWalk, learning off", "tfidf": "TF-IDF retrieval", "llm_plain": "LLM, plain", "llm_memory": "LLM + memory"}
+    rows = []
+    for k, label in names.items():
+        a = llm["arms"][k]
+        d1 = "reference" if k == "ghostwalk" else ptsci(_neg(llm["paired_ac1"][f"ghostwalk_minus_{k}"]))
+        if "tokens_per_incident" in a:
+            share = a["provider_share"]
+            extra = [num(round(a["tokens_per_incident"]["mean"])), f"{ms(a['latency_ms']['p50'])} / {ms(a['latency_ms']['p95'])}", pct(a["invalid_output_rate"], 0), f"Gemini {pct(share['gemini'], 0)}, Groq {pct(share['groq'], 0)}"]
+        else:
+            extra = ["0", "", "", ""]
+        rows.append([label, pci(a["ac1"]), d1, pci(a["ac3"])] + extra)
+    models = ", ".join(f"`{m}`" for k in ("llm_plain", "llm_memory") for m in llm["arms"][k]["models_used"]) if llm["arms"]["llm_plain"].get("models_used") else ""
+    t = md_table(["method", "AC@1 (95% CI)", "Δ AC@1 vs GhostWalk", "AC@3 (95% CI)", "tokens / incident", "latency p50 / p95", "invalid output", "provider share"], rows)
+    stop = (f" The run stopped when Groq's free daily token limit was reached: these are the first {llm['n_incidents']} of the {llm['n_requested']} planned incidents in company order ({llm['companies']} of {META['companies']} companies; families covered: {', '.join(llm['families_covered'])}{'; not reached: ' + ', '.join(sorted(set(llm['families_total']) - set(llm['families_covered']))) if set(llm['families_total']) - set(llm['families_covered']) else ''}); `python eval/llm_baseline.py` resumes from the cache once the limit resets." if llm["stopped_early"] else "")
+    note = (f"{llm['label']} {num(llm['n_incidents'])} incidents across {llm['companies']} companies, chosen with a fixed seed and saved to `eval/llm_subset.json` before any call: {llm['subset']['rule']}. "
+            f"Models used (recorded per incident in `eval/llm_cache/`): {', '.join(sorted({m for k in ('llm_plain', 'llm_memory') for m in llm['arms'][k]['models_used']}))}. temperature 0, strict JSON, one retry on bad JSON then a miss." + stop)
+    return t + "\n\n" + note
 
 
 def honest_sentences():
-    pg, kv, vec = SW["pg_cte"], SW["kv_1hop"], SW["pgvector"]
+    kv, vec, pg, llm = SW["kv_1hop"], SW["pgvector"], SW["pg_cte"], R.get("llm_baseline")
     sc = R["scale"]["path_query"]["sizes"]
     sizes = sorted(sc, key=int)
     pg_faster = all(sc[s]["path_query"][h]["postgres"]["p50"] < sc[s]["path_query"][h]["hydradb"]["p50"] for s in sizes for h in ("hops_3", "hops_5"))
-    out = [
-        f"1. **Postgres ties on accuracy.** The same engine and learner on Postgres with recursive queries scores {pct(pg['ac1']['point'])} against {pct(SW['hydradb']['ac1']['point'])} on HydraDB (difference {ptsci(pg['delta_vs_reference'])}): the gain comes from the multi-hop weighted walk, not from which product stores the graph.",
-        f"2. **{'Postgres is faster at raw path queries at our sizes' if pg_faster else 'Neither store is faster everywhere'}** ({', '.join(f'{s} services: HydraDB {ms(sc[s]['path_query']['hops_5']['hydradb']['p50'])} vs Postgres {ms(sc[s]['path_query']['hops_5']['postgres']['p50'])} for 5 hops' for s in sizes)}). We use HydraDB because the graph, its weights and the learner's memory live in one native graph store with weighted path algorithms, not for speed.",
-        f"3. **Graph memory did not beat vector or keyword retrieval at finding similar past incidents** (hit@5 {pct(R['memory_retrieval']['arms']['graph']['hit5_repeat']['point'])} vs {pct(R['memory_retrieval']['arms']['vector']['hit5_repeat']['point'])} vector and {pct(R['memory_retrieval']['arms']['keyword']['hit5_repeat']['point'])} TF-IDF). The graph matters for root-cause ranking: replacing it with a 1-hop key-value store costs {pts(-kv['delta_vs_reference']['point'])} and vector search over postmortems scores {pct(vec['ac1']['point'])}.",
-        "4. **The LLM baseline was not run** (it needs an API key and spend), so there is no accuracy, latency or token number for an LLM, and none is claimed.",
-    ]
+    out = [f"1. **Graph traversal is what matters.** Replacing it with a 1-hop key-value store costs {abs(kv['delta_vs_reference']['point']) * 100:.1f} points of top-1 accuracy and vector search over the same postmortems costs {abs(vec['delta_vs_reference']['point']) * 100:.1f}.",
+           f"2. **Postgres ties on accuracy** (difference {pg['delta_vs_reference']['point'] * 100:+.1f} points, 95% CI {pg['delta_vs_reference']['ci95'][0] * 100:+.1f} to {pg['delta_vs_reference']['ci95'][1] * 100:+.1f}): the gain comes from multi-hop graph walks, not from which product stores the graph; {'Postgres is faster on raw path queries at our sizes' if pg_faster else 'neither store is faster everywhere on raw path queries'} (HydraDB {ms(sc[sizes[-1]]['path_query']['hops_5']['hydradb']['p50'])} vs Postgres {ms(sc[sizes[-1]]['path_query']['hops_5']['postgres']['p50'])} for 5 hops at {sizes[-1]} services)."]
+    if llm:
+        a, m = llm["arms"]["llm_plain"], llm["arms"]["llm_memory"]
+        verdict = lambda k: ("ahead of" if llm["paired_ac1"][f"ghostwalk_minus_{k}"]["ci95"][0] > 0 else "not distinguishable from" if llm["paired_ac1"][f"ghostwalk_minus_{k}"]["ci95"][1] > 0 else "behind")
+        rng = lambda k: f"{llm['paired_ac1'][f'ghostwalk_minus_{k}']['point'] * 100:+.1f} points, 95% CI {llm['paired_ac1'][f'ghostwalk_minus_{k}']['ci95'][0] * 100:+.1f} to {llm['paired_ac1'][f'ghostwalk_minus_{k}']['ci95'][1] * 100:+.1f}"
+        partial = f" (the first {llm['n_incidents']} of {llm['n_requested']} planned incidents, {llm['companies']} of the {META['companies']} companies: the run stopped at the free tier's daily token limit)" if llm["stopped_early"] else ""
+        out.append(f"3. **The LLM costs tokens and seconds per verdict.** On the {llm['n_incidents']}-incident subset{partial} it used about {num(round(a['tokens_per_incident']['mean']))} tokens and {ms(a['latency_ms']['p50'])} p50 per verdict (GhostWalk: none, {ms(SW['hydradb']['verdict_ms_p50'])}). "
+                   f"On the same incidents GhostWalk scored {pci(llm['arms']['ghostwalk']['ac1'])}: {verdict('llm_plain')} the plain LLM ({pci(a['ac1'])}; difference {rng('llm_plain')}) and {verdict('llm_memory')} the LLM given five past postmortems ({pci(m['ac1'])}; difference {rng('llm_memory')}). These intervals are wide: this is a comparison on a small, partly covered subset, not a verdict on LLMs.")
+    else:
+        out.append("3. **The LLM baseline has not been run**, so there is no LLM number.")
+    out.append("4. **GhostWalk's learning lives in HydraDB**: every lesson is a node linked to the postmortem that taught it and the incident that confirmed it, and it survives restarts (durability demo, async write queue with replay).")
     return "\n".join(out)
+
+
+def table_replays():
+    rp = R.get("replays")
+    if not rp:
+        return "Not run yet."
+    rows = []
+    for s in rp["scenarios"]:
+        st = s["stages"]
+        cell = lambda x: f"{x['top1']} ({x['confidence']:.2f}); real root {'first' if x['root_rank'] == 1 else 'not ranked' if x['root_rank'] is None else 'rank ' + str(x['root_rank'])}"
+        rows.append([f"[{s['short']}]({s['source']['url']}): real root `{s['root']}`", cell(st[0]), cell(st[1]), cell(st[2]),
+                     f"{s['deepest_alert']['top1']}; real root {'not ranked' if s['deepest_alert']['root_rank'] is None else 'rank ' + str(s['deepest_alert']['root_rank'])}",
+                     (f"{s['llm']['top1']}; real root {'not ranked' if s['llm']['root_rank'] is None else 'rank ' + str(s['llm']['root_rank'])} ({s['llm']['provider']})" if s.get("llm") else "not run")])
+    t = md_table(["scenario", "GhostWalk, official map (hidden dependency missing)", "after one learned edge (tentative)", "after a second incident confirms it", "deepest alert", "LLM"], rows)
+    return t + f"\n\n{rp['label']} One run per scenario, on a map and an alert order we built from the public description: this shows the mechanism, not an accuracy. With the dependency missing GhostWalk is confidently wrong, like the responders were; after one learned edge the real root enters the ranking but is not first. We make no claim that GhostWalk would have prevented either outage."
 
 
 def table_learning():
@@ -215,7 +279,7 @@ def worked_example():
     return (f"Five alerts fire at once ({fires}). The pager points at the front of the stack; the cause is two hops away.\n\n"
             f"- **Before the lesson:** `{rk(b['ranking'])}`; path `{arrows(b['path'])}`.\n"
             f"- A postmortem says the real root was `{a['ranking'][0]['name']}`, reached from `{name[d['learned_edges'][0]['u']]}` through an edge the service catalog never listed. The learner proposes it at weight {values()['w_tent']} (tentative); a second incident confirms it ({values()['w_conf']}).\n"
-            f"- **After:** `{rk(a['ranking'])}`; path `{arrows(a['path'])}`, in {ms(d['ms'])}. Blast radius if `{a['ranking'][0]['name']}` fails: {', '.join('`' + x + '`' for x in d['blast'])}.\n"
+            f"- **After:** `{rk(a['ranking'])}`; path `{arrows(a['path'])}`. Blast radius if `{a['ranking'][0]['name']}` fails: {', '.join('`' + x + '`' for x in d['blast'])}.\n"
             f"- A search over old postmortems (TF-IDF) for the same alerts returns {', '.join('`' + m['incident'] + ' → ' + m['root'] + '`' for m in d['search']['matches'])}: similar text, wrong roots.\n\n"
             f"Computed by the real engine and learner on a small scenario ({d['note']}).")
 
@@ -314,7 +378,7 @@ def table_checklist():
         ["Found and reported a HydraDB bug", "[`docs/hydradb-issue.md`](docs/hydradb-issue.md) (root cause from the source, curl reproduction, fix and regression test)"],
         ["Survives restarts", "[durability demo](docs/measurements/durability_demo_vm.txt), [async write queue with replay](tests/test_async_learning.py)"],
         ["Reproducible", "`make eval-quick`, `make bench`, `make loadtest`; seeds, commit and engine settings are recorded in `results.json`"],
-        ["Tested", f"{values()['tests']} tests ([`tests/`](tests))"],
+        ["Tested", "unit, parity (HydraDB against in-memory), memory, tenancy and isolation, async-write replay, restart and replay tests: [`tests/`](tests), run in CI"],
     ]
     return md_table(["what a reviewer would ask", "evidence"], rows)
 

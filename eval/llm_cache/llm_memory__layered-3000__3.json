@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"dns-internal\",\"users-db\",\"payments-db\",\"ads-svc\",\"feature-flags\"],\"reason\":\"The earliest alert is refund\u2011svc latency, which depends on dns\u2011internal; downstream services (shipping\u2011api, web\u2011bff) later see timeouts, and known patterns show dns\u2011internal or users\u2011db issues propagate through many dependencies.\"}",
+ "prompt_tokens": 1186,
+ "completion_tokens": 416,
+ "latency_ms": 2043.8260000009905,
+ "ranking": [
+  "dns-internal",
+  "users-db",
+  "payments-db",
+  "ads-svc",
+  "feature-flags"
+ ],
+ "reason": "The earliest alert is refund\u2011svc latency, which depends on dns\u2011internal; downstream services (shipping\u2011api, web\u2011bff) later see timeouts, and known patterns show dns\u2011internal or users\u2011db issues propagate through many dependencies.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "layered-3000",
+ "seq": 3,
+ "truth": "dns-internal",
+ "prompt_sha": "b99447392d8d1961"
+}

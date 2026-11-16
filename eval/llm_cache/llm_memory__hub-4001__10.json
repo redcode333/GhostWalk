@@ -1,0 +1,28 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"rabbit-orders\",\"shipping-svc\",\"feeds-api\",\"web-bff\",\"edge-gateway\"],\"reason\":\"Rabbit-orders timeouts cascade to shipping-svc errors, which overload feeds\u2011api and then surface as web\u2011bff errors; the chain matches the alert order.\"}",
+ "prompt_tokens": 2124,
+ "completion_tokens": 230,
+ "latency_ms": 1687.4390000011772,
+ "ranking": [
+  "rabbit-orders",
+  "shipping-svc",
+  "feeds-api",
+  "web-bff",
+  "edge-gateway"
+ ],
+ "reason": "Rabbit-orders timeouts cascade to shipping-svc errors, which overload feeds\u2011api and then surface as web\u2011bff errors; the chain matches the alert order.",
+ "attempts": [
+  {
+   "provider": "gemini",
+   "error": "gemini 429"
+  }
+ ],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4001",
+ "seq": 10,
+ "truth": "rabbit-orders",
+ "prompt_sha": "8d062f2084d190a9"
+}

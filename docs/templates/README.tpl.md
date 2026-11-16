@@ -7,11 +7,11 @@
 **The outage is never where the pager says.**
 
 [![CI](https://github.com/{{repo}}/actions/workflows/ci.yml/badge.svg)](https://github.com/{{repo}}/actions/workflows/ci.yml)
-[![tests](https://img.shields.io/badge/tests-{{tests}}%20collected-2ea44f)](tests)
+[![tests](https://img.shields.io/github/actions/workflow/status/{{repo}}/ci.yml?branch=main&label=tests)](https://github.com/{{repo}}/actions/workflows/ci.yml)
 [![license](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
 [![live demo](https://img.shields.io/badge/live%20demo-open-6A4BFF)]({{live_demo}})
 
-[**Live demo**]({{live_demo}}) · {{loom_link}}[**Proof page**]({{live_site}}/app/proof) · [**Docs**](docs)
+[**Live demo**]({{live_demo}}) · {{loom_link}}[**Proof page**]({{live_site}}/proof) · [**Docs**](docs)
 
 <img src="docs/learning-curve.svg" alt="Top-1 accuracy by incident number: GhostWalk learns, learning off and placebo postmortems stay flat" width="760">
 
@@ -32,7 +32,7 @@
 
 **Who pays and why.** Teams with an on-call rotation: $49 a month flat for the workspace. One avoided hour of a wrong first guess pays for it.
 
-> Honest limits, up front: the incidents are simulated (the knobs are in the evaluation section); Postgres with recursive queries gets the same accuracy as HydraDB and is faster on raw queries at our sizes; graph memory did not beat vector retrieval at finding similar past incidents; no LLM baseline was run.
+> Honest limits, up front: the incidents are simulated (the knobs are in the evaluation section); Postgres with recursive queries gets the same accuracy as HydraDB and is faster on raw queries at our sizes; graph memory did not beat vector retrieval at finding similar past incidents; the LLM baseline ran on a {{llm_n}}-incident subset, not the full set; the real-outage replays are illustrations, not an accuracy measurement.
 
 ## How it works
 
@@ -70,7 +70,7 @@ GhostWalk's learning loop lives in HydraDB: every lesson is a node linked to the
 {{mermaid_lifecycle}}
 ```
 
-The guard is the point: a single postmortem (which can be wrong) only ever creates a tentative edge that counts for little in a verdict. It becomes a full edge when a second, independent incident confirms it, and it decays when it sends the walk astray. {{poison_sentence}}
+The design reason for the guard: a single postmortem can be wrong, so it only ever creates a tentative edge that counts for little in a verdict; the edge becomes a full edge when a second incident confirms it, and it decays when it sends the walk astray. {{poison_sentence}} {{guard_sentence}}
 
 ### A worked example
 
@@ -93,6 +93,10 @@ Same incidents, same engine and learner, only the store changes (for the store r
 {{table_compare}}
 
 {{honest_sentences}}
+
+**The LLM, on the same incidents.** Every method on the {{llm_n}}-incident subset:
+
+{{table_llm}}
 
 ### Learning proof
 
@@ -134,7 +138,11 @@ Every verdict carries a confidence. Answering only above a threshold trades cove
 
 {{change_helps}}
 
-**Real-outage replays are not built.** There is no table of replayed public incidents here, and none is claimed.
+### Real-outage replays
+
+{{table_replays}}
+
+The scenarios, their sources and the assumptions are in [`docs/replays/`](docs/replays); run them live from the Replay buttons on the Incidents page of the [demo]({{live_demo}}).
 
 ### Judging checklist
 
@@ -146,7 +154,7 @@ Every number below is measured, labelled with the machine, and reproducible. Ful
 
 {{table_machines}}
 
-**Per query on HydraDB** (p50 / p95, 200 timed requests after warm-up):
+**Per query on HydraDB** (p50 / p95, {{timed}} timed requests after {{warmup}} warm-up):
 
 {{table_queries}}
 
@@ -154,7 +162,7 @@ Every number below is measured, labelled with the machine, and reproducible. Ful
 
 {{table_verdicts}}
 
-Verdicts stay in the low milliseconds because they read the cached graph; the learning write (a few dozen sequential HydraDB commits) happens after the verdict and never delays one.
+The cold read (the whole graph read back from HydraDB, which the cache avoids) is slower on the VM than on the laptop; HydraDB reads from MinIO there, and we did not isolate how much of the difference is that. Verdicts stay in the low milliseconds because they read the cached graph; the learning write (a few dozen sequential HydraDB commits) happens after the verdict and never delays one.
 
 **Scale** (synthetic layered graphs, same generator, one machine; the in-database verdict is the slow path and is not used):
 
@@ -164,7 +172,9 @@ Verdicts stay in the low milliseconds because they read the cached graph; the le
 
 {{table_load}}
 
-**The transport diagnosis, in three lines.** HydraDB answers a read in about {{server_ms}} (its own metrics), yet every request from the Windows host took about {{floor_ms}}. The cause was the Docker Desktop published-port hop reacting to HTTP clients that write headers and body separately; a client that sends them in one write takes {{fast_ms}} through the same port, so the adapter now does that (`ghostwalk/graph/fasthttp.py`). Those ~45 ms were never HydraDB's.
+Throughput falls as clients are added, and that is the honest limit of this version: the walk is {{vm_walk_ms}} of each request (in memory, same VM), but every request takes the workspace lock, records the incident and rewrites the workspace's state file, which grows with the incidents recorded. Batching or journalling that save is the obvious next fix; it is not done.
+
+**The transport diagnosis, in three lines.** HydraDB answers a read in about {{server_ms}} (its own metrics), yet every request from the Windows host took about {{floor_ms}}. The cause was the Docker Desktop published-port hop reacting to HTTP clients that write headers and body separately; a client that sends them in one write takes {{fast_ms}} through the same port, so the adapter now does that (`ghostwalk/graph/fasthttp.py`). Those {{floor_ms}} were never HydraDB's.
 
 **The HydraDB restart bug.** HydraDB 0.4.0 rejected every HTTP write after a restart (`409 mutation_conflict`), because HTTP requests are numbered `http-query-1, 2, ...` from the start of every process and writes are deduplicated durably by that number. Fixed on our side by sending a unique `query_id` with every request (regression test: `tests/test_hydra_restart.py`); root cause from the source and a curl reproduction: [docs/hydradb-issue.md](docs/hydradb-issue.md). Not filed upstream yet.
 
@@ -241,7 +251,7 @@ Short version here; full method in [docs/EVALUATION.md](docs/EVALUATION.md).
 - **Statistics.** Paired cluster bootstrap over companies ({{boot}} draws). Controls: learning off, placebo postmortems (random root and edges), the perfect-map oracle, and a poisoning stress at several wrong-postmortem rates.
 - **The test rerun history, in full.** Top-1 hits of {{incidents}} moved {{history}}: the first change reordered exact ties after a speed optimisation, the second added a deterministic tie-break; every table in `results.json` comes from the final engine ({{history_final}}).
 - **Citations.** The topologies of two of the three real-system families follow RCAEval's published microservice systems; no RCAEval data is used. The PageRank baseline follows MicroRCA-style personalised PageRank, tuned on DEV (the untuned default is shown too).
-- **Limitations.** The incidents are simulated; there are no replayed real outages; the LLM baseline was not run; Postgres is faster on raw queries at our sizes; the change-evidence gain is small and conditional.
+- **Limitations.** The incidents are simulated; there are no replayed real outages; the LLM baseline covers {{llm_n}} incidents (a stratified subset, not all of them) and the free-tier models changed during the run (the model is recorded per incident); the replays are two scenarios we built from public postmortems; Postgres is faster on raw queries at our sizes; the change-evidence gain is small and conditional.
 
 ## Future work
 

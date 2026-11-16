@@ -1,0 +1,23 @@
+{
+ "provider": "gemini",
+ "model": "gemini-3.6-flash",
+ "text": "{\n  \"ranking\": [\n    \"ledger-svc\",\n    \"bidding-svc\",\n    \"inventory-svc\",\n    \"redis-ratelimit\",\n    \"coupon-svc\"\n  ],\n  \"reason\": \"Both firing alerts (web-bff and loyalty-api) depend on downstream services that converge on inventory-svc. Inventory-svc's critical dependencies include ledger-svc and bidding-svc, making failures in ledger-svc or bidding-svc the most likely root causes for cascading latency and saturation.\"\n}",
+ "prompt_tokens": 1742,
+ "completion_tokens": 116,
+ "latency_ms": 2738.9379999949597,
+ "ranking": [
+  "ledger-svc",
+  "bidding-svc",
+  "inventory-svc",
+  "redis-ratelimit",
+  "coupon-svc"
+ ],
+ "reason": "Both firing alerts (web-bff and loyalty-api) depend on downstream services that converge on inventory-svc. Inventory-svc's critical dependencies include ledger-svc and bidding-svc, making failures in ledger-svc or bidding-svc the most likely root causes for cascading latency and saturation.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "layered-3002",
+ "seq": 5,
+ "truth": "sqs-email",
+ "prompt_sha": "55347fcc86373f96"
+}

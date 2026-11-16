@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"dispute-svc\",\"kafka-events\",\"support-api\",\"edge-gateway\",\"twilio-api\"],\"reason\":\"support-api timed\u2011out first and its only upstream dependency is dispute-svc (which relies on kafka-events), making dispute\u2011svc the most probable root cause; downstream services (edge\u2011gateway, twilio\u2011api) showed alerts as the degradation propagated.\"}",
+ "prompt_tokens": 2090,
+ "completion_tokens": 249,
+ "latency_ms": 40576.41549999971,
+ "ranking": [
+  "dispute-svc",
+  "kafka-events",
+  "support-api",
+  "edge-gateway",
+  "twilio-api"
+ ],
+ "reason": "support-api timed\u2011out first and its only upstream dependency is dispute-svc (which relies on kafka-events), making dispute\u2011svc the most probable root cause; downstream services (edge\u2011gateway, twilio\u2011api) showed alerts as the degradation propagated.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4007",
+ "seq": 22,
+ "truth": "support-api",
+ "prompt_sha": "8d85c9642654b9ac"
+}

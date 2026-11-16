@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"users-db\",\"redis-sessions\",\"config-svc\",\"ads-svc\",\"kafka-events\"],\"reason\":\"The initial saturation of users-db propagates latency and timeouts through dependent services (label-svc, user-svc, experiment-svc, catalog-api, web-bff), making it the most probable root cause.\"}",
+ "prompt_tokens": 1035,
+ "completion_tokens": 212,
+ "latency_ms": 927.9051999983494,
+ "ranking": [
+  "users-db",
+  "redis-sessions",
+  "config-svc",
+  "ads-svc",
+  "kafka-events"
+ ],
+ "reason": "The initial saturation of users-db propagates latency and timeouts through dependent services (label-svc, user-svc, experiment-svc, catalog-api, web-bff), making it the most probable root cause.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "layered-3000",
+ "seq": 29,
+ "truth": "users-db",
+ "prompt_sha": "991df5e255be2721"
+}

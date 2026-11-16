@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"order-svc\",\"auth-svc\",\"billing-svc\",\"invoice-svc\",\"geo-api\"],\"reason\":\"Order\u2011svc timeouts appear early and many later alerts (feeds\u2011api, catalog\u2011api, pricing\u2011api, etc.) trace back through services that depend on order\u2011svc; subsequent auth\u2011svc and billing\u2011svc errors likely cascade from that initial failure.\"}",
+ "prompt_tokens": 2985,
+ "completion_tokens": 198,
+ "latency_ms": 1082.7600999982678,
+ "ranking": [
+  "order-svc",
+  "auth-svc",
+  "billing-svc",
+  "invoice-svc",
+  "geo-api"
+ ],
+ "reason": "Order\u2011svc timeouts appear early and many later alerts (feeds\u2011api, catalog\u2011api, pricing\u2011api, etc.) trace back through services that depend on order\u2011svc; subsequent auth\u2011svc and billing\u2011svc errors likely cascade from that initial failure.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4003",
+ "seq": 25,
+ "truth": "dns-internal",
+ "prompt_sha": "771fe081f8b8449b"
+}

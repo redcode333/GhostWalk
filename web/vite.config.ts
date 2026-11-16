@@ -23,5 +23,5 @@ export default defineConfig(async () => ({
   resolve: { alias: { "@": path.resolve(__dirname, "src") } },
   define: { __GH_STARS__: JSON.stringify(await stars()) },
   server: { port: 5173, proxy: { "/api": api, "/v1": api, "/results.json": api } },
-  test: { environment: "jsdom", globals: true },
+  test: { environment: "jsdom", globals: true, exclude: ["node_modules/**", "e2e/**"] },
 }))

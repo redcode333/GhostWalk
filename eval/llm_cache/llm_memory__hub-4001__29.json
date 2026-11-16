@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"dns-internal\",\"config-svc\",\"rate-limiter\",\"kafka-events\",\"redis-sessions\"],\"reason\":\"The initial latency spike in sqs-email suggests a downstream dependency slowdown that quickly propagated to dns-internal errors, then to services depending on config and rate\u2011limiting, finally causing ledger\u2011svc timeouts; dns\u2011internal is the most direct common point.\"}",
+ "prompt_tokens": 2035,
+ "completion_tokens": 499,
+ "latency_ms": 1989.0666999999667,
+ "ranking": [
+  "dns-internal",
+  "config-svc",
+  "rate-limiter",
+  "kafka-events",
+  "redis-sessions"
+ ],
+ "reason": "The initial latency spike in sqs-email suggests a downstream dependency slowdown that quickly propagated to dns-internal errors, then to services depending on config and rate\u2011limiting, finally causing ledger\u2011svc timeouts; dns\u2011internal is the most direct common point.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4001",
+ "seq": 29,
+ "truth": "subscription-svc",
+ "prompt_sha": "51046fbce9904a0d"
+}

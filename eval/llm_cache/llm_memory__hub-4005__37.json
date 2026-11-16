@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"payments-db\",\"subscription-svc\",\"webhook-svc\",\"recommend-svc\",\"auth-api\"],\"reason\":\"Degradation of payments-db propagates through subscription-svc \u2192 webhook\u2011svc \u2192 recommend\u2011svc \u2192 auth\u2011api, triggering errors in payments\u2011api, web\u2011bff and auth\u2011api as seen in the alerts.\"}",
+ "prompt_tokens": 2569,
+ "completion_tokens": 141,
+ "latency_ms": 1298.3184999975492,
+ "ranking": [
+  "payments-db",
+  "subscription-svc",
+  "webhook-svc",
+  "recommend-svc",
+  "auth-api"
+ ],
+ "reason": "Degradation of payments-db propagates through subscription-svc \u2192 webhook\u2011svc \u2192 recommend\u2011svc \u2192 auth\u2011api, triggering errors in payments\u2011api, web\u2011bff and auth\u2011api as seen in the alerts.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4005",
+ "seq": 37,
+ "truth": "redis-cart",
+ "prompt_sha": "8eb0bf919ae6e30f"
+}

@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"report-svc\",\"chat-svc\",\"dns-internal\",\"rating-svc\",\"feature-flags\"],\"reason\":\"The first alert shows report-svc saturation, which directly impacts media\u2011api latency; downstream dependencies such as chat\u2011svc, dns\u2011internal, rating\u2011svc and feature\u2011flags could also cause degradation but are less likely given the alert order.\"}",
+ "prompt_tokens": 1496,
+ "completion_tokens": 164,
+ "latency_ms": 1081.0341999967932,
+ "ranking": [
+  "report-svc",
+  "chat-svc",
+  "dns-internal",
+  "rating-svc",
+  "feature-flags"
+ ],
+ "reason": "The first alert shows report-svc saturation, which directly impacts media\u2011api latency; downstream dependencies such as chat\u2011svc, dns\u2011internal, rating\u2011svc and feature\u2011flags could also cause degradation but are less likely given the alert order.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4009",
+ "seq": 58,
+ "truth": "report-svc",
+ "prompt_sha": "56c732eb312ac8f6"
+}

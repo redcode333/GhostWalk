@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"kafka-events\",\"search-svc\",\"notify-api\",\"catalog-api\",\"shipping-svc\"],\"reason\":\"The first alert is a latency spike in kafka-events, and subsequent alerts cascade through services that depend on it (search\u2011svc, notify\u2011api, catalog\u2011api, shipping\u2011svc), matching known postmortems where kafka\u2011events degradation caused similar failures.\"}",
+ "prompt_tokens": 1198,
+ "completion_tokens": 122,
+ "latency_ms": 4429.774700001872,
+ "ranking": [
+  "kafka-events",
+  "search-svc",
+  "notify-api",
+  "catalog-api",
+  "shipping-svc"
+ ],
+ "reason": "The first alert is a latency spike in kafka-events, and subsequent alerts cascade through services that depend on it (search\u2011svc, notify\u2011api, catalog\u2011api, shipping\u2011svc), matching known postmortems where kafka\u2011events degradation caused similar failures.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4006",
+ "seq": 39,
+ "truth": "kafka-events",
+ "prompt_sha": "1636a67807500c3b"
+}

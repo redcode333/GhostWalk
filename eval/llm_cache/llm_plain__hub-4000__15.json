@@ -1,0 +1,23 @@
+{
+ "provider": "gemini",
+ "model": "gemini-3.6-flash",
+ "text": "{\n  \"ranking\": [\n    \"redis-cart\",\n    \"order-svc\",\n    \"inventory-svc\",\n    \"shipping-svc\",\n    \"thumbnail-svc\"\n  ],\n  \"reason\": \"The initial alert fired on redis-cart due to timeouts, directly triggering downstream saturation and error cascades in dependent services like order-svc, inventory-svc, and shipping-svc, which eventually affected higher-level APIs.\"\n}",
+ "prompt_tokens": 2877,
+ "completion_tokens": 97,
+ "latency_ms": 11711.92599999631,
+ "ranking": [
+  "redis-cart",
+  "order-svc",
+  "inventory-svc",
+  "shipping-svc",
+  "thumbnail-svc"
+ ],
+ "reason": "The initial alert fired on redis-cart due to timeouts, directly triggering downstream saturation and error cascades in dependent services like order-svc, inventory-svc, and shipping-svc, which eventually affected higher-level APIs.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4000",
+ "seq": 15,
+ "truth": "redis-cart",
+ "prompt_sha": "7cbbce73854383ba"
+}

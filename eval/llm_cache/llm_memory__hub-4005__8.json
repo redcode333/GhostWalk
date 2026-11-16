@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"payments-db\",\"license-svc\",\"payout-svc\",\"recommend-svc\",\"auth-api\"],\"reason\":\"Payments-db errors appear first and feed downstream services (license-svc, payout-svc, recommend-svc, auth-api) that depend on it, matching the alert timeline.\"}",
+ "prompt_tokens": 2526,
+ "completion_tokens": 128,
+ "latency_ms": 762.7850999997463,
+ "ranking": [
+  "payments-db",
+  "license-svc",
+  "payout-svc",
+  "recommend-svc",
+  "auth-api"
+ ],
+ "reason": "Payments-db errors appear first and feed downstream services (license-svc, payout-svc, recommend-svc, auth-api) that depend on it, matching the alert timeline.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4005",
+ "seq": 8,
+ "truth": "payments-db",
+ "prompt_sha": "767cba917f5f05ee"
+}

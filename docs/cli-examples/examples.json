@@ -1,0 +1,74 @@
+[
+ {
+  "title": "the commands",
+  "cmd": "gw --help",
+  "output": "\n Usage: -c [OPTIONS] COMMAND [ARGS]...\n\n GhostWalk: why is it broken, and what should the map have said?\n\n\u250c\u2500 Options \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n\u2502 --help  -h      <bool>  Show this message and exit.                                             \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518\n\u250c\u2500 Commands \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n\u2502 demo      Create the simulated acme-demo workspace and write the next outage to alerts.json.    \u2502\n\u2502 why       Rank the likely root causes of an alert storm and show the path.                      \u2502\n\u2502 doctor    Check the stack: the API, the store it uses, HydraDB, the learning queue and the      \u2502\n\u2502           stored results.                                                                       \u2502\n\u2502 why-edge  Why does the map say SRC depends on DST: the lesson, the postmortems that taught it,  \u2502\n\u2502           the incidents that confirmed it (HydraDB store).                                      \u2502\n\u2502 learn     Turn a postmortem into graph changes, review them, apply.                             \u2502\n\u2502 eval      The held-out numbers: AC@1 with 95% bootstrap intervals, the gain over the best       \u2502\n\u2502           baseline, the gap closed.                                                             \u2502\n\u2502 export    The graph (official + learned) and incident roots as JSON: the input `gw diff` needs  \u2502\n\u2502           in CI. `gw export > graph.json`.                                                      \u2502\n\u2502 diff      Pre-deploy blast radius: dependencies this change adds or removes, and what hangs off \u2502\n\u2502           them. Read-only, works offline.                                                       \u2502\n\u2502 mcp       Run the MCP server on stdio (tools: why, path, blast_radius, why_edge, lesson_impact, \u2502\n\u2502           propose_edge). Read-only; GW_URL + GW_TOKEN for hosted mode.                          \u2502\n\u2502 map       The dependency map.                                                                   \u2502\n\u2502 change    What changed: deploys and config changes the verdict can use.                         \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518",
+  "exit": 0
+ },
+ {
+  "title": "a demo workspace and the next outage",
+  "cmd": "gw demo",
+  "output": "  acme-demo \u00b7 80 services \u00b7 30 past incidents\n  wrote alerts.json (46 alerts). Now: gw why --alerts alerts.json",
+  "exit": 0
+ },
+ {
+  "title": "who broke it",
+  "cmd": "gw why --alerts alerts.json",
+  "output": "$ gw why --alerts alerts.json\n\n  46 alerts \u00b7 46 services \u00b7 walked 161 edges in 2 ms\n\n  rank  service            confidence\n  1     redis-sessions    \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588  1.00\n  2     session-svc       \u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591  0.00\n  3     auth-svc          \u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591\u2591  0.00\n\n  path  edge-gateway \u2192 inventory-api \u2192 redis-sessions\n\n  why   explains 32 of 46 alerts \u00b7 fired in path order\n  INC-1030 saved. Teach it: gw learn INC-1030 --root redis-sessions",
+  "exit": 0
+ },
+ {
+  "title": "teach it what the postmortem found",
+  "cmd": "gw learn INC-1030 --root session-svc --path session-svc -> redis-sessions --yes",
+  "output": "$ gw learn INC-1030 --root session-svc\n\n  reading postmortem \u00b7 3 fields\n\n  + redis-sessions \u21e2 session-svc      new \u00b7 tentative 0.35\n  \u2212 edge-gateway \u2192 inventory-api      reweight \u00b7 0.79 \u2192 0.67\n  \u2212 inventory-api \u2192 redis-sessions    reweight \u00b7 0.85 \u2192 0.72\n\n  \u2713 graph updated \u00b7 revision 31",
+  "exit": 0
+ },
+ {
+  "title": "import a dependency map from repos",
+  "cmd": "gw map import D:\\Temp\\tmp9kkgb7ot\\acme",
+  "output": "$ gw map import /tmp/gw\\acme\n\n  scanning 3 repos \u2026\n\n  docker-compose.yml          9 edges\n  k8s/*.yaml                  2 edges\n  Helm values                 2 edges\n  env vars  *_URL             6 edges\n\n  \u2713 15 services \u00b7 17 dependencies\n\n    \u25cf edge 1   \u25cf service 9   \u25cf data 4   \u25cf infra 1\n  2 low-confidence edges left out (use --all to include)",
+  "exit": 0
+ },
+ {
+  "title": "record a deploy the verdict can use",
+  "cmd": "gw change add redis-sessions --kind deploy --ref #482",
+  "output": "$ gw change add redis-sessions --ref #482\n\n  \u2713 redis-sessions \u00b7 deploy #482",
+  "exit": 0
+ },
+ {
+  "title": "the held-out numbers",
+  "cmd": "gw eval --split test",
+  "output": "$ gw eval --split test\n\n  30 held-out companies \u00b7 95% bootstrap CI\n\n  method           AC@1   95% CI\n  perfect map      0.829  0.807\u20130.852  \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\n  ghostwalk        0.764  0.745\u20130.786  \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\n  pagerank (tuned) 0.699  0.667\u20130.730  \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\n  placebo          0.682  0.647\u20130.717  \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\n  learning off     0.676  0.636\u20130.715  \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\n  deepest alert    0.658  0.628\u20130.687  \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\n  tf-idf retrieval 0.419  0.374\u20130.468  \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\n  random           0.212  0.186\u20130.240  \u2588\u2588\u2588\u2588\n\n  \u2713 gain vs best baseline +6.5 pts (pagerank)   gap closed 58%\n  \u2713 results.json read \u00b7 c116282 \u00b7 2026-11-15",
+  "exit": 0
+ },
+ {
+  "title": "export the graph (the input of `gw diff` in CI)",
+  "cmd": "gw export --out D:\\Temp\\tmp9kkgb7ot\\graph.json",
+  "output": "",
+  "exit": 0
+ },
+ {
+  "title": "pre-deploy blast radius of a change",
+  "cmd": "gw diff --base HEAD~1 --head HEAD --repo D:\\Temp\\tmp9kkgb7ot\\repo",
+  "output": "$ gw diff --base HEAD~1 --head HEAD\n\n  2 added \u00b7 1 removed dependencies\n\n  + fraud-check \u2192 config-svc\n      blast radius 25 services  admin-api, billing-svc, catalog-svc, consent-svc, fraud-svc, \u2026\n      config-svc caused INC-1002, INC-1009\n  + search \u2192 redis-main\n      redis-main is not in the graph yet\n  \u2212 cart \u2192 redis-main  removed (docker-compose.yml)",
+  "exit": 0
+ },
+ {
+  "title": "the MCP server (stdio; started by Claude Code or Cursor)",
+  "cmd": "gw mcp --help",
+  "output": "\n Usage: -c mcp [OPTIONS]\n\n Run the MCP server on stdio (tools: why, path, blast_radius, why_edge, lesson_impact,\n propose_edge). Read-only; GW_URL + GW_TOKEN for hosted mode.\n\n\u250c\u2500 Options \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2510\n\u2502 --help  -h      <bool>  Show this message and exit.                                             \u2502\n\u2514\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2518",
+  "exit": 0
+ },
+ {
+  "title": "check a running stack",
+  "cmd": "gw doctor --url https://api.13-51-194-36.sslip.io",
+  "output": "$ gw doctor\n\n  \u2713 api                   https://api.13-51-194-36.sslip.io {'ok': True, 'services': 80, 'store':\n'hydradb', 'revision': 31, 'saving': 0, 'public_demo': True, 'writer_error': None}\n  \u2713 workspace             80 services, 8 learned edges, revision 31\n  \u2713 store                 HydraDB graph (memory in the graph) (hydradb)\n  \u2713 learning queue        saving 0\n  \u2713 hydradb               ready (http://127.0.0.1:9090/readyz)\n  \u2713 results.json          30 held-out companies\n\n  \u2713 all checks passed",
+  "exit": 0
+ },
+ {
+  "title": "why does the map say this?",
+  "cmd": "GW_URL=https://<your-api> gw why-edge experiment-svc ledger-db",
+  "output": "$ gw why-edge experiment-svc ledger-db\n\n  experiment-svc -> ledger-db   w 0.79  learned  2 confirmations\n\n  lesson L153  confirmed  w 0.79  created at revision 4\n    taught by   INC-1004  root ledger-db  path experiment-svc -> ledger-db\n    confirmed   \u2713 INC-1018\n\n  gw why-edge answers by traversal: Lesson -> Postmortem -> Incident, in HydraDB",
+  "exit": 0
+ }
+]

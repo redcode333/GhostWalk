@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"invoice-svc\",\"catalog-db\",\"feature-flags\",\"service-mesh\",\"auth-svc\"],\"reason\":\"Invoice\u2011svc latency directly impacts seat\u2011svc which calls it; its own latency is likely driven by its datastore (catalog\u2011db) or shared config (feature\u2011flags) and the underlying mesh, with auth\u2011svc as a secondary dependency.\"}",
+ "prompt_tokens": 2183,
+ "completion_tokens": 203,
+ "latency_ms": 1576.7334000047413,
+ "ranking": [
+  "invoice-svc",
+  "catalog-db",
+  "feature-flags",
+  "service-mesh",
+  "auth-svc"
+ ],
+ "reason": "Invoice\u2011svc latency directly impacts seat\u2011svc which calls it; its own latency is likely driven by its datastore (catalog\u2011db) or shared config (feature\u2011flags) and the underlying mesh, with auth\u2011svc as a secondary dependency.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4005",
+ "seq": 45,
+ "truth": "invoice-svc",
+ "prompt_sha": "3c7ee51550003515"
+}

@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"label-svc\",\"loyalty-svc\",\"auth-svc\",\"shipping-api\",\"edge-gateway\"],\"reason\":\"Label\u2011svc degradation matches the later saturation alert and explains the edge\u2011gateway error spike; loyalty\u2011svc and auth\u2011svc are common downstreams for shipping\u2011api timeouts, making them the next likely culprits.\"}",
+ "prompt_tokens": 1012,
+ "completion_tokens": 347,
+ "latency_ms": 1912.7921000035712,
+ "ranking": [
+  "label-svc",
+  "loyalty-svc",
+  "auth-svc",
+  "shipping-api",
+  "edge-gateway"
+ ],
+ "reason": "Label\u2011svc degradation matches the later saturation alert and explains the edge\u2011gateway error spike; loyalty\u2011svc and auth\u2011svc are common downstreams for shipping\u2011api timeouts, making them the next likely culprits.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "layered-3006",
+ "seq": 37,
+ "truth": "loyalty-svc",
+ "prompt_sha": "04a9ede65b56131f"
+}

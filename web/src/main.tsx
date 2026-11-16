@@ -20,6 +20,7 @@ createRoot(document.getElementById("root")!).render(
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/demo" element={<DemoEntry />} />
+          <Route path="/proof" element={<DemoEntry to="/app/proof" />} />
           <Route path="/signin/*" element={<SignInPage />} />
           <Route path="/signup/*" element={<SignUpPage />} />
           <Route path="/app" element={<RequireAuth><AppShell /></RequireAuth>}>

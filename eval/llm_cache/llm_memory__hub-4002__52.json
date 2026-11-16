@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"orders-db\",\"admin-api\",\"redis-cart\",\"service-mesh\",\"auth-svc\"],\"reason\":\"Orders-db timeouts appear first and directly affect admin-api (which depends on orders-db), leading to subsequent timeouts in redis-cart and errors in service-mesh; thus orders-db is the most likely root cause.\"}",
+ "prompt_tokens": 2047,
+ "completion_tokens": 300,
+ "latency_ms": 1967.7704999994603,
+ "ranking": [
+  "orders-db",
+  "admin-api",
+  "redis-cart",
+  "service-mesh",
+  "auth-svc"
+ ],
+ "reason": "Orders-db timeouts appear first and directly affect admin-api (which depends on orders-db), leading to subsequent timeouts in redis-cart and errors in service-mesh; thus orders-db is the most likely root cause.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4002",
+ "seq": 52,
+ "truth": "orders-db",
+ "prompt_sha": "e53d45af1926ab9a"
+}

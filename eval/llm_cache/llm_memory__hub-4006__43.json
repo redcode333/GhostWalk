@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"importer-svc\",\"search-svc\",\"notify-api\",\"edge-gateway\",\"label-svc\"],\"reason\":\"The first alert is importer-svc latency, and many later alerts (search\u2011svc, notify\u2011api, edge\u2011gateway) depend on it directly or indirectly; label\u2011svc appears later and is less likely the initial trigger.\"}",
+ "prompt_tokens": 1324,
+ "completion_tokens": 223,
+ "latency_ms": 1224.277200002689,
+ "ranking": [
+  "importer-svc",
+  "search-svc",
+  "notify-api",
+  "edge-gateway",
+  "label-svc"
+ ],
+ "reason": "The first alert is importer-svc latency, and many later alerts (search\u2011svc, notify\u2011api, edge\u2011gateway) depend on it directly or indirectly; label\u2011svc appears later and is less likely the initial trigger.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4006",
+ "seq": 43,
+ "truth": "config-svc",
+ "prompt_sha": "ed04b39ea399b01b"
+}

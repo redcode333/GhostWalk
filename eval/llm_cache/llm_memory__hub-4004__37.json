@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"moderation-svc-2\",\"license-svc\",\"kyc-svc-2\",\"audit-svc\",\"config-svc\"],\"reason\":\"The earliest alerts are on moderation-svc-2, which other critical services (inventory-svc, support-api, webhook-svc) depend on, and its degradation cascades through license\u2011svc, kyc\u2011svc\u20112 and audit\u2011svc to produce the widespread errors.\"}",
+ "prompt_tokens": 3219,
+ "completion_tokens": 602,
+ "latency_ms": 3308.8716999991448,
+ "ranking": [
+  "moderation-svc-2",
+  "license-svc",
+  "kyc-svc-2",
+  "audit-svc",
+  "config-svc"
+ ],
+ "reason": "The earliest alerts are on moderation-svc-2, which other critical services (inventory-svc, support-api, webhook-svc) depend on, and its degradation cascades through license\u2011svc, kyc\u2011svc\u20112 and audit\u2011svc to produce the widespread errors.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4004",
+ "seq": 37,
+ "truth": "dns-internal",
+ "prompt_sha": "a8e81389d12b58d2"
+}

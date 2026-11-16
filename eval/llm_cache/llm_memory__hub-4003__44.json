@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"auth-svc\",\"quote-svc\",\"warehouse-svc\",\"feed-svc\",\"media-svc\"],\"reason\":\"The first alert is on auth-svc and many downstream services (quote, warehouse, feed, media, etc.) depend on it either directly or via intermediate tiers, matching the observed cascade pattern.\"}",
+ "prompt_tokens": 2742,
+ "completion_tokens": 143,
+ "latency_ms": 882.5281000026735,
+ "ranking": [
+  "auth-svc",
+  "quote-svc",
+  "warehouse-svc",
+  "feed-svc",
+  "media-svc"
+ ],
+ "reason": "The first alert is on auth-svc and many downstream services (quote, warehouse, feed, media, etc.) depend on it either directly or via intermediate tiers, matching the observed cascade pattern.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4003",
+ "seq": 44,
+ "truth": "auth-svc",
+ "prompt_sha": "154d0cb96c78a6e5"
+}

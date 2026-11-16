@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"service-mesh\",\"feed-svc\",\"feature-flags\",\"kafka-events\",\"subscription-svc-2\"],\"reason\":\"The first alert is on service-mesh itself, and feed-svc directly depends on service-mesh; a failure in the mesh would cause feed\u2011svc saturation, making the mesh the most probable root cause.\"}",
+ "prompt_tokens": 2946,
+ "completion_tokens": 214,
+ "latency_ms": 1690.6936000013957,
+ "ranking": [
+  "service-mesh",
+  "feed-svc",
+  "feature-flags",
+  "kafka-events",
+  "subscription-svc-2"
+ ],
+ "reason": "The first alert is on service-mesh itself, and feed-svc directly depends on service-mesh; a failure in the mesh would cause feed\u2011svc saturation, making the mesh the most probable root cause.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4008",
+ "seq": 4,
+ "truth": "service-mesh",
+ "prompt_sha": "b7a966b8e64093b4"
+}

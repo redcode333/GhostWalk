@@ -1,0 +1,23 @@
+{
+ "provider": "gemini",
+ "model": "gemini-3.6-flash",
+ "text": "{\n  \"ranking\": [\n    \"redis-cart\",\n    \"order-svc\",\n    \"thumbnail-svc\",\n    \"inventory-svc\",\n    \"shipping-svc\"\n  ],\n  \"reason\": \"The initial alert triggered on redis-cart due to timeouts at +0s, causing cascading error rates and saturation upward to order-svc, thumbnail-svc, inventory-svc, and ultimately top-level entry points like booking-api and edge-gateway.\"\n}",
+ "prompt_tokens": 3117,
+ "completion_tokens": 106,
+ "latency_ms": 2352.164299998549,
+ "ranking": [
+  "redis-cart",
+  "order-svc",
+  "thumbnail-svc",
+  "inventory-svc",
+  "shipping-svc"
+ ],
+ "reason": "The initial alert triggered on redis-cart due to timeouts at +0s, causing cascading error rates and saturation upward to order-svc, thumbnail-svc, inventory-svc, and ultimately top-level entry points like booking-api and edge-gateway.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "hub-4000",
+ "seq": 15,
+ "truth": "redis-cart",
+ "prompt_sha": "dfe45c2785bccf17"
+}

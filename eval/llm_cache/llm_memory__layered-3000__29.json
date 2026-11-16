@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"users-db\",\"label-svc\",\"user-svc\",\"experiment-svc\",\"catalog-api\"],\"reason\":\"The initial saturation alert on users-db propagates to dependent services (label-svc, user-svc, experiment-svc, catalog-api) causing their subsequent latency and timeout alerts, making users-db the most probable root cause.\"}",
+ "prompt_tokens": 1255,
+ "completion_tokens": 233,
+ "latency_ms": 940.9702999982983,
+ "ranking": [
+  "users-db",
+  "label-svc",
+  "user-svc",
+  "experiment-svc",
+  "catalog-api"
+ ],
+ "reason": "The initial saturation alert on users-db propagates to dependent services (label-svc, user-svc, experiment-svc, catalog-api) causing their subsequent latency and timeout alerts, making users-db the most probable root cause.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "layered-3000",
+ "seq": 29,
+ "truth": "users-db",
+ "prompt_sha": "c8dc6c034692ac61"
+}

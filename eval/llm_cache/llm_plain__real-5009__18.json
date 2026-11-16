@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"dns-internal\",\"shipping\",\"orders\",\"catalogue\",\"carts\"],\"reason\":\"dns-internal failure explains the initial shipping errors and subsequent timeouts in orders and itself, making it the most probable root cause.\"}",
+ "prompt_tokens": 453,
+ "completion_tokens": 150,
+ "latency_ms": 1417.1397000027355,
+ "ranking": [
+  "dns-internal",
+  "shipping",
+  "orders",
+  "catalogue",
+  "carts"
+ ],
+ "reason": "dns-internal failure explains the initial shipping errors and subsequent timeouts in orders and itself, making it the most probable root cause.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "real-5009",
+ "seq": 18,
+ "truth": "shipping",
+ "prompt_sha": "f8fd8cdd3fe1d310"
+}

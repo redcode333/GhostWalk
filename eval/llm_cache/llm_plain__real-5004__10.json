@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"emailservice\",\"checkoutservice\",\"config-svc\",\"paymentservice\",\"shippingservice\"],\"reason\":\"emailservice errors directly affect checkoutservice which depends on it, leading to checkout saturation; other dependent services are less likely.\"}",
+ "prompt_tokens": 455,
+ "completion_tokens": 127,
+ "latency_ms": 1051.1617000011029,
+ "ranking": [
+  "emailservice",
+  "checkoutservice",
+  "config-svc",
+  "paymentservice",
+  "shippingservice"
+ ],
+ "reason": "emailservice errors directly affect checkoutservice which depends on it, leading to checkout saturation; other dependent services are less likely.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "real-5004",
+ "seq": 10,
+ "truth": "emailservice",
+ "prompt_sha": "560f4ced7a0be135"
+}

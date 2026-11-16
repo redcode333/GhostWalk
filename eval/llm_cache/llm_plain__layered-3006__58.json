@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"dns-internal\",\"notify-api\",\"label-svc\",\"user-svc\",\"seat-svc\"],\"reason\":\"dns-internal saturation appears first and propagates errors to dependent services, causing the subsequent error_rate alerts.\"}",
+ "prompt_tokens": 838,
+ "completion_tokens": 123,
+ "latency_ms": 1036.2397999997484,
+ "ranking": [
+  "dns-internal",
+  "notify-api",
+  "label-svc",
+  "user-svc",
+  "seat-svc"
+ ],
+ "reason": "dns-internal saturation appears first and propagates errors to dependent services, causing the subsequent error_rate alerts.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "layered-3006",
+ "seq": 58,
+ "truth": "dns-internal",
+ "prompt_sha": "633df327daadbe86"
+}

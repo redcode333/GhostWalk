@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"kafka-events\",\"scheduler-svc\",\"subscription-svc\",\"catalog-api\",\"edge-gateway\"],\"reason\":\"The first alert is high latency on kafka-events, a core queue used by many tier\u20112 services; its degradation can saturate scheduler\u2011svc, cause errors in subscription\u2011svc, overload catalog\u2011api and ultimately increase latency at edge\u2011gateway.\"}",
+ "prompt_tokens": 964,
+ "completion_tokens": 120,
+ "latency_ms": 1604.2842000024393,
+ "ranking": [
+  "kafka-events",
+  "scheduler-svc",
+  "subscription-svc",
+  "catalog-api",
+  "edge-gateway"
+ ],
+ "reason": "The first alert is high latency on kafka-events, a core queue used by many tier\u20112 services; its degradation can saturate scheduler\u2011svc, cause errors in subscription\u2011svc, overload catalog\u2011api and ultimately increase latency at edge\u2011gateway.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4006",
+ "seq": 19,
+ "truth": "kafka-events",
+ "prompt_sha": "6cf27f3011aa63fc"
+}

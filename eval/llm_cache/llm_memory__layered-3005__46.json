@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"recommend-svc\",\"config-svc\",\"payments-db\",\"catalog-api\",\"web-bff\"],\"reason\":\"Recommend\u2011svc timed\u2011out first and its degradation caused catalog\u2011api timeouts and downstream web\u2011bff saturation; upstream dependencies (config\u2011svc, payments\u2011db) are the next most plausible contributors.\"}",
+ "prompt_tokens": 2007,
+ "completion_tokens": 231,
+ "latency_ms": 1476.0688999958802,
+ "ranking": [
+  "recommend-svc",
+  "config-svc",
+  "payments-db",
+  "catalog-api",
+  "web-bff"
+ ],
+ "reason": "Recommend\u2011svc timed\u2011out first and its degradation caused catalog\u2011api timeouts and downstream web\u2011bff saturation; upstream dependencies (config\u2011svc, payments\u2011db) are the next most plausible contributors.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "layered-3005",
+ "seq": 46,
+ "truth": "recommend-svc",
+ "prompt_sha": "e375cbdfdff92377"
+}

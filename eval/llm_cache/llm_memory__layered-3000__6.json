@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"feature-flags\",\"config-svc\",\"ads-svc\",\"tax-svc\",\"coupon-svc\"],\"reason\":\"Feature-flags saturation triggered moderation-svc alerts and impacts ranking-svc, pricing-api (via coupon-svc) and downstream services, making it the most likely root cause, with config-svc, ads-svc, tax-svc, and coupon-svc as secondary candidates.\"}",
+ "prompt_tokens": 1287,
+ "completion_tokens": 377,
+ "latency_ms": 1212.3328000016045,
+ "ranking": [
+  "feature-flags",
+  "config-svc",
+  "ads-svc",
+  "tax-svc",
+  "coupon-svc"
+ ],
+ "reason": "Feature-flags saturation triggered moderation-svc alerts and impacts ranking-svc, pricing-api (via coupon-svc) and downstream services, making it the most likely root cause, with config-svc, ads-svc, tax-svc, and coupon-svc as secondary candidates.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "layered-3000",
+ "seq": 6,
+ "truth": "feature-flags",
+ "prompt_sha": "4294698f24657ed1"
+}

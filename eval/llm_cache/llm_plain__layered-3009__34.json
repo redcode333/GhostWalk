@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"moderation-svc\",\"dns-internal\",\"auth-svc\",\"payment-svc\",\"config-svc\"],\"reason\":\"Cart\u2011svc saturation points to a bottleneck in its dependencies (moderation\u2011svc, dns\u2011internal); these same components are widely used by web\u2011bff\u2019s downstream services, so a failure there would also raise web\u2011bff error rates.\"}",
+ "prompt_tokens": 1380,
+ "completion_tokens": 223,
+ "latency_ms": 1258.3289000031073,
+ "ranking": [
+  "moderation-svc",
+  "dns-internal",
+  "auth-svc",
+  "payment-svc",
+  "config-svc"
+ ],
+ "reason": "Cart\u2011svc saturation points to a bottleneck in its dependencies (moderation\u2011svc, dns\u2011internal); these same components are widely used by web\u2011bff\u2019s downstream services, so a failure there would also raise web\u2011bff error rates.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "layered-3009",
+ "seq": 34,
+ "truth": "cart-svc",
+ "prompt_sha": "4e50e4ed1e36d7d8"
+}

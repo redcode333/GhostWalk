@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"bidding-svc\",\"fx-svc\",\"ads-svc\",\"service-mesh\",\"auth-svc\"],\"reason\":\"booking\u2011api times out, likely due to a slow downstream dependency; its primary deps are bidding\u2011svc, fx\u2011svc, ads\u2011svc and the service\u2011mesh, so those are the most probable root causes.\"}",
+ "prompt_tokens": 1893,
+ "completion_tokens": 249,
+ "latency_ms": 1326.3525000002119,
+ "ranking": [
+  "bidding-svc",
+  "fx-svc",
+  "ads-svc",
+  "service-mesh",
+  "auth-svc"
+ ],
+ "reason": "booking\u2011api times out, likely due to a slow downstream dependency; its primary deps are bidding\u2011svc, fx\u2011svc, ads\u2011svc and the service\u2011mesh, so those are the most probable root causes.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4002",
+ "seq": 36,
+ "truth": "booking-api",
+ "prompt_sha": "876d31acefaf8b54"
+}

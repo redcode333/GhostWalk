@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"dispute-svc\",\"kafka-events\",\"auth-svc\",\"config-svc\",\"service-mesh\"],\"reason\":\"Support\u2011api timeouts point to its direct dependency dispute\u2011svc, and the latency ripple to edge\u2011gateway and external twilio\u2011api suggests a shared downstream bottleneck in core services like kafka\u2011events, auth\u2011svc, config\u2011svc or the service\u2011mesh.\"}",
+ "prompt_tokens": 1917,
+ "completion_tokens": 202,
+ "latency_ms": 1420.3722000020207,
+ "ranking": [
+  "dispute-svc",
+  "kafka-events",
+  "auth-svc",
+  "config-svc",
+  "service-mesh"
+ ],
+ "reason": "Support\u2011api timeouts point to its direct dependency dispute\u2011svc, and the latency ripple to edge\u2011gateway and external twilio\u2011api suggests a shared downstream bottleneck in core services like kafka\u2011events, auth\u2011svc, config\u2011svc or the service\u2011mesh.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4007",
+ "seq": 22,
+ "truth": "support-api",
+ "prompt_sha": "1ade4e674feb94dd"
+}

@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"redis-ratelimit\",\"orders-db\",\"trial-svc\",\"dispute-svc\",\"catalog-db\"],\"reason\":\"Redis\u2011ratelimit backs trial\u2011svc, refund\u2011svc and thumbnail\u2011svc, while orders\u2011db backs returns\u2011svc and payments\u2011api; saturation of these stores propagates to the observed service alerts.\"}",
+ "prompt_tokens": 2076,
+ "completion_tokens": 669,
+ "latency_ms": 2351.7840999993496,
+ "ranking": [
+  "redis-ratelimit",
+  "orders-db",
+  "trial-svc",
+  "dispute-svc",
+  "catalog-db"
+ ],
+ "reason": "Redis\u2011ratelimit backs trial\u2011svc, refund\u2011svc and thumbnail\u2011svc, while orders\u2011db backs returns\u2011svc and payments\u2011api; saturation of these stores propagates to the observed service alerts.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "layered-3004",
+ "seq": 13,
+ "truth": "trial-svc",
+ "prompt_sha": "9d3007d5eb9f18ac"
+}

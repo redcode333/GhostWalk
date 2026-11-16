@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"recommend-svc\",\"auth-svc\",\"webhook-svc\",\"payments-api\",\"trial-svc\"],\"reason\":\"Recommend\u2011svc saturation likely throttles dependent services (auth\u2011api, trial\u2011svc, web\u2011bff) causing error spikes, while auth\u2011svc issues can cascade to auth\u2011api and related components; webhook\u2011svc latency appears early and may amplify downstream errors.\"}",
+ "prompt_tokens": 2237,
+ "completion_tokens": 371,
+ "latency_ms": 1282.4535999970976,
+ "ranking": [
+  "recommend-svc",
+  "auth-svc",
+  "webhook-svc",
+  "payments-api",
+  "trial-svc"
+ ],
+ "reason": "Recommend\u2011svc saturation likely throttles dependent services (auth\u2011api, trial\u2011svc, web\u2011bff) causing error spikes, while auth\u2011svc issues can cascade to auth\u2011api and related components; webhook\u2011svc latency appears early and may amplify downstream errors.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4005",
+ "seq": 37,
+ "truth": "redis-cart",
+ "prompt_sha": "cc31273ba3531ad5"
+}

@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"catalog-db\",\"config-svc\",\"dispute-svc\",\"feed-svc\",\"auth-svc\"],\"reason\":\"License\u2011svc saturation points to a downstream datastore issue; catalog\u2011db is a common dependency for many upstream services (license\u2011svc, pricing\u2011svc, importer\u2011svc, etc.). Config\u2011svc and dispute\u2011svc have also caused similar cascades in past postmortems, and feed\u2011svc and auth\u2011svc are other shared upstreams that could propagate saturation and timeouts.\"}",
+ "prompt_tokens": 2291,
+ "completion_tokens": 404,
+ "latency_ms": 2336.192499999015,
+ "ranking": [
+  "catalog-db",
+  "config-svc",
+  "dispute-svc",
+  "feed-svc",
+  "auth-svc"
+ ],
+ "reason": "License\u2011svc saturation points to a downstream datastore issue; catalog\u2011db is a common dependency for many upstream services (license\u2011svc, pricing\u2011svc, importer\u2011svc, etc.). Config\u2011svc and dispute\u2011svc have also caused similar cascades in past postmortems, and feed\u2011svc and auth\u2011svc are other shared upstreams that could propagate saturation and timeouts.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "layered-3004",
+ "seq": 13,
+ "truth": "trial-svc",
+ "prompt_sha": "7927d19f4fa655a9"
+}

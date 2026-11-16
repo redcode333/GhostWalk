@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"dns-internal\",\"report-svc\",\"rating-svc\",\"chat-svc\",\"auth-svc\"],\"reason\":\"report-svc saturation likely stems from its dns-internal dependency, and media\u2011api latency follows because it also depends on dns-internal (and on report\u2011svc and rating\u2011svc).\"}",
+ "prompt_tokens": 1254,
+ "completion_tokens": 203,
+ "latency_ms": 1048.3233999984805,
+ "ranking": [
+  "dns-internal",
+  "report-svc",
+  "rating-svc",
+  "chat-svc",
+  "auth-svc"
+ ],
+ "reason": "report-svc saturation likely stems from its dns-internal dependency, and media\u2011api latency follows because it also depends on dns-internal (and on report\u2011svc and rating\u2011svc).",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4009",
+ "seq": 58,
+ "truth": "report-svc",
+ "prompt_sha": "bfd810cf03dd85fa"
+}

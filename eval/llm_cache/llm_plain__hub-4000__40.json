@@ -1,0 +1,23 @@
+{
+ "provider": "gemini",
+ "model": "gemini-3.6-flash",
+ "text": "{\n  \"ranking\": [\n    \"webhook-svc-2\",\n    \"chat-svc-2\",\n    \"feature-flags\",\n    \"rating-svc-2\",\n    \"payout-svc\"\n  ],\n  \"reason\": \"webhook-svc-2 fired the initial error alert, directly impacting downstream dependent services like dispute-svc and payout-svc (which further triggered scheduler-svc). Its failure explains the cascade across all alerting services.\"\n}",
+ "prompt_tokens": 2795,
+ "completion_tokens": 102,
+ "latency_ms": 7438.269099999161,
+ "ranking": [
+  "webhook-svc-2",
+  "chat-svc-2",
+  "feature-flags",
+  "rating-svc-2",
+  "payout-svc"
+ ],
+ "reason": "webhook-svc-2 fired the initial error alert, directly impacting downstream dependent services like dispute-svc and payout-svc (which further triggered scheduler-svc). Its failure explains the cascade across all alerting services.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4000",
+ "seq": 40,
+ "truth": "webhook-svc-2",
+ "prompt_sha": "c0397d89c2f8c09e"
+}

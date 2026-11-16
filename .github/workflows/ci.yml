@@ -1,0 +1,37 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install -e ".[eval,dev]"
+      # the tests that need a HydraDB node (parity, memory, async learning, restart) skip themselves here and run in full locally and in the deploy check
+      - run: pytest -q
+  web:
+    runs-on: ubuntu-latest
+    defaults: {run: {working-directory: web}}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: "24"}
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npx vitest run
+      - run: npm run build
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install -e ".[eval,dev]"
+      # the README and docs are generated from results.json: stale files and typed numbers in the prose fail here
+      - run: python scripts/update_readme_numbers.py --check
+      # every Mermaid diagram must parse and render
+      - run: CHROME_PATH=$(command -v google-chrome || command -v chromium-browser || command -v chromium) python scripts/lint_mermaid.py

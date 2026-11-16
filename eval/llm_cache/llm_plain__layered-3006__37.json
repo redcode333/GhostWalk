@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"coupon-svc\",\"admin-api\",\"shipping-api\",\"label-svc\",\"edge-gateway\"],\"reason\":\"The first alert is a saturation on coupon-svc, which is a common dependency for many downstream services (admin\u2011api, sms\u2011svc, fx\u2011svc). Its overload can cause timeouts in shipping\u2011api (via auth/loyalty chains) and error spikes in edge\u2011gateway, with label\u2011svc later showing saturation as load propagates.\"}",
+ "prompt_tokens": 814,
+ "completion_tokens": 477,
+ "latency_ms": 1676.173199994082,
+ "ranking": [
+  "coupon-svc",
+  "admin-api",
+  "shipping-api",
+  "label-svc",
+  "edge-gateway"
+ ],
+ "reason": "The first alert is a saturation on coupon-svc, which is a common dependency for many downstream services (admin\u2011api, sms\u2011svc, fx\u2011svc). Its overload can cause timeouts in shipping\u2011api (via auth/loyalty chains) and error spikes in edge\u2011gateway, with label\u2011svc later showing saturation as load propagates.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "layered-3006",
+ "seq": 37,
+ "truth": "loyalty-svc",
+ "prompt_sha": "727624c9f605badc"
+}

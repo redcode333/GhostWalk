@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"kafka-events\",\"search-svc\",\"shipping-svc\",\"scheduler-svc\",\"notify-api\"],\"reason\":\"The initial saturation of kafka-events propagates delays and timeouts to dependent services, causing cascading failures observed in search, shipping, scheduler, and notify components.\"}",
+ "prompt_tokens": 992,
+ "completion_tokens": 156,
+ "latency_ms": 1397.4058000021614,
+ "ranking": [
+  "kafka-events",
+  "search-svc",
+  "shipping-svc",
+  "scheduler-svc",
+  "notify-api"
+ ],
+ "reason": "The initial saturation of kafka-events propagates delays and timeouts to dependent services, causing cascading failures observed in search, shipping, scheduler, and notify components.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4006",
+ "seq": 46,
+ "truth": "kafka-events",
+ "prompt_sha": "d9b6a66714dfa5ad"
+}

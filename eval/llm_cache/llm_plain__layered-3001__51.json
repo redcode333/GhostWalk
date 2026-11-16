@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"dns-internal\",\"notify-api\",\"reports-api\",\"email-svc\",\"coupon-svc\"],\"reason\":\"The first alert is dns-internal latency, and many downstream services (notify-api, reports-api, email-svc, coupon-svc) depend on it, causing their error and saturation alerts.\"}",
+ "prompt_tokens": 1563,
+ "completion_tokens": 188,
+ "latency_ms": 971.0403999997652,
+ "ranking": [
+  "dns-internal",
+  "notify-api",
+  "reports-api",
+  "email-svc",
+  "coupon-svc"
+ ],
+ "reason": "The first alert is dns-internal latency, and many downstream services (notify-api, reports-api, email-svc, coupon-svc) depend on it, causing their error and saturation alerts.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "layered-3001",
+ "seq": 51,
+ "truth": "dns-internal",
+ "prompt_sha": "fed3517b40c74b56"
+}

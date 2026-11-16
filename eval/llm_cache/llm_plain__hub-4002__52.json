@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"service-mesh\",\"orders-db\",\"admin-api\",\"redis-cart\",\"webhook-svc\"],\"reason\":\"Service\u2011mesh errors can cascade to dependent services, causing timeouts in orders\u2011db and admin\u2011api, while redis\u2011cart failures affect refund flows; webhook\u2011svc is a common downstream of both admin\u2011api and redis\u2011cart.\"}",
+ "prompt_tokens": 1898,
+ "completion_tokens": 193,
+ "latency_ms": 1039.0346999993199,
+ "ranking": [
+  "service-mesh",
+  "orders-db",
+  "admin-api",
+  "redis-cart",
+  "webhook-svc"
+ ],
+ "reason": "Service\u2011mesh errors can cascade to dependent services, causing timeouts in orders\u2011db and admin\u2011api, while redis\u2011cart failures affect refund flows; webhook\u2011svc is a common downstream of both admin\u2011api and redis\u2011cart.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "hub-4002",
+ "seq": 52,
+ "truth": "orders-db",
+ "prompt_sha": "ac60b0be6a90c584"
+}

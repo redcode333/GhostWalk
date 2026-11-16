@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"checkoutservice\",\"cartservice\",\"productcatalogservice\",\"recommendationservice\",\"shippingservice\"],\"reason\":\"Frontend latency likely stems from downstream services it calls; checkoutservice is a primary dependency, followed by cartservice and productcatalogservice which are common bottlenecks, with recommendationservice and shippingservice also contributing.\"}",
+ "prompt_tokens": 444,
+ "completion_tokens": 159,
+ "latency_ms": 1570.1984999977867,
+ "ranking": [
+  "checkoutservice",
+  "cartservice",
+  "productcatalogservice",
+  "recommendationservice",
+  "shippingservice"
+ ],
+ "reason": "Frontend latency likely stems from downstream services it calls; checkoutservice is a primary dependency, followed by cartservice and productcatalogservice which are common bottlenecks, with recommendationservice and shippingservice also contributing.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_plain",
+ "company": "real-5008",
+ "seq": 22,
+ "truth": "checkoutservice",
+ "prompt_sha": "8563a6e15e0721e6"
+}

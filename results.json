@@ -1937,7 +1937,12 @@
     "tokens_per_verdict": {
       "ghostwalk": 0,
       "tfidf": 0,
-      "llm_baseline": null,
+      "llm_baseline": {
+        "llm_plain": 2068.2586206896553,
+        "llm_memory": 2284.844827586207,
+        "n": 58,
+        "note": "mean prompt+completion tokens per incident on the LLM subset"
+      },
       "note": "ghostwalk and tfidf call no model. No LLM baseline has been run (it needs an API key and spend), so there is no number for it"
     },
     "hydradb_latency": {
@@ -2240,12 +2245,13 @@
     },
     "vm": {
       "minio": {
-        "measured_utc": "2026-11-15T23:41:03Z",
+        "measured_utc": "2026-11-16T00:26:52Z",
         "machine": {
           "label": "VM",
           "cpu": "Intel(R) Xeon(R) Platinum 8488C",
           "logical_cpus": 2,
           "ram_gb": 7.6,
+          "instance_type": "m7i-flex.large",
           "kernel": "7.0.0-1016-aws",
           "platform": "Linux-7.0.0-1016-aws-x86_64-with-glibc2.41",
           "python": "3.12.16",
@@ -2272,13 +2278,13 @@
         ],
         "online_loop": {
           "verdict_ms": {
-            "p50": 1.246411000010994,
-            "p95": 1.8556038997303403,
+            "p50": 1.3205234999986715,
+            "p95": 1.8358548499691094,
             "n": 180
           },
           "learning_write_ms": {
-            "p50": 560.9038599995984,
-            "p95": 1379.4596093004636,
+            "p50": 558.7247830003435,
+            "p95": 1519.8694491503372,
             "n": 180
           },
           "full_graph_rereads": 0,
@@ -2286,14 +2292,39 @@
         },
         "warm": {
           "one_hop_query_ms": {
-            "p50": 2.98089300031279,
-            "p95": 3.5149998994711495,
+            "p50": 2.8241844997864973,
+            "p95": 4.444587399666488,
+            "n": 600
+          },
+          "path_3_hops_ms": {
+            "p50": 0.3866629999720317,
+            "p95": 0.5257553500086919,
+            "n": 600
+          },
+          "path_5_hops_ms": {
+            "p50": 0.407044500207121,
+            "p95": 0.6010014002640672,
+            "n": 600
+          },
+          "edge_write_ms": {
+            "p50": 22.281562999978632,
+            "p95": 23.606933699738875,
+            "n": 300
+          },
+          "verdict_in_memory_ms": {
+            "p50": 0.06445249982789392,
+            "p95": 0.08037259976845233,
             "n": 600
           },
           "verdict_cached_hit_ms": {
-            "p50": 0.8318000004692294,
-            "p95": 1.1655701996460264,
+            "p50": 0.8597665000706911,
+            "p95": 1.3010998501158597,
             "n": 600
+          },
+          "verdict_cold_read_ms": {
+            "p50": 380.48660149979696,
+            "p95": 463.9366926002367,
+            "n": 90
           }
         },
         "note": "generated companies (hub and layered, 60 to 120 services), learning on, HydraDB write-through cache; not the DEV/TEST splits"
@@ -2309,7 +2340,8 @@
           "platform": "Linux-7.0.0-1016-aws-x86_64-with-glibc2.41",
           "python": "3.12.16",
           "hydradb_url": "http://hydradb:8443",
-          "note": "client (the API container) and HydraDB are containers on one docker network: no published-port proxy hop"
+          "note": "client (the API container) and HydraDB are containers on one docker network: no published-port proxy hop",
+          "instance_type": "m7i-flex.large"
         },
         "hydradb_image": null,
         "companies": [
@@ -2356,6 +2388,94 @@
           }
         },
         "note": "generated companies (hub and layered, 60 to 120 services), learning on, HydraDB write-through cache; not the DEV/TEST splits"
+      }
+    },
+    "loadtest": {
+      "vm": {
+        "measured_utc": "2026-11-16T00:28:24Z",
+        "target": "http://127.0.0.1:8001",
+        "endpoint": "POST /v1/alerts/demo",
+        "seconds_per_level": 10.0,
+        "machine": {
+          "label": "vm",
+          "cpus": 2,
+          "platform": "Linux-7.0.0-1016-aws-x86_64-with-glibc2.41",
+          "python": "3.12.16"
+        },
+        "levels": [
+          {
+            "concurrency": 1,
+            "seconds": 10.0,
+            "requests": 907,
+            "req_per_s": 90.7,
+            "errors": 0,
+            "status_codes": {
+              "200": 907
+            },
+            "latency_ms": {
+              "p50": 10.930237999673409,
+              "p95": 18.002580900338216,
+              "p99": 23.9032446600504,
+              "max": 46.96724399946106
+            },
+            "container_cpu_percent_of_one_core": 98.3,
+            "container_memory_mb": 151.3
+          },
+          {
+            "concurrency": 10,
+            "seconds": 10.0,
+            "requests": 451,
+            "req_per_s": 44.9,
+            "errors": 0,
+            "status_codes": {
+              "200": 451
+            },
+            "latency_ms": {
+              "p50": 219.12381400034064,
+              "p95": 271.5276224998888,
+              "p99": 305.73841449950123,
+              "max": 306.3997589997598
+            },
+            "container_cpu_percent_of_one_core": 104.1,
+            "container_memory_mb": 158.5
+          },
+          {
+            "concurrency": 50,
+            "seconds": 11.2,
+            "requests": 367,
+            "req_per_s": 32.8,
+            "errors": 0,
+            "status_codes": {
+              "200": 367
+            },
+            "latency_ms": {
+              "p50": 1575.7746910003334,
+              "p95": 1636.2779248996048,
+              "p99": 1663.431183139437,
+              "max": 1679.5100700001058
+            },
+            "container_cpu_percent_of_one_core": 108.5,
+            "container_memory_mb": 164.3
+          },
+          {
+            "concurrency": 100,
+            "seconds": 13.1,
+            "requests": 334,
+            "req_per_s": 25.5,
+            "errors": 0,
+            "status_codes": {
+              "200": 334
+            },
+            "latency_ms": {
+              "p50": 3450.7448025005942,
+              "p95": 5869.407790650166,
+              "p99": 5992.034289690409,
+              "max": 6034.4260900001245
+            },
+            "container_cpu_percent_of_one_core": 120.4,
+            "container_memory_mb": 176.1
+          }
+        ]
       }
     }
   },
@@ -2803,6 +2923,468 @@
           ]
         }
       ]
+    },
+    "paired_gain": {
+      "bin": 5,
+      "x_label": "incident number at each company (bins of five)",
+      "y_label": "AC@1 gain over learning off, percentage points",
+      "series": {
+        "ghostwalk_minus_learning_off": [
+          {
+            "from": 0,
+            "to": 4,
+            "x": 3.0,
+            "gain": 0.026666666666666727,
+            "ci95": null
+          },
+          {
+            "from": 5,
+            "to": 9,
+            "x": 8.0,
+            "gain": 0.046666666666666745,
+            "ci95": null
+          },
+          {
+            "from": 10,
+            "to": 14,
+            "x": 13.0,
+            "gain": 0.11333333333333329,
+            "ci95": null
+          },
+          {
+            "from": 15,
+            "to": 19,
+            "x": 18.0,
+            "gain": 0.10666666666666669,
+            "ci95": null
+          },
+          {
+            "from": 20,
+            "to": 24,
+            "x": 23.0,
+            "gain": 0.09999999999999998,
+            "ci95": null
+          },
+          {
+            "from": 25,
+            "to": 29,
+            "x": 28.0,
+            "gain": 0.12,
+            "ci95": null
+          },
+          {
+            "from": 30,
+            "to": 34,
+            "x": 33.0,
+            "gain": 0.09999999999999998,
+            "ci95": null
+          },
+          {
+            "from": 35,
+            "to": 39,
+            "x": 38.0,
+            "gain": 0.053333333333333344,
+            "ci95": null
+          },
+          {
+            "from": 40,
+            "to": 44,
+            "x": 43.0,
+            "gain": 0.09999999999999998,
+            "ci95": null
+          },
+          {
+            "from": 45,
+            "to": 49,
+            "x": 48.0,
+            "gain": 0.1333333333333333,
+            "ci95": null
+          },
+          {
+            "from": 50,
+            "to": 54,
+            "x": 53.0,
+            "gain": 0.07333333333333325,
+            "ci95": null
+          },
+          {
+            "from": 55,
+            "to": 59,
+            "x": 58.0,
+            "gain": 0.09333333333333338,
+            "ci95": null
+          }
+        ],
+        "placebo_minus_learning_off": [
+          {
+            "from": 0,
+            "to": 4,
+            "x": 3.0,
+            "gain": 0.0,
+            "ci95": null
+          },
+          {
+            "from": 5,
+            "to": 9,
+            "x": 8.0,
+            "gain": 0.00666666666666671,
+            "ci95": null
+          },
+          {
+            "from": 10,
+            "to": 14,
+            "x": 13.0,
+            "gain": 0.020000000000000018,
+            "ci95": null
+          },
+          {
+            "from": 15,
+            "to": 19,
+            "x": 18.0,
+            "gain": 0.020000000000000018,
+            "ci95": null
+          },
+          {
+            "from": 20,
+            "to": 24,
+            "x": 23.0,
+            "gain": 0.0,
+            "ci95": null
+          },
+          {
+            "from": 25,
+            "to": 29,
+            "x": 28.0,
+            "gain": 0.06000000000000005,
+            "ci95": null
+          },
+          {
+            "from": 30,
+            "to": 34,
+            "x": 33.0,
+            "gain": 0.033333333333333326,
+            "ci95": null
+          },
+          {
+            "from": 35,
+            "to": 39,
+            "x": 38.0,
+            "gain": -0.013333333333333308,
+            "ci95": null
+          },
+          {
+            "from": 40,
+            "to": 44,
+            "x": 43.0,
+            "gain": 0.046666666666666634,
+            "ci95": null
+          },
+          {
+            "from": 45,
+            "to": 49,
+            "x": 48.0,
+            "gain": 0.020000000000000018,
+            "ci95": null
+          },
+          {
+            "from": 50,
+            "to": 54,
+            "x": 53.0,
+            "gain": -0.033333333333333326,
+            "ci95": null
+          },
+          {
+            "from": 55,
+            "to": 59,
+            "x": 58.0,
+            "gain": -0.07999999999999996,
+            "ci95": null
+          }
+        ]
+      },
+      "reference_paired_ci": {
+        "ghostwalk_minus_learning_off": {
+          "overall": {
+            "gain": 0.0888888888888889,
+            "ci95": [
+              0.057222222222222285,
+              0.12388888888888894
+            ]
+          },
+          "early": {
+            "gain": 0.06222222222222229,
+            "ci95": [
+              0.02444444444444449,
+              0.10444444444444445
+            ]
+          },
+          "late": {
+            "gain": 0.10000000000000009,
+            "ci95": [
+              0.05555555555555558,
+              0.14888888888888885
+            ]
+          }
+        },
+        "placebo_minus_learning_off": {}
+      },
+      "band": null,
+      "source": "stored per-bin accuracies (exact paired differences: every company has the same number of incidents in every bin); no engine was run"
+    },
+    "cumulative": {
+      "x_label": "incident number at each company",
+      "y_label": "cumulative AC@1",
+      "series": {
+        "ghostwalk": [
+          {
+            "n": 5,
+            "ac1": 0.6733333333333333,
+            "ci95": null
+          },
+          {
+            "n": 10,
+            "ac1": 0.6933333333333334,
+            "ci95": null
+          },
+          {
+            "n": 15,
+            "ac1": 0.7133333333333334,
+            "ci95": null
+          },
+          {
+            "n": 20,
+            "ac1": 0.73,
+            "ci95": null
+          },
+          {
+            "n": 25,
+            "ac1": 0.74,
+            "ci95": null
+          },
+          {
+            "n": 30,
+            "ac1": 0.7366666666666667,
+            "ci95": null
+          },
+          {
+            "n": 35,
+            "ac1": 0.7466666666666667,
+            "ci95": null
+          },
+          {
+            "n": 40,
+            "ac1": 0.7458333333333333,
+            "ci95": null
+          },
+          {
+            "n": 45,
+            "ac1": 0.7466666666666666,
+            "ci95": null
+          },
+          {
+            "n": 50,
+            "ac1": 0.7506666666666666,
+            "ci95": null
+          },
+          {
+            "n": 55,
+            "ac1": 0.756969696969697,
+            "ci95": null
+          },
+          {
+            "n": 60,
+            "ac1": 0.7644444444444444,
+            "ci95": null
+          }
+        ],
+        "learning_off": [
+          {
+            "n": 5,
+            "ac1": 0.6466666666666666,
+            "ci95": null
+          },
+          {
+            "n": 10,
+            "ac1": 0.6566666666666666,
+            "ci95": null
+          },
+          {
+            "n": 15,
+            "ac1": 0.6511111111111111,
+            "ci95": null
+          },
+          {
+            "n": 20,
+            "ac1": 0.6566666666666666,
+            "ci95": null
+          },
+          {
+            "n": 25,
+            "ac1": 0.6613333333333333,
+            "ci95": null
+          },
+          {
+            "n": 30,
+            "ac1": 0.6511111111111111,
+            "ci95": null
+          },
+          {
+            "n": 35,
+            "ac1": 0.659047619047619,
+            "ci95": null
+          },
+          {
+            "n": 40,
+            "ac1": 0.6625000000000001,
+            "ci95": null
+          },
+          {
+            "n": 45,
+            "ac1": 0.6614814814814816,
+            "ci95": null
+          },
+          {
+            "n": 50,
+            "ac1": 0.6606666666666667,
+            "ci95": null
+          },
+          {
+            "n": 55,
+            "ac1": 0.6684848484848486,
+            "ci95": null
+          },
+          {
+            "n": 60,
+            "ac1": 0.6755555555555556,
+            "ci95": null
+          }
+        ],
+        "placebo": [
+          {
+            "n": 5,
+            "ac1": 0.6466666666666666,
+            "ci95": null
+          },
+          {
+            "n": 10,
+            "ac1": 0.6599999999999999,
+            "ci95": null
+          },
+          {
+            "n": 15,
+            "ac1": 0.66,
+            "ci95": null
+          },
+          {
+            "n": 20,
+            "ac1": 0.6683333333333333,
+            "ci95": null
+          },
+          {
+            "n": 25,
+            "ac1": 0.6706666666666667,
+            "ci95": null
+          },
+          {
+            "n": 30,
+            "ac1": 0.668888888888889,
+            "ci95": null
+          },
+          {
+            "n": 35,
+            "ac1": 0.6790476190476191,
+            "ci95": null
+          },
+          {
+            "n": 40,
+            "ac1": 0.6783333333333333,
+            "ci95": null
+          },
+          {
+            "n": 45,
+            "ac1": 0.6807407407407408,
+            "ci95": null
+          },
+          {
+            "n": 50,
+            "ac1": 0.68,
+            "ci95": null
+          },
+          {
+            "n": 55,
+            "ac1": 0.6830303030303031,
+            "ci95": null
+          },
+          {
+            "n": 60,
+            "ac1": 0.6822222222222223,
+            "ci95": null
+          }
+        ],
+        "oracle": [
+          {
+            "n": 5,
+            "ac1": 0.84,
+            "ci95": null
+          },
+          {
+            "n": 10,
+            "ac1": 0.83,
+            "ci95": null
+          },
+          {
+            "n": 15,
+            "ac1": 0.8288888888888888,
+            "ci95": null
+          },
+          {
+            "n": 20,
+            "ac1": 0.8266666666666665,
+            "ci95": null
+          },
+          {
+            "n": 25,
+            "ac1": 0.8253333333333333,
+            "ci95": null
+          },
+          {
+            "n": 30,
+            "ac1": 0.8177777777777777,
+            "ci95": null
+          },
+          {
+            "n": 35,
+            "ac1": 0.8276190476190476,
+            "ci95": null
+          },
+          {
+            "n": 40,
+            "ac1": 0.8241666666666667,
+            "ci95": null
+          },
+          {
+            "n": 45,
+            "ac1": 0.822962962962963,
+            "ci95": null
+          },
+          {
+            "n": 50,
+            "ac1": 0.8246666666666668,
+            "ci95": null
+          },
+          {
+            "n": 55,
+            "ac1": 0.8284848484848486,
+            "ci95": null
+          },
+          {
+            "n": 60,
+            "ac1": 0.8294444444444445,
+            "ci95": null
+          }
+        ]
+      },
+      "note": "the mean of the stored per-bin accuracies up to that bin (equal bin sizes), points at multiples of the bin width; no bands (they need per-company data)"
     }
   },
   "calibration": [
@@ -4357,5 +4939,614 @@
       ],
       "summary": "Twenty incidents were learned through the API with GW_STORE=hydradb; the API process was killed and its state file deleted; a new process re-attached to HydraDB and ranked incident 21 identically (all 5 candidates, names and confidences) (`scripts/persistence_demo.py`, transcript in `docs/measurements/persistence_demo.txt`). The same holds in a test that also compares against the in-memory learner."
     }
+  },
+  "llm_baseline": {
+    "label": "LLM baseline: Gemini with Groq fallback on rate limits (model recorded per incident). GhostWalk itself uses no LLM.",
+    "n_incidents": 58,
+    "n_requested": 100,
+    "companies": 17,
+    "subset_file": "eval/llm_subset.json",
+    "subset": {
+      "seed": 20261117,
+      "split": "test",
+      "rule": "three per company (one each from the early, middle and late third of its incidents, never the first), plus a fourth for ten seeded companies"
+    },
+    "models": {
+      "gemini": "gemini-3.5-flash",
+      "groq": "openai/gpt-oss-120b"
+    },
+    "arms": {
+      "ghostwalk": {
+        "ac1": {
+          "point": 0.7241379310344828,
+          "ci95": [
+            0.6379310344827587,
+            0.8135593220338984
+          ]
+        },
+        "ac3": {
+          "point": 0.8275862068965517,
+          "ci95": [
+            0.7288135593220338,
+            0.9166666666666666
+          ]
+        }
+      },
+      "learning_off": {
+        "ac1": {
+          "point": 0.6379310344827587,
+          "ci95": [
+            0.5263157894736842,
+            0.7457627118644068
+          ]
+        },
+        "ac3": {
+          "point": 0.7931034482758621,
+          "ci95": [
+            0.7017543859649122,
+            0.8793103448275862
+          ]
+        }
+      },
+      "tfidf": {
+        "ac1": {
+          "point": 0.3103448275862069,
+          "ci95": [
+            0.15789473684210525,
+            0.4755935556811748
+          ]
+        },
+        "ac3": {
+          "point": 0.43103448275862066,
+          "ci95": [
+            0.2962962962962963,
+            0.576271186440678
+          ]
+        }
+      },
+      "llm_plain": {
+        "ac1": {
+          "point": 0.5689655172413793,
+          "ci95": [
+            0.42105263157894735,
+            0.7166666666666667
+          ]
+        },
+        "ac3": {
+          "point": 0.6551724137931034,
+          "ci95": [
+            0.5483137829912023,
+            0.7627349768875191
+          ]
+        },
+        "tokens_per_incident": {
+          "mean": 2068.2586206896553,
+          "prompt_mean": 1831.2241379310344,
+          "completion_mean": 237.0344827586207
+        },
+        "latency_ms": {
+          "p50": 1537.11900000053,
+          "p95": 3801.2848700007407
+        },
+        "invalid_output_rate": 0.0,
+        "provider_share": {
+          "gemini": 0.1724137931034483,
+          "groq": 0.8275862068965517
+        },
+        "models_used": [
+          "gemini-3.6-flash",
+          "openai/gpt-oss-120b"
+        ]
+      },
+      "llm_memory": {
+        "ac1": {
+          "point": 0.6724137931034483,
+          "ci95": [
+            0.5344540229885058,
+            0.8103448275862069
+          ]
+        },
+        "ac3": {
+          "point": 0.7413793103448276,
+          "ci95": [
+            0.625,
+            0.8548387096774194
+          ]
+        },
+        "tokens_per_incident": {
+          "mean": 2284.844827586207,
+          "prompt_mean": 2044.5689655172414,
+          "completion_mean": 240.27586206896552
+        },
+        "latency_ms": {
+          "p50": 1674.4780500011984,
+          "p95": 4352.586369995697
+        },
+        "invalid_output_rate": 0.0,
+        "provider_share": {
+          "gemini": 0.15517241379310345,
+          "groq": 0.8448275862068966
+        },
+        "models_used": [
+          "gemini-3.6-flash",
+          "openai/gpt-oss-120b"
+        ]
+      }
+    },
+    "paired_ac1": {
+      "ghostwalk_minus_learning_off": {
+        "point": 0.08620689655172409,
+        "ci95": [
+          0.016949152542372947,
+          0.1724137931034483
+        ],
+        "p_le_0": 0.0125
+      },
+      "ghostwalk_minus_tfidf": {
+        "point": 0.41379310344827586,
+        "ci95": [
+          0.25,
+          0.5818953687821609
+        ],
+        "p_le_0": 0.0
+      },
+      "ghostwalk_minus_llm_plain": {
+        "point": 0.15517241379310343,
+        "ci95": [
+          0.03389830508474578,
+          0.27272727272727276
+        ],
+        "p_le_0": 0.0115
+      },
+      "ghostwalk_minus_llm_memory": {
+        "point": 0.051724137931034475,
+        "ci95": [
+          -0.051724137931034475,
+          0.15254237288135586
+        ],
+        "p_le_0": 0.201
+      }
+    },
+    "paired_ac3": {
+      "ghostwalk_minus_learning_off": {
+        "point": 0.03448275862068961,
+        "ci95": [
+          0.0,
+          0.08333333333333337
+        ],
+        "p_le_0": 0.115
+      },
+      "ghostwalk_minus_tfidf": {
+        "point": 0.39655172413793105,
+        "ci95": [
+          0.25,
+          0.5535714285714286
+        ],
+        "p_le_0": 0.0
+      },
+      "ghostwalk_minus_llm_plain": {
+        "point": 0.1724137931034483,
+        "ci95": [
+          0.051724137931034475,
+          0.28819026790595925
+        ],
+        "p_le_0": 0.0025
+      },
+      "ghostwalk_minus_llm_memory": {
+        "point": 0.08620689655172409,
+        "ci95": [
+          -0.01666666666666672,
+          0.18644067796610175
+        ],
+        "p_le_0": 0.0615
+      }
+    },
+    "families_covered": [
+      "hub",
+      "layered"
+    ],
+    "families_total": [
+      "hub",
+      "layered",
+      "real"
+    ],
+    "cache_dir": "eval/llm_cache/",
+    "stopped_early": true,
+    "measured_utc": "2026-11-16T00:40:44Z"
+  },
+  "replays": {
+    "label": "Replay built from the public postmortem; illustrative, not an accuracy measurement.",
+    "abstain_below_confidence": 0.5,
+    "scenarios": [
+      {
+        "id": "aws-us-east-1-2025-10-20",
+        "short": "AWS us-east-1, 20 Oct 2025",
+        "title": "AWS us-east-1 DynamoDB disruption, 19 to 20 October 2025",
+        "source": {
+          "title": "Summary of the Amazon DynamoDB Service Disruption in the Northern Virginia (US-EAST-1) Region (AWS)",
+          "url": "https://aws.amazon.com/message/101925/"
+        },
+        "label": "Replay built from the public postmortem; illustrative, not an accuracy measurement.",
+        "what_happened": [
+          "A race between DynamoDB's DNS automation components (a planner that produces DNS plans and enactors that apply them to Route 53) left the regional DynamoDB endpoint with an empty DNS record (paraphrased from the post-event summary).",
+          "DynamoDB API calls failed; services that depend on DynamoDB (EC2's droplet workflow manager, Lambda, STS, IAM sign-in) degraded.",
+          "Later, EC2 launches, network configuration propagation and Network Load Balancer health checks were affected as a consequence."
+        ],
+        "assumptions": [
+          "Dependencies are the ones the summary describes; the 'official map' is our construction of what a service catalog would list.",
+          "The invisible dependency is the control plane: a runtime dependency map shows services calling DynamoDB, not the automation that keeps DynamoDB's DNS record correct.",
+          "Alerts are in the order the summary describes the impact; their spacing is normalised (the real gaps were minutes to hours)."
+        ],
+        "root": "dynamodb-dns-automation",
+        "hidden_edge": [
+          "dynamodb",
+          "dynamodb-dns-automation"
+        ],
+        "alerts": [
+          "dynamodb",
+          "lambda",
+          "ec2-dwfm",
+          "iam-signin",
+          "sts",
+          "ec2-launch",
+          "network-manager",
+          "nlb"
+        ],
+        "services": 10,
+        "official_edges": 10,
+        "learned_ops": {
+          "first": [
+            "add_edge",
+            "reweight"
+          ],
+          "second": [
+            "confirm",
+            "reweight"
+          ]
+        },
+        "stages": [
+          {
+            "stage": "official map (the hidden dependency is missing)",
+            "ranking": [
+              {
+                "name": "dynamodb",
+                "confidence": 0.9999
+              },
+              {
+                "name": "ec2-dwfm",
+                "confidence": 0.0001
+              },
+              {
+                "name": "network-manager",
+                "confidence": 0.0
+              },
+              {
+                "name": "nlb",
+                "confidence": 0.0
+              },
+              {
+                "name": "sts",
+                "confidence": 0.0
+              }
+            ],
+            "top1": "dynamodb",
+            "confidence": 0.9999,
+            "top1_is_root": false,
+            "root_rank": null,
+            "abstains": false,
+            "path": [
+              {
+                "from": "lambda",
+                "to": "dynamodb",
+                "origin": "official"
+              }
+            ],
+            "ms": 0.329
+          },
+          {
+            "stage": "after one postmortem teaches the edge (tentative)",
+            "ranking": [
+              {
+                "name": "dynamodb",
+                "confidence": 0.9999
+              },
+              {
+                "name": "ec2-dwfm",
+                "confidence": 0.0001
+              },
+              {
+                "name": "dynamodb-dns-automation",
+                "confidence": 0.0001
+              },
+              {
+                "name": "network-manager",
+                "confidence": 0.0
+              },
+              {
+                "name": "nlb",
+                "confidence": 0.0
+              }
+            ],
+            "top1": "dynamodb",
+            "confidence": 0.9999,
+            "top1_is_root": false,
+            "root_rank": 3,
+            "abstains": false,
+            "path": [
+              {
+                "from": "lambda",
+                "to": "dynamodb",
+                "origin": "official"
+              }
+            ],
+            "ms": 0.233
+          },
+          {
+            "stage": "after a second incident confirms it",
+            "ranking": [
+              {
+                "name": "dynamodb",
+                "confidence": 0.989
+              },
+              {
+                "name": "dynamodb-dns-automation",
+                "confidence": 0.0109
+              },
+              {
+                "name": "ec2-dwfm",
+                "confidence": 0.0001
+              },
+              {
+                "name": "network-manager",
+                "confidence": 0.0
+              },
+              {
+                "name": "nlb",
+                "confidence": 0.0
+              }
+            ],
+            "top1": "dynamodb",
+            "confidence": 0.989,
+            "top1_is_root": false,
+            "root_rank": 2,
+            "abstains": false,
+            "path": [
+              {
+                "from": "lambda",
+                "to": "dynamodb",
+                "origin": "official"
+              }
+            ],
+            "ms": 0.173
+          }
+        ],
+        "deepest_alert": {
+          "ranking": [
+            "dynamodb",
+            "lambda",
+            "ec2-dwfm",
+            "iam-signin",
+            "sts"
+          ],
+          "top1": "dynamodb",
+          "top1_is_root": false,
+          "root_rank": null
+        },
+        "llm": {
+          "provider": "gemini",
+          "model": "gemini-3.6-flash",
+          "ranking": [
+            "dynamodb",
+            "lambda",
+            "ec2-dwfm",
+            "ec2-launch",
+            "sts"
+          ],
+          "top1": "dynamodb",
+          "top1_is_root": false,
+          "root_rank": null,
+          "reason": "DynamoDB is the deepest shared dependency in the topology and triggered the initial error_rate alert at +0s. All subsequent alerts in dependent services like lambda, ec2-dwfm, sts, and ec2-launch are downstream symptoms of the DynamoDB failure.",
+          "invalid": false,
+          "tokens": 504,
+          "latency_ms": 1684.12559999706
+        }
+      },
+      {
+        "id": "cloudflare-2025-11-18",
+        "short": "Cloudflare, 18 Nov 2025",
+        "title": "Cloudflare outage, 18 November 2025",
+        "source": {
+          "title": "Cloudflare outage on November 18, 2025 (Cloudflare blog)",
+          "url": "https://blog.cloudflare.com/18-november-2025-outage/"
+        },
+        "label": "Replay built from the public postmortem; illustrative, not an accuracy measurement.",
+        "what_happened": [
+          "A change to database access controls in a ClickHouse cluster made a query that builds the Bot Management 'feature file' return duplicate rows, so the file roughly doubled in size (paraphrased from the postmortem).",
+          "The core proxy's Bot Management module had a limit on the file size that the doubled file exceeded; the proxy failed and customers saw HTTP 5xx errors.",
+          "Workers KV (its front-end gateway runs on the proxy), Access, Turnstile and dashboard login failed as a consequence; the status page also went down at the same time, which the postmortem says was a coincidence."
+        ],
+        "assumptions": [
+          "Dependencies are the ones the postmortem describes; the 'official map' is our construction of what a service catalog would list.",
+          "The invisible dependency is the generated feature file: the proxy's Bot Management module loads a file that a separate job builds from a ClickHouse query and distributes network-wide. A service catalog lists the job's query on ClickHouse, not the file the proxy loads.",
+          "Alerts are in the order the postmortem describes the failures; their spacing is normalised (the real gaps were minutes)."
+        ],
+        "root": "clickhouse-db",
+        "hidden_edge": [
+          "bot-management",
+          "feature-file-generator"
+        ],
+        "alerts": [
+          "customer-sites",
+          "core-proxy",
+          "workers-kv",
+          "access",
+          "turnstile",
+          "dashboard-login",
+          "status-page"
+        ],
+        "services": 10,
+        "official_edges": 8,
+        "learned_ops": {
+          "first": [
+            "add_edge",
+            "reweight",
+            "reweight"
+          ],
+          "second": [
+            "confirm",
+            "reweight",
+            "reweight"
+          ]
+        },
+        "stages": [
+          {
+            "stage": "official map (the hidden dependency is missing)",
+            "ranking": [
+              {
+                "name": "core-proxy",
+                "confidence": 0.9631
+              },
+              {
+                "name": "bot-management",
+                "confidence": 0.0366
+              },
+              {
+                "name": "workers-kv",
+                "confidence": 0.0001
+              },
+              {
+                "name": "turnstile",
+                "confidence": 0.0001
+              },
+              {
+                "name": "customer-sites",
+                "confidence": 0.0
+              }
+            ],
+            "top1": "core-proxy",
+            "confidence": 0.9631,
+            "top1_is_root": false,
+            "root_rank": null,
+            "abstains": false,
+            "path": [
+              {
+                "from": "customer-sites",
+                "to": "core-proxy",
+                "origin": "official"
+              }
+            ],
+            "ms": 0.092
+          },
+          {
+            "stage": "after one postmortem teaches the edge (tentative)",
+            "ranking": [
+              {
+                "name": "core-proxy",
+                "confidence": 0.9627
+              },
+              {
+                "name": "bot-management",
+                "confidence": 0.0368
+              },
+              {
+                "name": "feature-file-generator",
+                "confidence": 0.0002
+              },
+              {
+                "name": "workers-kv",
+                "confidence": 0.0001
+              },
+              {
+                "name": "turnstile",
+                "confidence": 0.0001
+              }
+            ],
+            "top1": "core-proxy",
+            "confidence": 0.9627,
+            "top1_is_root": false,
+            "root_rank": 6,
+            "abstains": false,
+            "path": [
+              {
+                "from": "customer-sites",
+                "to": "core-proxy",
+                "origin": "official"
+              }
+            ],
+            "ms": 0.111
+          },
+          {
+            "stage": "after a second incident confirms it",
+            "ranking": [
+              {
+                "name": "core-proxy",
+                "confidence": 0.9533
+              },
+              {
+                "name": "bot-management",
+                "confidence": 0.0366
+              },
+              {
+                "name": "clickhouse-db",
+                "confidence": 0.0054
+              },
+              {
+                "name": "feature-file-generator",
+                "confidence": 0.0044
+              },
+              {
+                "name": "workers-kv",
+                "confidence": 0.0002
+              }
+            ],
+            "top1": "core-proxy",
+            "confidence": 0.9533,
+            "top1_is_root": false,
+            "root_rank": 3,
+            "abstains": false,
+            "path": [
+              {
+                "from": "customer-sites",
+                "to": "core-proxy",
+                "origin": "official"
+              }
+            ],
+            "ms": 0.12
+          }
+        ],
+        "deepest_alert": {
+          "ranking": [
+            "status-page",
+            "core-proxy",
+            "workers-kv",
+            "access",
+            "turnstile"
+          ],
+          "top1": "status-page",
+          "top1_is_root": false,
+          "root_rank": null
+        },
+        "llm": {
+          "provider": "groq",
+          "model": "openai/gpt-oss-120b",
+          "ranking": [
+            "core-proxy",
+            "workers-kv",
+            "access",
+            "turnstile",
+            "dashboard-login"
+          ],
+          "top1": "core-proxy",
+          "top1_is_root": false,
+          "root_rank": null,
+          "reason": "core-proxy is upstream of most failing services and its error_rate spikes before downstream services, indicating it as the primary source of the cascade.",
+          "invalid": false,
+          "tokens": 551,
+          "latency_ms": 949.9056999993627
+        }
+      }
+    ],
+    "llm_label": "LLM baseline: Gemini with Groq fallback on rate limits (model recorded per incident). GhostWalk itself uses no LLM.",
+    "measured_utc": "2026-11-16T00:14:32Z"
   }
 }

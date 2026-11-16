@@ -1,0 +1,23 @@
+{
+ "provider": "groq",
+ "model": "openai/gpt-oss-120b",
+ "text": "{\"ranking\":[\"config-svc\",\"loyalty-svc\",\"sms-svc\",\"catalog-api\",\"coupon-svc\"],\"reason\":\"The error_rate alert likely originates from a shared lower\u2011tier service whose degradation propagates through multiple dependent services, matching patterns seen in past incidents.\"}",
+ "prompt_tokens": 971,
+ "completion_tokens": 137,
+ "latency_ms": 1151.7195999986143,
+ "ranking": [
+  "config-svc",
+  "loyalty-svc",
+  "sms-svc",
+  "catalog-api",
+  "coupon-svc"
+ ],
+ "reason": "The error_rate alert likely originates from a shared lower\u2011tier service whose degradation propagates through multiple dependent services, matching patterns seen in past incidents.",
+ "attempts": [],
+ "bad_json_retries": 0,
+ "arm": "llm_memory",
+ "company": "layered-3006",
+ "seq": 11,
+ "truth": "ads-svc",
+ "prompt_sha": "1ac1a18817f38dda"
+}
