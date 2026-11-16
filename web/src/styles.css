@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Tokens from design/DESIGN_SPEC.md. Light = marketing default; .dark = dark (the app is always dark). */
+/* Tokens from docs/DESIGN.md. Light = marketing default; .dark = dark (the app is always dark). */
 :root {
   --bg: #F4F2EC; --surface: #FFFFFF; --surface-2: #FAF9F6; --muted: #EFEDE7;
   --ink: #0D0D10; --text-2: #2A2A30; --text-3: #55555C; --text-4: #66666E;

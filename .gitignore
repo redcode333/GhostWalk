@@ -7,6 +7,13 @@ web/dist/
 .venv/
 .pytest_cache/
 dev_results.json
-dev_results.json
 *.log
 web/node_modules/
+var/
+.impeccable/
+docs/screenshots/*
+!docs/screenshots/logo-anim.gif
+web/test-results/
+web/playwright-report/
+.DS_Store
+Thumbs.db

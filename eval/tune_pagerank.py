@@ -3,7 +3,7 @@
     python eval/tune_pagerank.py            # writes eval/pagerank_tuned.json
 
 Grid: restart probability x edge direction x edge weighting x onset-weighted restart = 72 settings.
-The engine's own dev search is not recorded in the repo (HANDOFF.md lists only the fitted values), so the
+The engine's own dev search is not recorded in the repo (results.json records only the fitted values), so the
 budget here is a stated choice, not a copy of it. Selection: highest dev AC@1, ties -> higher AC@3, then grid order.
 Nothing in this file reads data/test.
 """
