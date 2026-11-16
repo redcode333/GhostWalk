@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
-import { Link, Navigate, useNavigate } from "react-router-dom"
+import { Link, Navigate, useLocation, useNavigate } from "react-router-dom"
 import { GitBranch, Globe } from "lucide-react"
 import { ClerkProvider, SignIn, SignUp, useAuth } from "@clerk/react"
 import { api, demoMode, setDemoMode } from "@/lib/api"
@@ -115,7 +115,7 @@ function DemoForm({ up }: { up: boolean }) {
 
 export function DemoEntry({ to = "/app/incidents" }: { to?: string }) {
   setDemoMode(true)                                                          // /demo and /proof are public: they open the shared sandbox, no sign-in
-  return <Navigate to={to} replace />
+  return <Navigate to={to + useLocation().hash} replace />
 }
 
 export function SignInPage() {

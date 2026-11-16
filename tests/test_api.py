@@ -197,3 +197,20 @@ def test_health_reports_the_version(monkeypatch):
     monkeypatch.setenv("GW_VERSION", "abc1234")
     c = TestClient(create_app(workspace=Workspace(None, demo_incidents=2), results_path="nope.json"))
     assert c.get("/api/health").json()["version"] == "abc1234" and c.get("/health").json()["version"] == "abc1234"
+
+
+def test_scan_pasted_files_and_accept_a_large_map(monkeypatch):
+    """A 35-service compose file pasted in is scanned and accepted whole: there is no service limit, signed in or not."""
+    from ghostwalk.api.app import clerk_user
+    nl = chr(10)
+    compose = "services:" + nl + "".join(f"  svc-{i}:" + nl + f"    image: acme/svc-{i}" + nl + (f"    depends_on: [svc-{i - 1}]" + nl if i else "") for i in range(35))
+    w = Workspace(None, demo_incidents=2)
+    app = create_app(workspace=w, results_path="nope.json")
+    app.dependency_overrides[clerk_user] = lambda: {"id": "u1"}
+    c = TestClient(app)
+    monkeypatch.setenv("AUTH_MODE", "clerk")
+    out = c.post("/api/onboarding/scan", json={"source": "files", "files": [{"repo": "acme/infra", "path": "docker-compose.yml", "text": compose}]}).json()
+    assert out["summary"]["services"] == 35
+    r = c.post("/api/onboarding/accept", json={"edge_ids": [e["id"] for e in out["edges"]]})
+    assert r.status_code == 200 and r.json()["services"] == 35
+    assert c.post("/api/onboarding/scan", json={"source": "files", "files": []}).status_code == 422

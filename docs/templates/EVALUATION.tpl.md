@@ -18,7 +18,9 @@ For each incident of a company, in order: the verdict is computed from the alert
 
 Learning starts from zero at each company. Intervals are paired cluster bootstraps over companies ({{boot}} draws). Against the best baseline, GhostWalk is {{gain_vs_best}} ahead and closes {{gap_closed}} of the gap to the perfect-map oracle.
 
-![What learning adds](learning-curve.png)
+<picture><source media="(prefers-color-scheme: dark)" srcset="learning-curve-dark.png"><img src="learning-curve.png" alt="What learning adds: cumulative accuracy gain over no learning by incidents seen per company" width="760"></picture>
+
+The headline chart: the cumulative paired gain over learning off from the first incident up to the n-th at each company, with a 95% bootstrap band over companies. Both lines end at the whole-run values, and the series is in `results.json` under `learning_curve.cumulative_gain`.
 
 ## How GhostWalk compares
 
@@ -50,6 +52,12 @@ Same incidents, same engine and learner; only the store changes for the store ro
 {{table_learning_main}}
 
 {{placebo_late}}
+
+### The same gain per bin of five incidents
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="learning-curve-bins-dark.png"><img src="learning-curve-bins.png" alt="Accuracy gain over learning off per bin of five incidents, with the 95 percent paired band" width="760"></picture>
+
+{{bin_noise}}
 
 {{table_learning_ablation}}
 

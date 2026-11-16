@@ -8,6 +8,8 @@
 
 *The outage is never where the pager says.*
 
+{{gain_line}}
+
 [![CI](https://github.com/{{repo}}/actions/workflows/ci.yml/badge.svg)](https://github.com/{{repo}}/actions/workflows/ci.yml)
 [![tests](https://img.shields.io/github/actions/workflow/status/{{repo}}/ci.yml?branch=main&label=tests)](https://github.com/{{repo}}/actions/workflows/ci.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
@@ -102,7 +104,7 @@ A lesson is tentative until a second incident confirms it, and it decays when it
 
 {{table_results8}}
 
-<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/learning-curve-dark.png"><img src="docs/learning-curve.png" alt="What learning adds: accuracy gain over learning off by incident number for GhostWalk, with its 95 percent band, and for placebo postmortems" width="760"></picture></p>
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/learning-curve-dark.png"><img src="docs/learning-curve.png" alt="What learning adds: cumulative accuracy gain over no learning by incidents seen per company, GhostWalk with its 95 percent band against placebo postmortems" width="760"></picture></p>
 
 Learning starts from zero at each company. Intervals are paired cluster bootstraps over companies. The incidents are simulated; the claim is the comparison between methods on the same incidents. Every table, the ablations and the limits: [docs/EVALUATION.md](docs/EVALUATION.md).
 

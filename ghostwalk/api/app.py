@@ -439,6 +439,13 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
                 files = client.scan(body.get("repos"))
             except gh.GitHubError as e:
                 raise HTTPException(502, str(e))
+        elif source == "files":                                     # pasted files: [{repo, path, text}], e.g. a docker-compose.yml
+            raw = body.get("files")
+            if not isinstance(raw, list) or not raw or len(raw) > 50:
+                raise HTTPException(422, "send 1 to 50 files as [{repo, path, text}]")
+            if sum(len(str(f.get("text") or "")) for f in raw if isinstance(f, dict)) > 500_000:
+                raise HTTPException(413, "the files are too large to scan (500 kB in all)")
+            files = [(str(f.get("repo") or "pasted/files"), str(f.get("path") or ""), str(f.get("text") or "")) for f in raw if isinstance(f, dict)]
         else:
             files = SAMPLE_FILES
             ws.onboarding["github"] = True

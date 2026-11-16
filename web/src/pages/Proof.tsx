@@ -1,3 +1,4 @@
+import { useEffect } from "react"
 import { apiUrl } from "@/lib/api"
 import { CumulativeChart, PairedGainChart } from "@/components/LearningCharts"
 import { loadResults, METHOD_LABEL, ms, pct, proofStrip, pts, type CI, type Results } from "@/lib/results"
@@ -35,6 +36,7 @@ function CompareTable({ r }: { r: any }) {
   const lat = (b: any) => (b ? `${ms(b.verdict_ms_p50)} / ${ms(b.verdict_ms_p95)} ms` : "")
   const neg = (c: any) => ({ point: -c.point, ci95: [-c.ci95[1], -c.ci95[0]] as [number, number] })
   const rows: [string, string, string, string, string, string][] = []
+  const rowId = (name: string) => name.startsWith("Key-value") ? "cmp-kv" : name.startsWith("Vector search") ? "cmp-vector" : name.startsWith("Personalized PageRank") ? "cmp-pagerank" : name.startsWith("GhostWalk with learning off") ? "cmp-learning-off" : name.startsWith("LLM + memory") ? "cmp-llm" : name.startsWith("LLM plain") ? "cmp-llm-plain" : undefined
   const add = (name: string, ac: CI | undefined, delta: string, latency: string, tokens: string, learns: string) => ac && rows.push([name, ci2(ac), delta, latency, tokens, learns])
   add("GhostWalk on HydraDB", sw.hydradb?.ac1, "reference", lat(sw.hydradb), "0", "yes")
   add("Same engine on Postgres (recursive CTE)", sw.pg_cte?.ac1, dpts(sw.pg_cte?.delta_vs_reference ?? { point: 0 }), lat(sw.pg_cte), "0", "yes")
@@ -53,16 +55,16 @@ function CompareTable({ r }: { r: any }) {
     }
   }
   return (
-    <section className="card" style={{ padding: 18, overflowX: "auto" }} aria-label="How GhostWalk compares">
+    <section id="compare" className="card" style={{ padding: 18, overflowX: "auto", scrollMarginTop: 80 }} aria-label="How GhostWalk compares">
       <h2 style={{ margin: 0, fontSize: 16 }}>How GhostWalk compares</h2>
       <p style={{ margin: "2px 0 10px", fontSize: 13, color: "var(--text-4)" }}>Same held-out incidents, top-1 accuracy with 95% intervals. Store rows change only the store; the LLM rows are marked with their subset size (same incidents, GhostWalk's own accuracy on that subset is in the paired difference).</p>
       <table className="mono" style={{ fontSize: 12.5, borderCollapse: "collapse", minWidth: 760 }}>
         <thead><tr style={{ color: "var(--text-4)", textAlign: "left" }}>{["approach", "AC@1 [95% CI]", "Δ vs GhostWalk", "verdict p50 / p95", "tokens per verdict", "learns from postmortems?"].map((h) => <th key={h} style={{ padding: "6px 12px 6px 0", fontFamily: "Geist", fontWeight: 500 }}>{h}</th>)}</tr></thead>
-        <tbody>{rows.map((row, i) => <tr key={row[0]} style={{ borderTop: "1px solid var(--line)", fontWeight: i === 0 ? 600 : 400 }}>{row.map((c, j) => <td key={j} style={{ padding: "7px 12px 7px 0", fontFamily: j === 0 || j === 5 ? "Geist" : undefined }}>{c}</td>)}</tr>)}</tbody>
+        <tbody>{rows.map((row, i) => <tr key={row[0]} id={rowId(row[0])} style={{ borderTop: "1px solid var(--line)", fontWeight: i === 0 ? 600 : 400 }}>{row.map((c, j) => <td key={j} style={{ padding: "7px 12px 7px 0", fontFamily: j === 0 || j === 5 ? "Geist" : undefined }}>{c}</td>)}</tr>)}</tbody>
       </table>
       <p style={{ margin: "10px 0 0", fontSize: 13, color: "var(--text-3)" }}>
-        {sw.kv_1hop && sw.pgvector ? `Graph traversal is what matters: a 1-hop key-value store scores ${dpts(sw.kv_1hop.delta_vs_reference)} and vector search over the same postmortems ${dpts(sw.pgvector.delta_vs_reference)}. ` : ""}
-        {sw.pg_cte ? `Postgres with recursive queries ties on accuracy (${dpts(sw.pg_cte.delta_vs_reference)}), so the gain comes from multi-hop walks, not the store, and Postgres is faster on raw path queries at our sizes. ` : ""}
+        {sw.kv_1hop && sw.pgvector ? `Stores that cannot walk the graph lose ${Math.abs(sw.kv_1hop.delta_vs_reference.point * 100).toFixed(1)} to ${Math.abs(sw.pgvector.delta_vs_reference.point * 100).toFixed(1)} pts: a 1-hop key-value store scores ${dpts(sw.kv_1hop.delta_vs_reference)} and vector search over the same postmortems ${dpts(sw.pgvector.delta_vs_reference)}. ` : ""}
+        {sw.pg_cte ? `A Postgres recursive CTE matches accuracy (${dpts(sw.pg_cte.delta_vs_reference)}; it walks the graph too), so the gain comes from multi-hop walks, not from the store, and Postgres is faster on raw path queries at our sizes. ` : ""}
         {llm ? `The LLM costs about ${Math.round(llm.arms.llm_plain.tokens_per_incident.mean).toLocaleString()} tokens and ${ms(llm.arms.llm_plain.latency_ms.p50)} ms per verdict (${llm.arms.llm_plain.invalid_output_rate > 0 ? `${(llm.arms.llm_plain.invalid_output_rate * 100).toFixed(0)}% invalid outputs; ` : ""}${(llm.arms.llm_plain.provider_share.gemini * 100).toFixed(0)}% Gemini, ${(llm.arms.llm_plain.provider_share.groq * 100).toFixed(0)}% Groq): ${ci2(llm.arms.llm_plain.ac1)} AC@1. ` : ""}
         GhostWalk's learning lives in HydraDB: lessons are linked to the postmortems and incidents that taught them, and they survive restarts.
       </p>
@@ -97,6 +99,7 @@ function ReplayCards({ r }: { r: any }) {
 
 export default function Proof() {
   const { data: r, error } = useLoad(loadResults, [])
+  useEffect(() => { if (r && window.location.hash) window.setTimeout(() => document.getElementById(window.location.hash.slice(1))?.scrollIntoView({ block: "start" }), 60) }, [r])
   if (error) return <Page><Err>{error}</Err></Page>
   if (!r) return <Page><H1 title="Proof" /><Muted>No results.json yet. Run <span className="mono">make eval</span>.</Muted></Page>
   const strip = proofStrip(r)
@@ -189,9 +192,9 @@ export default function Proof() {
           </div>
         ))}
       </div>
-      <section className="card" style={{ padding: 18 }} aria-label="What learning adds">
+      <section id="learning" className="card" style={{ padding: 18, scrollMarginTop: 80 }} aria-label="What learning adds">
         <h2 style={{ margin: 0, fontSize: 16 }}>What learning adds</h2>
-        <p style={{ margin: "2px 0 12px", fontSize: 13, color: "var(--text-4)" }}>{r.meta.companies} held-out companies, {r.meta.incidents.toLocaleString()} incidents. Shared incident difficulty cancels out in the paired difference.</p>
+        <p style={{ margin: "2px 0 12px", fontSize: 13, color: "var(--text-4)" }}>Shared incident difficulty cancels out in the paired difference.</p>
         <PairedGainChart r={r} />
       </section>
       <section className="card" style={{ padding: 18 }} aria-label="Accuracy as it learns">
@@ -268,7 +271,7 @@ export default function Proof() {
       )}
       {warm && (
         <section className="card" style={{ padding: 18, overflowX: "auto" }}>
-          <h2 style={{ margin: 0, fontSize: 16 }}>HydraDB and Postgres, warm latency</h2>
+          <h2 id="latency" style={{ margin: 0, fontSize: 16, scrollMarginTop: 80 }}>HydraDB and Postgres, warm latency</h2>
           <p style={{ margin: "2px 0 10px", fontSize: 13, color: "var(--text-4)" }}>p50 / p95 ms, 200 timed requests after warm-up, one at a time. {warm.machine?.cpus} CPUs, {warm.machine?.ram_gb} GB, both databases in docker on the same machine.</p>
           <table className="mono" style={{ fontSize: 13, borderCollapse: "collapse", minWidth: 520 }}>
             <thead><tr style={{ color: "var(--text-4)", textAlign: "left" }}>{["", "HydraDB", "Postgres"].map((h) => <th key={h} style={{ padding: "6px 14px 6px 0", fontFamily: "Geist", fontWeight: 500 }}>{h}</th>)}</tr></thead>

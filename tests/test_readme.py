@@ -23,3 +23,11 @@ def test_the_audit_catches_a_typed_number():
 def test_the_committed_readme_and_docs_are_current():
     r = subprocess.run([sys.executable, str(ROOT / "scripts" / "update_readme_numbers.py"), "--check"], capture_output=True, text=True, encoding="utf8")
     assert r.returncode == 0, r.stdout + r.stderr
+
+
+def test_copy_never_claims_to_beat_postgres_or_states_a_relative_gain(tmp_path):
+    bad = tmp_path / "bad.md"
+    bad.write_text("GhostWalk beats Postgres here.\nIt is 20% better than a vector store.\nA relative improvement of note.\nPostgres matches accuracy and is faster on raw path queries.\n", encoding="utf8")
+    found = U.copy_check([bad])
+    assert len(found) == 3 and not any("faster on raw" in f for f in found)
+    assert U.copy_check(U.copy_files()) == []                              # the README, docs and UI copy are clean

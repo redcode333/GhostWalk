@@ -172,7 +172,7 @@ def honest_sentences():
     sizes = sorted(sc, key=int)
     pg_faster = all(sc[s]["path_query"][h]["postgres"]["p50"] < sc[s]["path_query"][h]["hydradb"]["p50"] for s in sizes for h in ("hops_3", "hops_5"))
     out = [f"1. **Graph traversal is what matters.** Replacing it with a 1-hop key-value store costs {abs(kv['delta_vs_reference']['point']) * 100:.1f} points of top-1 accuracy and vector search over the same postmortems costs {abs(vec['delta_vs_reference']['point']) * 100:.1f}.",
-           f"2. **Postgres ties on accuracy** (difference {pg['delta_vs_reference']['point'] * 100:+.1f} points, 95% CI {pg['delta_vs_reference']['ci95'][0] * 100:+.1f} to {pg['delta_vs_reference']['ci95'][1] * 100:+.1f}): the gain comes from multi-hop graph walks, not from which product stores the graph; {'Postgres is faster on raw path queries at our sizes' if pg_faster else 'neither store is faster everywhere on raw path queries'} (HydraDB {ms(sc[sizes[-1]]['path_query']['hops_5']['hydradb']['p50'])} vs Postgres {ms(sc[sizes[-1]]['path_query']['hops_5']['postgres']['p50'])} for 5 hops at {sizes[-1]} services)."]
+           f"2. **A Postgres recursive CTE matches accuracy** (it walks the graph too; difference {pg['delta_vs_reference']['point'] * 100:+.1f} points, 95% CI {pg['delta_vs_reference']['ci95'][0] * 100:+.1f} to {pg['delta_vs_reference']['ci95'][1] * 100:+.1f}): the gain comes from multi-hop graph walks, not from which product stores the graph, and stores that cannot walk the graph lose {abs(kv['delta_vs_reference']['point']) * 100:.1f} to {abs(vec['delta_vs_reference']['point']) * 100:.1f} points; {'Postgres is faster on raw path queries at our sizes' if pg_faster else 'neither store is faster everywhere on raw path queries'} (HydraDB {ms(sc[sizes[-1]]['path_query']['hops_5']['hydradb']['p50'])} vs Postgres {ms(sc[sizes[-1]]['path_query']['hops_5']['postgres']['p50'])} for 5 hops at {sizes[-1]} services)."]
     if llm:
         a, m = llm["arms"]["llm_plain"], llm["arms"]["llm_memory"]
         verdict = lambda k: ("ahead of" if llm["paired_ac1"][f"ghostwalk_minus_{k}"]["ci95"][0] > 0 else "not distinguishable from" if llm["paired_ac1"][f"ghostwalk_minus_{k}"]["ci95"][1] > 0 else "behind")
@@ -419,8 +419,8 @@ def learning_curve_svg():
     return "\n".join(out)
 
 
-def paired_gain_svg(theme="light"):
-    """Chart (a), 'What learning adds': AC@1 gain over learning off per five-incident bin, in points, for GhostWalk (with its 95% paired company-bootstrap band) and for the placebo, with the zero line.
+def per_bin_svg(theme="light"):
+    """Per-bin chart (EVALUATION.md): AC@1 gain over learning off per five-incident bin, in points, for GhostWalk (with its 95% paired company-bootstrap band) and for the placebo, with the zero line.
     Drawn from results.json learning_curve.paired_gain. theme is "light" or "dark"."""
     pg = R["learning_curve"]["paired_gain"]
     gw, pl = pg["series"]["ghostwalk_minus_learning_off"], pg["series"]["placebo_minus_learning_off"]
@@ -551,3 +551,71 @@ def mermaid_learner():
 
 def v_placebo_gain():
     return pts(M['placebo']['ac1']['point'] - M['learning_off']['ac1']['point'])
+
+
+def cumulative_gain_svg(theme="light"):
+    """The headline chart, 'What learning adds': cumulative paired gain over learning off for incidents 1..n (n = 1..60), GhostWalk with a shaded 95% bootstrap-by-company band and the placebo dotted with a light band.
+    Drawn from results.json learning_curve.cumulative_gain; the end labels are the final values. theme is "light" or "dark"."""
+    cg = R["learning_curve"]["cumulative_gain"]
+    gw, pl = cg["series"]["ghostwalk_minus_learning_off"], cg["series"]["placebo_minus_learning_off"]
+    dark = theme == "dark"
+    bg, ink, muted, grid, zero = ("#14131C", "#ECEBF4", "#A6A5B4", "#2B2A38", "#9A99A8") if dark else ("#FFFFFF", "#1B1A24", "#6B6B76", "#E6E6EC", "#8A8A96")
+    violet, amber = ("#9C86FF", "#F0A93B") if dark else ("#6A4BFF", "#D98A00")
+    W, H, L, Bm, T, Rr = 780, 416, 58, 70, 52, 96
+    vals = [v * 100 for p in gw + pl for v in (p["gain"], p["lo"], p["hi"])]
+    lo, hi = min(-2.0, (int(min(vals) / 2) - 1) * 2.0), (int(max(vals) / 2) + 1) * 2.0
+    n0, n1 = gw[0]["n"], gw[-1]["n"]
+    x = lambda n: L + (n - n0) * (W - L - Rr) / (n1 - n0)
+    y = lambda v: T + (hi - v) * (H - T - Bm) / (hi - lo)
+    out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" role="img" aria-label="What learning adds: cumulative accuracy gain over no learning by incidents seen per company, GhostWalk with a 95 percent band against placebo postmortems" font-family="system-ui, sans-serif">',
+           f'<rect width="{W}" height="{H}" rx="12" fill="{bg}"/>',
+           f'<text x="{L}" y="22" font-size="15" font-weight="600" fill="{ink}">What learning adds</text>',
+           f'<text x="{L}" y="40" font-size="11.5" fill="{muted}">Cumulative over incidents 1..n. {META["companies"]} held-out companies, {num(META["incidents"])} incidents. Band = 95% bootstrap by company.</text>']
+    t = lo
+    while t <= hi + 1e-9:
+        z = abs(t) < 1e-9
+        out.append(f'<line x1="{L}" x2="{W - Rr}" y1="{y(t):.1f}" y2="{y(t):.1f}" stroke="{zero if z else grid}" stroke-width="{1.4 if z else 1}"/><text x="{L - 8}" y="{y(t) + 4:.1f}" text-anchor="end" font-size="11" fill="{muted}">{"0" if z else f"{t:+.0f}"}</text>')
+        t += 2
+    out.append(f'<text transform="translate(14 {(T + H - Bm) / 2:.0f}) rotate(-90)" text-anchor="middle" font-size="12" fill="{muted}">{cg["y_label"]}</text>')
+    for n in (10, 20, 30, 40, 50, 60):
+        out.append(f'<text x="{x(n):.1f}" y="{H - Bm + 18}" text-anchor="middle" font-size="11" fill="{muted}">{n}</text>')
+    out.append(f'<text x="{(L + W - Rr) / 2:.0f}" y="{H - Bm + 40}" text-anchor="middle" font-size="12" fill="{muted}">{cg["x_label"]}</text>')
+    for series, col, op in ((pl, amber, 0.13), (gw, violet, 0.17)):
+        up = " ".join(f"{x(p['n']):.1f},{y(p['hi'] * 100):.1f}" for p in series)
+        dn = " ".join(f"{x(p['n']):.1f},{y(p['lo'] * 100):.1f}" for p in reversed(series))
+        out.append(f'<polygon points="{up} {dn}" fill="{col}" opacity="{op}"/>')
+    for series, col, dash, sw in ((pl, amber, "1 6", 2.6), (gw, violet, "", 3.4)):
+        d = " ".join(f"{'M' if i == 0 else 'L'}{x(p['n']):.1f},{y(p['gain'] * 100):.1f}" for i, p in enumerate(series))
+        out.append(f'<path d="{d}" fill="none" stroke="{col}" stroke-width="{sw}" stroke-linecap="round" stroke-linejoin="round"' + (f' stroke-dasharray="{dash}"' if dash else "") + "/>")
+    ends = sorted([(y(gw[-1]["gain"] * 100), pts(gw[-1]["gain"]), violet), (y(pl[-1]["gain"] * 100), pts(pl[-1]["gain"]), amber)])
+    if ends[1][0] - ends[0][0] < 16:
+        ends[1] = (ends[0][0] + 16, ends[1][1], ends[1][2])
+    for yy, label, col in ends:
+        out.append(f'<text x="{x(n1) + 8:.1f}" y="{yy + 4:.1f}" font-size="13" font-weight="600" fill="{col}">{label}</text>')
+    out.append(f'<line x1="{L}" x2="{L + 24}" y1="{H - 12}" y2="{H - 12}" stroke="{violet}" stroke-width="3.4"/><text x="{L + 30}" y="{H - 8}" font-size="11.5" fill="{muted}">GhostWalk minus learning off</text>')
+    out.append(f'<line x1="{L + 222}" x2="{L + 246}" y1="{H - 12}" y2="{H - 12}" stroke="{amber}" stroke-width="2.6" stroke-dasharray="1 6" stroke-linecap="round"/><text x="{L + 252}" y="{H - 8}" font-size="11.5" fill="{muted}">placebo minus learning off</text>')
+    out.append("</svg>")
+    return chr(10).join(out)
+
+
+def gain_line():
+    """The bold line under the README title: the gains in percentage points, derived like web/src/lib/results.ts gainStats (the LLM gain only if its paired 95% interval excludes 0)."""
+    llm = R.get("llm_baseline")
+    parts = []
+    gp = lambda x: f"{x * 100:+.1f} pts"
+    shown = False
+    if llm:
+        arms = [k for k in llm["arms"] if k.startswith("llm_") and f"ghostwalk_minus_{k}" in llm["paired_ac1"]]
+        best = max(arms, key=lambda k: llm["arms"][k]["ac1"]["point"]) if arms else None
+        d = llm["paired_ac1"][f"ghostwalk_minus_{best}"] if best else None
+        if d and d["ci95"][0] > 0:
+            parts.append(f"{gp(d['point'])} vs an LLM")
+            shown = True
+    if not shown:
+        parts.append(f"{gp(R['headline']['gain_vs_best']['point'])} vs best baseline (tuned PageRank)")
+    parts.append(f"{gp(-SW['kv_1hop']['delta_vs_reference']['point'])} vs a key-value store")
+    parts.append(f"{gp(-SW['pgvector']['delta_vs_reference']['point'])} vs a vector store")
+    parts.append(f"{gp(P['ac1']['ghostwalk - learning_off']['point'])} from learning")
+    vm = R["ops"].get("vm", {}).get("minio")
+    parts.append(f"{ms(vm['online_loop']['verdict_ms']['p50'])} verdict p50" if vm else f"{ms(SW['hydradb']['verdict_ms_p50'])} verdict p50")
+    return "**" + " · ".join(parts) + "**"

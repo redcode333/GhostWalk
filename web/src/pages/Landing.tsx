@@ -10,6 +10,7 @@ import { InsideGhostWalk } from "@/components/InsideGhostWalk"
 import { CLOUDFLARE, OUTAGES, savedM } from "@/data/outages"
 import { loadDemo, type Demo } from "@/lib/demo"
 import { loadResults, proofStrip, verdictLatency, type Results } from "@/lib/results"
+import { GainStats } from "@/components/GainStats"
 
 const GITHUB = "https://github.com/redcode333/GhostWalk"
 const compact = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n))
@@ -62,13 +63,13 @@ function Header() {
   )
 }
 
-function Hero() {
+function Hero({ r }: { r: Results | null }) {
   return (
     <div className="hero" style={{ textAlign: "center", padding: "clamp(14px, 3vh, 30px) 24px 0", maxWidth: 1000, margin: "0 auto" }}>
       <span className="btn-glass mono" style={{ display: "inline-flex", alignItems: "center", gap: 8, border: "1px solid var(--line)", borderRadius: 999, padding: "6px 14px", fontSize: 13, color: "var(--text-3)" }}>
         <span style={{ color: "var(--ink)" }}>Open source</span><span style={{ color: "var(--text-4)" }}>·</span>Root cause analysis on HydraDB <ArrowRight size={14} />
       </span>
-      <h1 style={{ margin: "clamp(10px, 2vh, 16px) 0 0", fontSize: "clamp(40px, 6vw, 84px)", lineHeight: 1.02, letterSpacing: "-0.04em", fontWeight: 600 }}>The outage is never where the pager says.</h1>
+      <h1 style={{ margin: "clamp(10px, 2vh, 16px) 0 0", fontSize: "clamp(40px, 5.2vw, 76px)", lineHeight: 1.02, letterSpacing: "-0.04em", fontWeight: 600 }}>The outage is never where the pager says.</h1>
       <p style={{ margin: "clamp(10px, 2vh, 16px) auto 0", maxWidth: 760, fontSize: "clamp(16px, 1.5vw, 20px)", lineHeight: 1.45, color: "var(--text-3)" }}>
         GhostWalk walks your service graph from fourteen alerts to the one broken dependency in milliseconds, and learns the dependencies nobody drew from every postmortem.
       </p>
@@ -76,7 +77,8 @@ function Hero() {
         <Btn to="/signup">Get started</Btn>
         <Btn to="/demo" variant="glass">Watch a live outage <ArrowRight size={16} /></Btn>
       </div>
-      <p className="mono" style={{ margin: "clamp(8px, 1.6vh, 14px) 0 0", fontSize: 13, color: "var(--text-4)" }}>Free and open source · MIT licensed · docker compose up</p>
+      <div style={{ marginTop: "clamp(8px, 1.6vh, 16px)" }}><GainStats r={r} compact /></div>
+      <p className="mono" style={{ margin: "clamp(4px, 1vh, 8px) 0 0", fontSize: 12.5, color: "var(--text-4)" }}>Free and open source · MIT licensed · docker compose up</p>
     </div>
   )
 }
@@ -457,7 +459,7 @@ export default function Landing() {
   return (
     <div id="top" style={{ background: "var(--bg)", color: "var(--ink)", minHeight: "100vh" }}>
       <Header />
-      <Hero />
+      <Hero r={r} />
       <div id="outages" style={{ marginTop: 8, scrollMarginTop: 90 }}>{ready && <OutageGlobe />}</div>
       <InsideGhostWalk />
       <Story />

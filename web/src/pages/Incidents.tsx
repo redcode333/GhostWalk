@@ -1,3 +1,4 @@
+import { GainStats } from "@/components/GainStats"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { api, ago } from "@/lib/api"
@@ -30,9 +31,9 @@ export default function Incidents() {
         ))}
       </div>
       <ReplayButtons />
+      <GainStats base="/app/proof" />
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
         <Stat label="Open now" value={s ? String(s.open) : "…"} />
-        <Stat label="Top-1 correct, last 30" value={s?.top1_last_30 == null ? "—" : `${Math.round(s.top1_last_30 * 100)}%`} sub={s ? `${s.scored} scored` : undefined} />
         <Stat label="Median time to verdict" value={s?.median_ms == null ? "—" : `${s.median_ms.toFixed(1)} ms`} />
         <Stat label="Learned edges" value={s ? String(s.learned_edges) : "…"} />
       </div>

@@ -41,7 +41,9 @@ For each incident of a company, in order: the verdict is computed from the alert
 
 Learning starts from zero at each company. Intervals are paired cluster bootstraps over companies (2,000 draws). Against the best baseline, GhostWalk is +6.5 pts (95% CI +3.6 to +9.8) ahead and closes 58% of the gap to the perfect-map oracle.
 
-![What learning adds](learning-curve.png)
+<picture><source media="(prefers-color-scheme: dark)" srcset="learning-curve-dark.png"><img src="learning-curve.png" alt="What learning adds: cumulative accuracy gain over no learning by incidents seen per company" width="760"></picture>
+
+The headline chart: the cumulative paired gain over learning off from the first incident up to the n-th at each company, with a 95% bootstrap band over companies. Both lines end at the whole-run values, and the series is in `results.json` under `learning_curve.cumulative_gain`.
 
 ## How GhostWalk compares
 
@@ -64,7 +66,7 @@ Same incidents, same engine and learner; only the store changes for the store ro
 | LLM + memory (five past postmortems) (n=58 subset) | 67.2% [53.4, 81.0] | −5.2 pts (95% CI −15.3 to +5.2) on the subset | 1,674 ms / 4,353 ms | 2,285 | no |
 
 1. **Graph traversal is what matters.** Replacing it with a 1-hop key-value store costs 13.5 points of top-1 accuracy and vector search over the same postmortems costs 37.6.
-2. **Postgres ties on accuracy** (difference +0.0 points, 95% CI +0.0 to +0.0): the gain comes from multi-hop graph walks, not from which product stores the graph; Postgres is faster on raw path queries at our sizes (HydraDB 3.2 ms vs Postgres 0.48 ms for 5 hops at 5000 services).
+2. **A Postgres recursive CTE matches accuracy** (it walks the graph too; difference +0.0 points, 95% CI +0.0 to +0.0): the gain comes from multi-hop graph walks, not from which product stores the graph, and stores that cannot walk the graph lose 13.5 to 37.6 points; Postgres is faster on raw path queries at our sizes (HydraDB 3.2 ms vs Postgres 0.48 ms for 5 hops at 5000 services).
 3. **The LLM costs tokens and seconds per verdict.** On the 58-incident subset (the first 58 of 100 planned incidents, 17 of the 30 companies: the run stopped at the model API's daily token quota) it used about 2,068 tokens and 1,537 ms p50 per verdict (GhostWalk: none, 2.3 ms). On the same incidents GhostWalk scored 72.4% [63.8, 81.4]: ahead of the plain LLM (56.9% [42.1, 71.7]; difference +15.5 points, 95% CI +3.4 to +27.3) and not distinguishable from the LLM given five past postmortems (67.2% [53.4, 81.0]; difference +5.2 points, 95% CI -5.2 to +15.3). These intervals are wide: this is a comparison on a small, partly covered subset, not a verdict on LLMs.
 4. **GhostWalk's learning lives in HydraDB**: every lesson is a node linked to the postmortem that taught it and the incident that confirmed it, and it survives restarts (durability demo, async write queue with replay).
 
@@ -109,6 +111,12 @@ LLM baseline: Gemini with Groq fallback on rate limits (model recorded per incid
 Learning gain over learning off: +8.9 pts (95% CI +5.7 to +12.4). Placebo postmortems (a random root and random edges, same shape, no information) move accuracy by +0.7 pts: the gain is the content of the postmortems, not the act of learning.
 
 Over the whole run the placebo is +0.7 pts against learning off. By incident number it is not flat everywhere: in the last bin of five (incidents 56 to 60) the placebo is −8.0 pts against learning off (95% CI -14.7 to -2.0), so by then learning from random postmortems has hurt; we did not isolate why. GhostWalk's gain in the same bin is +9.3 pts (95% CI +2.0 to +16.7). The per-bin bands are paired company bootstraps over the per-company tables stored under `learning_curve.paired_gain.tables`.
+
+### The same gain per bin of five incidents
+
+<picture><source media="(prefers-color-scheme: dark)" srcset="learning-curve-bins-dark.png"><img src="learning-curve-bins.png" alt="Accuracy gain over learning off per bin of five incidents, with the 95 percent paired band" width="760"></picture>
+
+Per-bin values are noisy (about ±6 pts at 150 incidents per bin); the cumulative chart is the headline.
 
 | learning step removed | AC@1 [95% CI] | change vs full learner |
 |---|---|---|

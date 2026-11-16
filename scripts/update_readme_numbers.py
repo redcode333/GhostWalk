@@ -168,6 +168,14 @@ def placebo_late():
             "The per-bin bands are paired company bootstraps over the per-company tables stored under `learning_curve.paired_gain.tables`.")
 
 
+def bin_noise():
+    pg = B.R["learning_curve"]["paired_gain"]
+    gw = pg["series"]["ghostwalk_minus_learning_off"]
+    half = sorted((p["ci95"][1] - p["ci95"][0]) / 2 * 100 for p in gw)[len(gw) // 2]
+    per_bin = B.META["incidents"] // len(gw)
+    return f"Per-bin values are noisy (about ±{half:.0f} pts at {per_bin} incidents per bin); the cumulative chart is the headline."
+
+
 def blocks():
     v = B.values()
     arch, seq, er = mermaid()
@@ -192,13 +200,13 @@ def blocks():
         "table_learning_main": lp1, "table_learning_ablation": lp2, "table_depth": dep, "table_poison": B.table_poison(),
         "novel_definition": nr_def, "share_repeat": nr_share, "table_novel_repeat": nr, "table_selective": B.table_selective(),
         "table_memory": tm, "memory_sentence": ms_sent, "table_change": tc, "change_main": change_main, "change_helps": change_helps,
-        "table_replays": B.table_replays(), "results_lines": B.results_lines(), "table_results8": B.table_results8(), "replay_lines": B.replay_lines(), "gw_why_example": B.gw_why_example(), "mermaid_engine": B.mermaid_engine(), "mermaid_learner": B.mermaid_learner(), "table_checklist": B.table_checklist(),
+        "table_replays": B.table_replays(), "results_lines": B.results_lines(), "gain_line": B.gain_line(), "table_results8": B.table_results8(), "replay_lines": B.replay_lines(), "gw_why_example": B.gw_why_example(), "mermaid_engine": B.mermaid_engine(), "mermaid_learner": B.mermaid_learner(), "table_checklist": B.table_checklist(),
         "table_machines": B.table_machines(), "table_queries": B.table_queries(), "table_verdicts": B.table_verdicts(), "table_scale": B.table_scale(), "table_load": B.table_load(),
         "env_table": env_table(), "cli_reference": cli_reference(), "transport_cause": d["cause"], "transport_also_fixed": "; ".join(d["also_fixed"]),
         "transport_evidence": transport_evidence(d), "engine_gate": B.R["latency"]["gate"]["rule"], "simulator_knobs": simulator_knobs(), "pagerank_grid": pagerank_grid(),
         "history_table": B.md_table(["engine", "top-1 hits"], [[h["engine"], f"{h['hits']} of {B.num(h['of'])}"] for h in B.META["ac1_history"]]),
         "scale_engine_note": B.R["latency"]["generator"], "timed": str(B.R["ops"]["hydradb_latency"]["warm"]["per_query"]["one_hop"]["n"]), "warmup": str(B.R["ops"]["hydradb_latency"]["warm"]["per_query"]["one_hop"]["warmup"]),
-        "placebo_late": placebo_late(), "scale_sizes": ", ".join(f"{int(k):,}" for k in sorted(B.R["scale"]["path_query"]["sizes"], key=int)), "machine_note": B.R["latency"]["meta"]["platform"],
+        "placebo_late": placebo_late(), "bin_noise": bin_noise(), "scale_sizes": ", ".join(f"{int(k):,}" for k in sorted(B.R["scale"]["path_query"]["sizes"], key=int)), "machine_note": B.R["latency"]["meta"]["platform"],
     })
     return v
 
@@ -237,6 +245,28 @@ def audit(name: str, tpl: str) -> list[str]:
     return bad
 
 
+# Copy that must never appear: a claim of beating Postgres, or a gain stated as a relative percentage instead of percentage points.
+FORBIDDEN = [(re.compile(r"\b(better than|beats?|outperforms?|ahead of|superior to|faster than)\s+(a\s+|the\s+)?postgres", re.I), "claims to beat Postgres"),
+             (re.compile(r"\b\d+(\.\d+)?\s?%\s+(better|more accurate|improvement|relative|higher|lift)", re.I), "a gain as a relative percentage (use percentage points)"),
+             (re.compile(r"\brelative (gain|improvement|lift)\b", re.I), "a relative gain (use percentage points)")]
+
+
+def copy_check(files):
+    """Scan prose and UI copy for the forbidden claims above. files: iterable of paths."""
+    bad = []
+    for f in files:
+        for i, line in enumerate(pathlib.Path(f).read_text(encoding="utf8").splitlines(), 1):
+            for rx, why in FORBIDDEN:
+                if rx.search(line):
+                    bad.append(f"{pathlib.Path(f).name if not str(f).startswith(str(ROOT)) else pathlib.Path(f).relative_to(ROOT)}:{i}: {why}: {line.strip()[:100]}")
+    return bad
+
+
+def copy_files():
+    web = [p for p in (ROOT / "web" / "src").rglob("*") if p.suffix in (".ts", ".tsx") and ".test." not in p.name]
+    return [ROOT / "README.md", *sorted((ROOT / "docs").glob("*.md")), *sorted((ROOT / "docs" / "templates").glob("*.md")), *web]
+
+
 def main():
     check = "--check" in sys.argv
     v = blocks()
@@ -254,8 +284,8 @@ def main():
                 stale.append(out)
         else:
             path.write_text(text, encoding="utf8")
-    for name, theme in (("learning-curve.svg", "light"), ("learning-curve-dark.svg", "dark")):
-        svg, sp = B.paired_gain_svg(theme), ROOT / "docs" / name
+    for name, fn, theme in (("learning-curve.svg", B.cumulative_gain_svg, "light"), ("learning-curve-dark.svg", B.cumulative_gain_svg, "dark"), ("learning-curve-bins.svg", B.per_bin_svg, "light"), ("learning-curve-bins-dark.svg", B.per_bin_svg, "dark")):
+        svg, sp = fn(theme), ROOT / "docs" / name
         if check:
             if not sp.exists() or sp.read_text(encoding="utf8").replace("\r\n", "\n") != svg:
                 stale.append("docs/" + name)
@@ -263,6 +293,7 @@ def main():
             sp.write_text(svg, encoding="utf8")
     if not check:
         print("wrote", ", ".join(TEMPLATES), "and docs/learning-curve(-dark).svg (the PNGs: cd web && node ../scripts/render_png.mjs)")
+    problems += copy_check(copy_files())
     if problems:
         print("CLAIM AUDIT FAILED: typed numbers in prose (generate them from results.json instead):")
         print("\n".join("  " + p for p in problems))

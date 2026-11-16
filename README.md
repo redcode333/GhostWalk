@@ -8,6 +8,8 @@
 
 *The outage is never where the pager says.*
 
+**+6.5 pts vs best baseline (tuned PageRank) · +13.5 pts vs a key-value store · +37.6 pts vs a vector store · +8.9 pts from learning · 1.3 ms verdict p50**
+
 [![CI](https://github.com/redcode333/GhostWalk/actions/workflows/ci.yml/badge.svg)](https://github.com/redcode333/GhostWalk/actions/workflows/ci.yml)
 [![tests](https://img.shields.io/github/actions/workflow/status/redcode333/GhostWalk/ci.yml?branch=main&label=tests)](https://github.com/redcode333/GhostWalk/actions/workflows/ci.yml)
 [![license: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
@@ -198,7 +200,7 @@ stateDiagram-v2
 | LLM, plain (n=58 subset) | 56.9% [42.1, 71.7] | Costs tokens and seconds per verdict, with no graph path behind the answer. |
 | Perfect map (oracle) | 82.9% [80.7, 85.2] | The ceiling if every dependency were known. |
 
-<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/learning-curve-dark.png"><img src="docs/learning-curve.png" alt="What learning adds: accuracy gain over learning off by incident number for GhostWalk, with its 95 percent band, and for placebo postmortems" width="760"></picture></p>
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/learning-curve-dark.png"><img src="docs/learning-curve.png" alt="What learning adds: cumulative accuracy gain over no learning by incidents seen per company, GhostWalk with its 95 percent band against placebo postmortems" width="760"></picture></p>
 
 Learning starts from zero at each company. Intervals are paired cluster bootstraps over companies. The incidents are simulated; the claim is the comparison between methods on the same incidents. Every table, the ablations and the limits: [docs/EVALUATION.md](docs/EVALUATION.md).
 

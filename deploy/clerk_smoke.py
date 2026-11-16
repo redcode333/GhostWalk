@@ -110,6 +110,16 @@ def main():
             return "A's token reaches A only; tampered or missing token -> 401"
         step("workspace API token (hashed, shown once) is scoped to its workspace", token_scope)
         step("the stored token cannot be shown again", lambda: need(c.post(f"{api}/api/settings/token/reveal", headers=h("a")).status_code == 410))
+        def big_map():
+            n = chr(10)
+            compose = "services:" + n + "".join(f"  svc-{i}:" + n + f"    image: acme/svc-{i}" + n + (f"    depends_on: [svc-{i - 1}]" + n if i else "") for i in range(35))
+            out = c.post(f"{api}/api/onboarding/scan", json={"source": "files", "files": [{"repo": "acme/infra", "path": "docker-compose.yml", "text": compose}]}, headers=h("b")).raise_for_status().json()
+            r = c.post(f"{api}/api/onboarding/accept", json={"edge_ids": [e["id"] for e in out["edges"]]}, headers=h("b"))
+            need(r.status_code == 200, f"status {r.status_code}: {r.text[:120]}")
+            need(r.json()["services"] >= 30, r.json())
+            need(c.get(f"{api}/api/summary", headers=h("b")).json()["services"] >= 30)
+            return f"{r.json()['services']} services accepted, no 402"
+        step("account B: a 35-service map is accepted (no service limit)", big_map)
         step("frontend: sign-in and sign-up pages are served", lambda: need(all(c.get(fe + p).status_code == 200 for p in ("/signin", "/signup", "/demo"))))
     finally:
         for uid in users:

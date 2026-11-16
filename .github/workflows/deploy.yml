@@ -43,7 +43,7 @@ jobs:
           printf '%s\n' "$VM_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           ssh-keyscan -H "$VM_HOST" >> ~/.ssh/known_hosts
-          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes "$VM_USER@$VM_HOST" 'cd GhostWalk && ./deploy/setup.sh update'
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes "$VM_USER@$VM_HOST" 'cd GhostWalk && git pull --ff-only && bash deploy/setup.sh update'
       - name: smoke test the live API
         if: steps.secrets.outputs.present == 'true'
         run: |

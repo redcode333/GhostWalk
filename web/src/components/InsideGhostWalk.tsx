@@ -92,7 +92,7 @@ export function InsideGhostWalk() {
       : { transform: "translateX(-26%) scale(.92) rotate(-4deg)", opacity: 0.55, zIndex: 1, filter: "blur(1px)" }
 
   return (
-    <section id="inside" style={{ maxWidth: 1240, margin: "0 auto", padding: "88px 24px 0", scrollMarginTop: 90 }}>
+    <section id="inside" style={{ maxWidth: 1240, margin: "0 auto", padding: "88px 24px 0", scrollMarginTop: 90, overflowX: "clip" }}>
       <div style={{ textAlign: "center", marginBottom: 28 }}>
         <span className="eyebrow">Inside GhostWalk</span>
         <h2 style={{ margin: "10px 0 0", fontSize: "clamp(30px, 4.4vw, 48px)", lineHeight: 1.08, letterSpacing: "-0.03em", fontWeight: 600 }}>The same app you would run on call</h2>
