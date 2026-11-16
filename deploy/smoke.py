@@ -36,7 +36,7 @@ def main():
     a = ap.parse_args()
     api = a.api.rstrip("/")
     fe = a.frontend.rstrip("/") if a.frontend else None
-    c = httpx.Client(timeout=60, headers={"Origin": fe} if fe else {}, follow_redirects=True, verify=not a.insecure)
+    c = httpx.Client(timeout=60, headers={**({"Origin": fe} if fe else {}), "X-GW-Demo": "1"}, follow_redirects=True, verify=not a.insecure)       # the public demo workspace (a no-op unless sign-in is on)
     st = {}
 
     if fe:
