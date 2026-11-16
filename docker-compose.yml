@@ -36,7 +36,7 @@ services:
       GITHUB_APP_SLUG: ${GITHUB_APP_SLUG:-ghostwalk}
       GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
       GITHUB_PR_TOKEN: ${GITHUB_PR_TOKEN:-}
-      GW_STORE: ${GW_STORE:-memory}            # hydradb: the graph and the learner's memory live in HydraDB (start it too: docker compose up -d hydradb app)
+      GW_STORE: ${GW_STORE:-hydradb}           # HydraDB is the default graph and learning store            # hydradb: the graph and the learner's memory live in HydraDB (start it too: docker compose up -d hydradb app)
       HYDRA_URL: ${HYDRA_URL:-http://hydradb:8443}
       HYDRA_READY: http://hydradb:9090/readyz
       GW_DEMO_INCIDENTS: ${GW_DEMO_INCIDENTS:-30}
