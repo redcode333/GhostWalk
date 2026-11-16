@@ -1,14 +1,8 @@
 
-# GhostWalk: local development
-# Default: MinIO + HydraDB + GhostWalk API/dashboard
-# Optional: docker compose --profile eval up -d --build
-
 name: ghostwalk
 
 services:
-  # --------------------------------------------------
-  # MinIO: S3-compatible persistent object storage
-  # --------------------------------------------------
+  # S3-compatible object storage for HydraDB
   minio:
     build:
       context: ./deploy/minio
@@ -24,7 +18,7 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in .env}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env}
-      MINIO_BROWSER: "off"
+      MINIO_BROWSER: "on"
     ports:
       - "9000:9000"
       - "9001:9001"
@@ -40,9 +34,7 @@ services:
       timeout: 3s
       retries: 40
 
-  # --------------------------------------------------
-  # Create bucket and restricted HydraDB user
-  # --------------------------------------------------
+  # Creates the bucket and restricted HydraDB S3 credentials
   minio-init:
     image: ghostwalk-minio:2025-09-07
     depends_on:
@@ -61,28 +53,23 @@ services:
     volumes:
       - ./deploy/minio/init.sh:/init.sh:ro
 
-  # --------------------------------------------------
-  # HydraDB 0.4.0: MinIO-backed graph storage
-  # --------------------------------------------------
+  # HydraDB using MinIO-backed S3 storage
   hydradb:
     image: ghcr.io/hydra-db/hydradb@sha256:ab71d651fefee13ebb23eb56d72316065bdca563ff7587442e07be663f2bf880
     restart: "no"
-
     entrypoint:
       - /bin/sh
       - -c
-      - >
-        mkdir -p /var/cache/slatedb/store /var/cache/slatedb/cache &&
-        echo "$$HYDRA_TOKEN" > /tmp/graph/auth-token &&
+      - |
+        mkdir -p /var/cache/slatedb/store /var/cache/slatedb/cache
+        echo "$$HYDRA_TOKEN" > /tmp/graph/auth-token
         if [ "$$CLOUD_PROVIDER" = local ]; then
-          unset AWS_ENDPOINT AWS_BUCKET_NAME AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_ALLOW_HTTP AWS_DEFAULT_REGION;
-        fi &&
+          unset AWS_ENDPOINT AWS_BUCKET_NAME AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_ALLOW_HTTP AWS_DEFAULT_REGION
+        fi
         exec graph-node
-
     depends_on:
       minio-init:
         condition: service_completed_successfully
-
     environment:
       CLOUD_PROVIDER: ${HYDRA_CLOUD_PROVIDER:-aws}
       LOCAL_PATH: /var/cache/slatedb/store
@@ -91,34 +78,28 @@ services:
       AWS_DEFAULT_REGION: us-east-1
       AWS_ENDPOINT: http://minio:9000
       AWS_ALLOW_HTTP: "true"
-      AWS_ACCESS_KEY_ID: ${HYDRA_S3_KEY}
-      AWS_SECRET_ACCESS_KEY: ${HYDRA_S3_SECRET}
+      AWS_ACCESS_KEY_ID: ${HYDRA_S3_KEY:-unused}
+      AWS_SECRET_ACCESS_KEY: ${HYDRA_S3_SECRET:-unused}
 
       GRAPH_NAMESPACE: default
       GRAPH_ID: default
       GRAPH_CELL_ID: cell-0
       GRAPH_CELLS: cell-0
       GRAPH_NODE_ID: node-0
-
       GRAPH_BOLT_NODE_ADDRESSES: node-0=hydradb:7687
       GRAPH_ADVERTISED_BOLT_ADDR: hydradb:7687
-
       GRAPH_DATA_CACHE_DIR: /var/cache/slatedb/cache
       GRAPH_AUTH_TOKEN_FILE: /tmp/graph/auth-token
       GRAPH_ALLOW_PLAINTEXT: "true"
       RUST_MIN_STACK: "33554432"
       GRAPH_USAGE_REPORT_ENABLED: "false"
-
       HYDRA_TOKEN: ${HYDRA_TOKEN:?Set HYDRA_TOKEN in .env}
-
     ports:
       - "8443:8443"
       - "9090:9090"
       - "7687:7687"
-
     volumes:
       - hydradb-data:/var/cache/slatedb
-
     healthcheck:
       test:
         - CMD
@@ -129,26 +110,23 @@ services:
       timeout: 3s
       retries: 60
 
-  # --------------------------------------------------
-  # GhostWalk API + dashboard
-  # --------------------------------------------------
+  # GhostWalk API
   app:
-    build: .
-    restart: unless-stopped
-
+    build:
+      context: .
+      dockerfile: Dockerfile
     depends_on:
       hydradb:
         condition: service_healthy
-
     ports:
       - "8000:8000"
-
     environment:
       AUTH_MODE: ${AUTH_MODE:-none}
       GW_PUBLIC_URL: ${GW_PUBLIC_URL:-http://localhost:8000}
 
       CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY:-}
       CLERK_JWKS_URL: ${CLERK_JWKS_URL:-}
+      CLERK_AUTHORIZED_PARTIES: ${GW_CORS_ORIGINS:-}
 
       GITHUB_APP_ID: ${GITHUB_APP_ID:-}
       GITHUB_APP_PRIVATE_KEY: ${GITHUB_APP_PRIVATE_KEY:-}
@@ -162,13 +140,10 @@ services:
       HYDRA_TOKEN: ${HYDRA_TOKEN:?Set HYDRA_TOKEN in .env}
 
       GW_DEMO_INCIDENTS: ${GW_DEMO_INCIDENTS:-30}
-
     volumes:
       - gw-data:/data
 
-  # --------------------------------------------------
-  # Evaluation-only services
-  # --------------------------------------------------
+  # Evaluation services
   redis:
     image: redis:7-alpine
     profiles:
@@ -176,7 +151,10 @@ services:
     ports:
       - "6380:6379"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test:
+        - CMD
+        - redis-cli
+        - ping
       interval: 2s
       timeout: 2s
       retries: 20
