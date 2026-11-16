@@ -7,11 +7,25 @@ MAX_FILE = 300_000
 SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__", "dist", "build", "vendor", "target"}
 
 
+def is_single_repo(root):
+    """A folder with infra files at its own top level (a compose file, a Helm chart, manifests) is one repo, even if it has subfolders."""
+    root = pathlib.Path(root)
+    return any(p.is_file() and classify(p.name) for p in root.iterdir())
+
+
+def repo_folders(root):
+    """The repos under `root`: its immediate subdirectories, unless the root is itself one repo."""
+    root = pathlib.Path(root)
+    if is_single_repo(root):
+        return []
+    return [d for d in sorted(root.iterdir()) if d.is_dir() and d.name not in SKIP_DIRS]
+
+
 def scan_directory(root, repos_are_subdirs=True):
     """Each immediate subdirectory is one repo when `repos_are_subdirs` and the root has no infra files of its own."""
     root = pathlib.Path(root)
     found = Finding()
-    dirs = [d for d in sorted(root.iterdir()) if d.is_dir() and d.name not in SKIP_DIRS] if repos_are_subdirs else []
+    dirs = repo_folders(root) if repos_are_subdirs else []
     repos = [(d.name, d) for d in dirs] or [(root.name, root)]
     for name, base in repos:
         for p in sorted(base.rglob("*")):

@@ -1,0 +1,5 @@
+{"alerts": [
+  {"name": "checkout-api", "signal": "error_rate", "t": 5},
+  {"name": "catalog-api", "signal": "error_rate", "t": 8},
+  {"name": "gateway", "signal": "error_rate", "t": 40}
+]}

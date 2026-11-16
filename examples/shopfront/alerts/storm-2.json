@@ -1,0 +1,6 @@
+{"alerts": [
+  {"name": "feature-flags", "signal": "latency", "t": 0},
+  {"name": "checkout-api", "signal": "error_rate", "t": 6},
+  {"name": "catalog-api", "signal": "error_rate", "t": 9},
+  {"name": "gateway", "signal": "error_rate", "t": 41}
+]}

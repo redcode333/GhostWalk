@@ -1,0 +1,38 @@
+services:
+  gateway:
+    image: shopfront/gateway
+    depends_on: [web, checkout-api, catalog-api]
+  web:
+    image: shopfront/web
+    environment:
+      CATALOG_URL: http://catalog-api:8080
+      CART_URL: http://cart-api:8080
+  catalog-api:
+    image: shopfront/catalog
+    depends_on: [postgres-catalog]
+  cart-api:
+    image: shopfront/cart
+    depends_on: [redis-cart]
+  checkout-api:
+    image: shopfront/checkout
+    environment:
+      CART_URL: http://cart-api:8080
+      PAYMENTS_URL: http://payments-api:8080
+      INVENTORY_URL: http://inventory-api:8080
+  payments-api:
+    image: shopfront/payments
+    depends_on: [postgres-orders]
+  inventory-api:
+    image: shopfront/inventory
+    depends_on: [postgres-catalog]
+  feature-flags:
+    image: shopfront/flags
+    depends_on: [redis-flags]
+  redis-flags:
+    image: redis:7
+  redis-cart:
+    image: redis:7
+  postgres-catalog:
+    image: postgres:16
+  postgres-orders:
+    image: postgres:16

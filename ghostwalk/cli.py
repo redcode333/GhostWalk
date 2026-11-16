@@ -16,7 +16,7 @@ from rich.console import Console
 from rich.text import Text
 
 from .api.workspace import Workspace
-from .discover.scan import scan_directory, scan_texts, proposals
+from .discover.scan import repo_folders, scan_directory, scan_texts, proposals
 
 VIOLET, VIOLET_TEXT, TEAL, AMBER, RED, DIM, INK, MUTED_BAR, EMPTY = "#8E76FF", "#AC9BFF", "#12B5A0", "#F5B83F", "#D9534F", "#8F8E9A", "#F6F5F1", "#4A4955", "#3A3A44"
 TIER = {"edge": "#3D7DFF", "service": "#12B5A0", "data": "#E2549A", "infra": "#7FB800"}
@@ -98,7 +98,7 @@ def map_import(path: Optional[pathlib.Path] = typer.Argument(None, exists=True, 
         except GitHubError as e:
             fail(str(e))
     elif path is not None:
-        repos = [d for d in path.iterdir() if d.is_dir() and not d.name.startswith(".")] or [path]
+        repos = repo_folders(path) or [path]
         prompt_line(f"gw map import {path}")
         line((f"scanning {len(repos)} repo{'s' if len(repos) != 1 else ''} …", DIM))
         found = scan_directory(path)
