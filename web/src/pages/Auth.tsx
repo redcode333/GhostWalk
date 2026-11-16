@@ -42,7 +42,7 @@ export function RequireAuth({ children }: { children: ReactNode }) {
 // Clerk appearance (spec): colorPrimary = --ink, colorBackground = --surface, borderRadius 12px, Geist.
 const appearance = { variables: { colorPrimary: "var(--ink)", colorBackground: "var(--surface)", colorText: "var(--ink)", borderRadius: "12px", fontFamily: "Geist, sans-serif" } }
 
-const BULLETS = ["Connect alerts with one webhook", "Every postmortem teaches the graph", "Upgrade only when you pass 25 services"]
+const BULLETS = ["Connect alerts with one webhook", "Every postmortem teaches the graph", "Free and open source, MIT licensed"]
 
 function Side({ headline }: { headline: string }) {
   const { data: r } = useLoad(loadResults, [])
@@ -99,13 +99,13 @@ function DemoForm({ up }: { up: boolean }) {
   return (
     <form onSubmit={(e) => { e.preventDefault(); nav(up ? "/app/onboarding" : "/app/incidents") }} className="card" style={{ width: "min(420px, 100%)", padding: 28, display: "flex", flexDirection: "column", gap: 14 }}>
       <div><h1 style={{ margin: 0, fontSize: 26, fontWeight: 600 }}>{up ? "Create your account" : "Welcome back"}</h1>
-        <p style={{ margin: "4px 0 0", color: "var(--text-3)", fontSize: 15 }}>{up ? "Free for up to 25 services. No card needed." : "Sign in to your workspace."}</p></div>
+        <p style={{ margin: "4px 0 0", color: "var(--text-3)", fontSize: 15 }}>{up ? "Free and open source. No card needed." : "Sign in to your workspace."}</p></div>
       <Oauth /><Or />
       {up && <Field label="Full name"><input style={input} placeholder="Priya Raman" autoComplete="name" /></Field>}
       <Field label="Work email"><input style={input} type="email" autoComplete="email" placeholder="you@company.com" /></Field>
       <Field label="Password" right={!up && <a href="#" style={{ color: "var(--accent-text)" }}>Forgot password?</a>}><input style={input} type="password" autoComplete={up ? "new-password" : "current-password"} /></Field>
       {!up && <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" defaultChecked style={{ accentColor: "var(--accent)" }} /> Keep me signed in</label>}
-      <Btn type="submit">{up ? "Create free account" : "Sign in"}</Btn>
+      <Btn type="submit">{up ? "Create account" : "Sign in"}</Btn>
       {!up && <Btn variant="glass" to="/app/incidents">Sign in with SSO</Btn>}
       {up && <p style={{ margin: 0, fontSize: 13, color: "var(--text-4)" }}>By continuing you agree to the <a href="#" style={{ textDecoration: "underline" }}>Terms</a> and <a href="#" style={{ textDecoration: "underline" }}>Privacy Policy</a>.</p>}
       <p style={{ margin: 0, fontSize: 12, color: "var(--text-4)" }}>Sign-in is off on this server (<span className="mono">AUTH_MODE=none</span>), so this opens the demo workspace.</p>
@@ -125,7 +125,7 @@ export function SignInPage() {
   return (
     <Shell headline="The pager says checkout. The graph says config-svc.">
       {clerk ? <SignIn routing="path" path="/signin" signUpUrl="/signup" forceRedirectUrl="/app/incidents" appearance={appearance} /> : <DemoForm up={false} />}
-      <div style={{ fontSize: 14, color: "var(--text-3)" }}>New to GhostWalk? <Link to="/signup" style={{ color: "var(--accent-text)" }}>Create a free account</Link></div>
+      <div style={{ fontSize: 14, color: "var(--text-3)" }}>New to GhostWalk? <Link to="/signup" style={{ color: "var(--accent-text)" }}>Create an account</Link></div>
     </Shell>
   )
 }

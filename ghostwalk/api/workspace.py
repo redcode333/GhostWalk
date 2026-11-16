@@ -16,8 +16,7 @@ from ..learn import update
 from ..integrations import issues
 from .auth import new_token, split_token, secret_matches
 
-FREE_SERVICES = 25
-SAMPLE_SERVICES = 24          # the sample company loaded into a user's workspace fits the free plan
+SAMPLE_SERVICES = 24          # size of the sample company loaded into a user's workspace
 
 UI_KIND = {"datastore": "data", "cache": "data", "queue": "data", "shared": "infra", "external": "infra", "service": "service"}
 TIER_OF = {"edge": 0, "service": 1, "data": 2, "infra": 3}
@@ -551,7 +550,7 @@ class Workspace:
 
     # ---- a sample company in a user's own workspace -----------------------------------------
     def load_sample(self, seed=4242, history=8):
-        """Replace this workspace's graph with a small sample company (it fits the free plan), learned from a few past incidents, so a first verdict works at once."""
+        """Replace this workspace's graph with a small sample company learned from a few past incidents, so a first verdict works at once."""
         self.wait_saved()
         with self.lock:
             self.sample = {"seed": seed, "size": SAMPLE_SERVICES}

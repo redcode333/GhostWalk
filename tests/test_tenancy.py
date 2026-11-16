@@ -1,4 +1,4 @@
-"""Clerk sessions and per-user workspaces: JWT checks, isolation between two accounts, workspace API tokens, the free-plan limit, the public demo sandbox."""
+"""Clerk sessions and per-user workspaces: JWT checks, isolation between two accounts, workspace API tokens, the public demo sandbox."""
 import base64, hashlib, hmac, json, time
 import jwt
 import pytest
@@ -124,16 +124,14 @@ def test_a_user_workspace_survives_a_restart_and_the_demo_is_untouched(app_env, 
     assert c2.get("/api/summary", headers={"x-gw-demo": "1"}).json()["services"] == demo_before
 
 
-def test_the_free_plan_limit_is_enforced_by_the_server(app_env):
+def test_there_is_no_service_limit(app_env):
     c, app = app_env
     a = bearer("user_a")
     c.get("/api/summary", headers=a)
     user_ws = app.state.tenancy.for_user("user_a")
-    edges = [{"id": f"e{i}", "src": f"svc-{i}", "dst": f"svc-{i + 1}", "accepted": True} for i in range(30)]
-    user_ws.map_proposals = {"edges": edges, "services": [{"name": f"svc-{i}", "kind": "service"} for i in range(31)]}
-    r = c.post("/api/onboarding/accept", json={"edge_ids": [e["id"] for e in edges]}, headers=a)
-    assert r.status_code == 402 and r.json()["detail"]["code"] == "plan_limit" and r.json()["detail"]["limit"] == 25
-    assert c.post("/api/onboarding/accept", json={"edge_ids": [e["id"] for e in edges[:10]]}, headers=a).status_code == 200
+    edges = [{"id": f"e{i}", "src": f"svc-{i}", "dst": f"svc-{i + 1}", "accepted": True} for i in range(60)]
+    user_ws.map_proposals = {"edges": edges, "services": [{"name": f"svc-{i}", "kind": "service"} for i in range(61)]}
+    assert c.post("/api/onboarding/accept", json={"edge_ids": [e["id"] for e in edges]}, headers=a).status_code == 200
 
 
 def test_hydradb_isolation_between_two_workspaces(make_hydra):

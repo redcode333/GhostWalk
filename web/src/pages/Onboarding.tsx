@@ -45,8 +45,7 @@ export default function Onboarding() {
   useEffect(() => { if (!o?.steps?.alert && accepted) { const t = setInterval(reload, 4000); return () => clearInterval(t) } }, [o?.steps?.alert, accepted])
 
   const kinds = useMemo(() => Object.fromEntries((prop?.services ?? []).map((s: any) => [s.name, s.kind])), [prop])
-  const [upgrade, setUpgrade] = useState<any>(null)
-  const run = async (fn: () => Promise<any>) => { setBusy(true); setErr(null); setUpgrade(null); try { await fn() } catch (e: any) { if (String(e.message).includes("plan_limit")) { try { setUpgrade(JSON.parse(e.message)) } catch { setErr(e.message) } } else setErr(e.message) } finally { setBusy(false) } }
+  const run = async (fn: () => Promise<any>) => { setBusy(true); setErr(null); try { await fn() } catch (e: any) { setErr(e.message) } finally { setBusy(false) } }
   const scan = (source: string) => run(async () => { await api("/api/onboarding/scan", { method: "POST", json: { source } }); setAccepted(null); reload() })
   const installGithub = () => run(async () => { window.location.href = (await api("/api/onboarding/github/install-url")).url })
   const accept = () => run(async () => { setAccepted(await api("/api/onboarding/accept", { method: "POST", json: { edge_ids: [...checked] } })); reload() })
@@ -63,7 +62,6 @@ export default function Onboarding() {
           <h1 style={{ margin: 0, fontSize: 26, fontWeight: 600 }}>Set up your workspace</h1>
           <p style={{ margin: "4px 0 0", color: "var(--text-3)", fontSize: 15 }}>About 10 minutes. Everything is read-only, and you can skip any step.</p>
         </div>
-        {o && <span className="mono" style={{ marginLeft: "auto", fontSize: 13, color: "var(--text-4)" }}>Free plan · {o.summary.services} of 25 services</span>}
       </div>
       <ol style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(180px, 100%), 1fr))", gap: 8 }}>
         {steps.map((s, i) => {
@@ -77,11 +75,6 @@ export default function Onboarding() {
         })}
       </ol>
       {err && <Err>{err}</Err>}
-      {upgrade && (
-        <div role="alert" className="card" style={{ padding: 20, display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center", borderColor: "var(--accent)" }}>
-          <div style={{ flex: 1, minWidth: 240 }}><strong>This map is over the free plan</strong><div style={{ fontSize: 14, color: "var(--text-3)" }}>{upgrade.message} Team covers up to 150 services, or accept fewer edges to stay on Free.</div></div>
-          <Btn href="/#pricing">See plans</Btn>
-        </div>)}
 
       <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "flex-start" }}>
         <section aria-labelledby="map-h" className="card" style={{ flex: "3 1 min(560px, 100%)", minWidth: 0 }}>

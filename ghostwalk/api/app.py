@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .alerts import normalize
 from .samples import SAMPLE_FILES
-from .workspace import Workspace, FREE_SERVICES
+from .workspace import Workspace
 from .auth import AuthError, ClerkVerifier
 from .tenancy import Tenancy
 from .demo import demo_inside
@@ -81,7 +81,7 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
         from fastapi.middleware.cors import CORSMiddleware
         app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["GET", "POST", "DELETE", "OPTIONS"], allow_headers=["authorization", "content-type", "x-gw-token", "x-gw-demo"],
                            allow_credentials=False, max_age=600)
-    limit_n, _, limit_s = os.environ.get("GW_RATE_LIMIT", "0/60").partition("/")
+    limit_n, _, limit_s = os.environ.get("GW_RATE_LIMIT", "60/60").partition("/")
     limit_n, limit_s = int(limit_n or 0), int(limit_s or 60)
     hits: dict[str, collections.deque] = collections.defaultdict(collections.deque)
     public_demo = os.environ.get("GW_PUBLIC_DEMO") == "1"
@@ -99,7 +99,7 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
             while q and q[0] < now - limit_s:
                 q.popleft()
             if len(q) >= limit_n:
-                return JSONResponse({"detail": f"rate limit: {limit_n} requests per {limit_s} s"}, status_code=429, headers={"Retry-After": str(limit_s)})
+                return JSONResponse({"detail": "Slow down, try again in a minute"}, status_code=429, headers={"Retry-After": str(limit_s)})
             q.append(now)
             if len(hits) > 5000:                                   # forget idle clients
                 for k in [k for k, v in hits.items() if not v or v[-1] < now - limit_s]:
@@ -451,12 +451,6 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
     @app.post("/api/onboarding/accept")
     async def accept(request: Request, u=user):
         body = await request.json()
-        if AUTH_MODE() == "clerk" and ws.map_proposals and getattr(request.state, "gw_kind", None) != "demo":
-            ids = set(body.get("edge_ids", []))
-            names = {n for e in ws.map_proposals["edges"] if e["id"] in ids for n in (e["src"], e["dst"])}
-            if len(names) > FREE_SERVICES:
-                raise HTTPException(402, {"code": "plan_limit", "plan": "free", "limit": FREE_SERVICES, "services": len(names),
-                                          "message": f"The free plan covers {FREE_SERVICES} services; this map has {len(names)}."})
         try:
             return ws.accept_map(body.get("edge_ids", []))
         except ValueError as e:
@@ -464,7 +458,7 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
 
     @app.post("/api/onboarding/load-sample")
     def load_sample(u=user):
-        """A small sample company (it fits the free plan) with a few past incidents, in this user's own workspace."""
+        """A small sample company with a few past incidents, in this user's own workspace."""
         return ws.load_sample()
 
     @app.post("/api/onboarding/postmortem-pr")

@@ -63,7 +63,7 @@ HydraDB 0.4.0 numbers HTTP requests from one on every start and deduplicates wri
 
 ## Accounts and isolation
 
-Clerk issues the sessions. The API verifies each session token against Clerk's cached signing keys (signature, expiry, not-before, issuer, and the authorised party when present) and maps the Clerk user to a workspace. A workspace has its own state file and its own range of HydraDB ids, and every scan filters on its own company key. Workspace API tokens (`gw_live_<workspace>_<secret>`) are shown once and stored hashed. The free plan's service limit is enforced on the server. `/demo` is a separate public sandbox workspace: settings, onboarding and webhooks are read-only there and it is rebuilt every night. `tests/test_tenancy.py` checks the isolation, including two workspaces on one HydraDB.
+Clerk issues the sessions. The API verifies each session token against Clerk's cached signing keys (signature, expiry, not-before, issuer, and the authorised party when present) and maps the Clerk user to a workspace. A workspace has its own state file and its own range of HydraDB ids, and every scan filters on its own company key. Workspace API tokens (`gw_live_<workspace>_<secret>`) are shown once and stored hashed. `/demo` is a separate public sandbox workspace: settings, onboarding and webhooks are read-only there and it is rebuilt every night. `tests/test_tenancy.py` checks the isolation, including two workspaces on one HydraDB.
 
 ## Deployment
 

@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react"
 import { Link } from "react-router-dom"
-import { ArrowRight, Boxes, GitBranch, HelpCircle, MapPinned, Route, Tag } from "lucide-react"
+import { ArrowRight, Boxes, GitBranch, HelpCircle, MapPinned, Route } from "lucide-react"
 import { LiquidNavbar } from "@/components/ui/liquid-glass-navbar"
 import { OutageGlobe } from "@/components/ui/outage-globe"
 import { PairedGainChart } from "@/components/LearningCharts"
@@ -51,14 +51,13 @@ function Header() {
           { label: "Product", href: "#product", icon: <Boxes size={18} />, fx: "pop" },
           { label: "Outages", href: "#outages", icon: <MapPinned size={18} />, fx: "spin" },
           { label: "How it works", href: "#how", icon: <Route size={18} />, fx: "glow" },
-          { label: "Pricing", href: "#pricing", icon: <Tag size={18} />, fx: "pop" },
           { label: "FAQ", href: "#faq", icon: <HelpCircle size={18} />, fx: "wave" },
           { label: stars != null ? `GitHub · ${compact(stars)}` : "GitHub", href: GITHUB, icon: <GitBranch size={18} />, fx: "drop" },
         ]} />
       </div>
       <span style={{ marginLeft: "auto", display: "inline-flex" }}><ThemeToggle /></span>
       <span className="hide-md"><Btn to="/signin" variant="ghost">Sign in</Btn></span>
-      <Btn to="/signup">Start free</Btn>
+      <Btn to="/signup">Get started</Btn>
     </header>
   )
 }
@@ -74,10 +73,10 @@ function Hero() {
         GhostWalk walks your service graph from fourteen alerts to the one broken dependency in milliseconds, and learns the dependencies nobody drew from every postmortem.
       </p>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "center", marginTop: "clamp(14px, 2.6vh, 22px)" }}>
-        <Btn to="/signup">Start free</Btn>
+        <Btn to="/signup">Get started</Btn>
         <Btn to="/demo" variant="glass">Watch a live outage <ArrowRight size={16} /></Btn>
       </div>
-      <p className="mono" style={{ margin: "clamp(8px, 1.6vh, 14px) 0 0", fontSize: 13, color: "var(--text-4)" }}>Free for 25 services · No card needed · docker compose up</p>
+      <p className="mono" style={{ margin: "clamp(8px, 1.6vh, 14px) 0 0", fontSize: 13, color: "var(--text-4)" }}>Free and open source · MIT licensed · docker compose up</p>
     </div>
   )
 }
@@ -395,43 +394,15 @@ function How({ r, d }: { r: Results | null; d: Demo | null }) {
   )
 }
 
-/* ------------------------------------------------------------------ pricing, faq, footer */
-function Pricing() {
-  const plans = [
-    { n: "Free", d: "For side projects and a first real trial", p: "$0", per: "", note: "Free forever, no card needed", cta: "Start free", to: "/signup", f: ["Up to 25 services", "3 seats", "30-day incident history", "Webhook, CLI and API", "Community support"] },
-    { n: "Team", d: "For startups with an on-call rotation", p: "$49", per: "/ month", note: "Flat per workspace · 14-day free trial", cta: "Start free trial", to: "/signup", hot: true, f: ["Up to 150 services", "Unlimited seats", "1-year incident history", "Postmortems from GitHub Issues", "Email support"] },
-    { n: "Enterprise", d: "For large estates with strict security", p: "Custom", per: "", note: "Annual contract, volume pricing", cta: "Talk to us", to: "mailto:sales@ghostwalk.dev", f: ["Unlimited services", "SSO, SAML and audit log", "Self-hosted or private VPC", "SLA and priority support", "Onboarding with an engineer"] },
-  ]
-  return (
-    <Section id="pricing">
-      <H2 sub="Priced by the size of your service graph, not your headcount. Everyone on call gets a seat.">Simple pricing. No per-seat tax.</H2>
-      <p style={{ textAlign: "center", margin: "-16px 0 28px" }}><Pill>Draft pricing</Pill></p>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(290px, 100%), 1fr))", gap: 16 }}>
-        {plans.map((p) => (
-          <div key={p.n} className="card" style={{ padding: 28, display: "flex", flexDirection: "column", gap: 14, borderColor: p.hot ? "var(--accent)" : undefined }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}><h3 style={{ margin: 0, fontSize: 22 }}>{p.n}</h3>{p.hot && <span style={{ fontSize: 12, color: "var(--accent-text)", border: "1px solid var(--accent)", borderRadius: 999, padding: "1px 10px" }}>Most popular</span>}</div>
-            <p style={{ margin: 0, color: "var(--text-3)" }}>{p.d}</p>
-            <div><span style={{ fontSize: 44, fontWeight: 600, letterSpacing: "-0.02em" }}>{p.p}</span> <span style={{ color: "var(--text-4)" }}>{p.per}</span><div style={{ fontSize: 14, color: "var(--text-4)" }}>{p.note}</div></div>
-            <Btn to={p.to.startsWith("mailto") ? undefined : p.to} href={p.to.startsWith("mailto") ? p.to : undefined} variant={p.hot ? "primary" : "glass"}>{p.cta}</Btn>
-            <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "flex", flexDirection: "column", gap: 8, fontSize: 15, color: "var(--text-2)" }}>
-              {p.f.map((x) => <li key={x}><span style={{ color: "var(--ok)" }}>✓</span>&nbsp; {x}</li>)}
-            </ul>
-          </div>))}
-      </div>
-      <p style={{ textAlign: "center", color: "var(--text-4)", marginTop: 20 }}>Rather run it yourself? The engine is open source and free forever. <a href={GITHUB} style={{ color: "var(--accent-text)" }}>Self-host guide</a></p>
-    </Section>
-  )
-}
-
+/* ------------------------------------------------------------------ faq, footer */
 const FAQ: [string, string][] = [
   ["What does GhostWalk actually do?", "When an alert storm hits, it ranks which service most likely caused it, shows the path from that service to every alert, and tells you why. After the incident, your postmortem teaches it dependencies your map was missing."],
   ["Do I need a complete service map?", "No. Start with what you have. Hidden and stale dependencies are exactly what it learns."],
   ["Can a wrong postmortem poison the graph?", "New edges enter at low weight and only count in full once a second incident confirms them. Edges that keep misleading decay and drop out. You review every change before it applies."],
   ["Do you use an LLM on my incidents?", "Not for verdicts. Those are graph computations you can reproduce. The optional postmortem importer uses a model to fill in three fields, and you approve what it proposes."],
-  ["Where does my data live?", "Hosted plans keep the graph in HydraDB on object storage. Enterprise customers pick the region, or self-host so nothing leaves their infrastructure."],
-  ["What happens when I outgrow the free tier?", "Nothing breaks. Verdicts keep running for your first 25 services and we let you know when an upgrade would cover the rest."],
-  ["Can I cancel anytime?", "Yes. Team is billed monthly, and you can export your graph and incident history whenever you like."],
-  ["Is it open source?", "The engine, learner, CLI, MCP server and eval suite are. The hosted dashboard adds teams, SSO and managed HydraDB."],
+  ["Where does my data live?", "The hosted version keeps your graph in HydraDB on object storage. Or self-host, and nothing leaves your infrastructure."],
+  ["Is it free?", "Yes. GhostWalk is free and open source under MIT. Self-host it or use the hosted version."],
+  ["Is it open source?", "Yes. The engine, learner, CLI, MCP server, eval suite and this dashboard are all MIT licensed."],
 ]
 
 function Faq() {
@@ -467,7 +438,7 @@ function Footer() {
           <span className="mono" style={{ fontSize: 24, fontWeight: 600 }}>ghost<span style={{ color: "var(--accent)" }}>walk</span></span>
           <p style={{ margin: 0, color: "var(--text-4)", maxWidth: 280 }}>Root cause analysis that learns the dependencies nobody drew.</p>
         </div>
-        {col("Product", [["Features", "#product"], ["Pricing", "#pricing"], ["Proof", "/app/proof"], ["FAQ", "#faq"]])}
+        {col("Product", [["Features", "#product"], ["Proof", "/app/proof"], ["FAQ", "#faq"]])}
         {col("Developers", [["GitHub", GITHUB], ["Docs", "#how"], ["API", "/api/docs"], ["MCP server", "#mcp"], ["HydraDB", "https://github.com/hydra-db/hydradb"]])}
         {col("Company", [["Outages", "#outages"], ["Contact", "mailto:support@ghostwalk.dev"], ["Privacy", "#top"], ["Terms", "#top"]])}
       </div>
@@ -493,13 +464,12 @@ export default function Landing() {
       <Bento r={r} d={d} />
       <Mcp d={d} />
       <How r={r} d={d} />
-      <Pricing />
       <Faq />
       <Section>
         <div style={{ textAlign: "center", padding: "56px 24px", borderRadius: 28, border: "1px solid var(--line)", background: "var(--surface)" }}>
           <h2 style={{ margin: 0, fontSize: "clamp(28px, 4vw, 44px)", letterSpacing: "-0.03em", fontWeight: 600 }}>Your next outage is already on its way. Meet it with a map.</h2>
-          <p style={{ color: "var(--text-3)", fontSize: 18 }}>Free for 25 services. Set up in an afternoon.</p>
-          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}><Btn to="/signup">Start free</Btn><Btn to="/app/incidents" variant="glass">Watch a live outage</Btn></div>
+          <p style={{ color: "var(--text-3)", fontSize: 18 }}>Free and open source. MIT licensed.</p>
+          <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}><Btn to="/signup">Get started</Btn><Btn to="/demo" variant="glass">Watch a live outage</Btn><Btn href={GITHUB} variant="glass">GitHub</Btn></div>
         </div>
       </Section>
       <Footer />

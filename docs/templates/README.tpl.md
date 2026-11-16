@@ -30,7 +30,7 @@
 | **Graph beats vector search** at ranking root causes | {{hydra_ac1}} vs {{vec_ac1}} for vector search over the same postmortems; a 1-hop key-value store gets {{kv_ac1}} |
 | **{{verdict_headline}}** | laptop numbers and the load test are in [Performance](#performance-and-latency) |
 
-**Who pays and why.** Teams with an on-call rotation: $49 a month flat for the workspace. One avoided hour of a wrong first guess pays for it.
+**Free and open source.** GhostWalk is MIT licensed. Self-host it, or use the hosted version. One avoided hour of a wrong first guess is the return.
 
 > Honest limits, up front: the incidents are simulated (the knobs are in the evaluation section); Postgres with recursive queries gets the same accuracy as HydraDB and is faster on raw queries at our sizes; graph memory did not beat vector retrieval at finding similar past incidents; the LLM baseline ran on a {{llm_n}}-incident subset, not the full set; the real-outage replays are illustrations, not an accuracy measurement.
 
@@ -260,7 +260,7 @@ Short version here; full method in [docs/EVALUATION.md](docs/EVALUATION.md).
 - **Multi-path reach** (top-k paths), **cross-company learned priors** for a cold start, and a **temporal graph** ("what did we believe at incident time").
 - **External validation** on RCAEval recorded faults, as a CI job.
 - **Integrations:** a Slack and Teams verdict bot, native PagerDuty, Grafana and Datadog apps, the GitHub App and the `gw diff` PR check to general availability.
-- **Production:** object storage on AWS S3, SSO and SAML, payments, a SOC 2 path.
+- **Production:** object storage on AWS S3, SSO and SAML, a SOC 2 path.
 - **Upstream:** the HydraDB restart bug ([docs/hydradb-issue.md](docs/hydradb-issue.md)); the filed issue will be linked here.
 
 ## Project structure

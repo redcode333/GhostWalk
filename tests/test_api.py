@@ -162,20 +162,26 @@ def test_inside_demo_is_computed_by_the_engine(client):
     assert any(e["origin"] == "learned" for e in d["after"]["path"]) and d["learned_edges"] and d["changes"]
 
 
-def test_plan_limit_returns_402_only_when_sign_in_is_on(monkeypatch):
+def test_there_is_no_service_limit_and_a_burst_is_rate_limited(monkeypatch):
+    """No plan limit: a map of any size is accepted, signed in or not. Only the per-client abuse guard can refuse, with 429."""
     from ghostwalk.api.app import clerk_user
     w = Workspace(None, demo_incidents=2)
     app = create_app(workspace=w, results_path="nope.json")
     app.dependency_overrides[clerk_user] = lambda: {"id": "u1"}
     c = TestClient(app)
-    big = {"services": [{"name": f"s{i}", "kind": "service"} for i in range(30)],
-           "edges": [{"id": f"s{i}>s{i+1}", "src": f"s{i}", "dst": f"s{i+1}"} for i in range(29)]}
+    big = {"services": [{"name": f"s{i}", "kind": "service"} for i in range(80)],
+           "edges": [{"id": f"s{i}>s{i+1}", "src": f"s{i}", "dst": f"s{i+1}"} for i in range(79)]}
     ids = [e["id"] for e in big["edges"]]
-    w.map_proposals = big
-    monkeypatch.setenv("AUTH_MODE", "none")
-    assert c.post("/api/onboarding/accept", json={"edge_ids": ids}).status_code == 200       # demo mode has no plan limit
-    w.map_proposals = big
-    monkeypatch.setenv("AUTH_MODE", "clerk")
-    r = c.post("/api/onboarding/accept", json={"edge_ids": ids})
-    assert r.status_code == 402 and r.json()["detail"]["code"] == "plan_limit" and r.json()["detail"]["limit"] == 25
-    assert c.post("/api/onboarding/accept", json={"edge_ids": ids[:10]}).status_code == 200   # 11 services fit
+    for mode in ("none", "clerk"):
+        monkeypatch.setenv("AUTH_MODE", mode)
+        w.map_proposals = big
+        assert c.post("/api/onboarding/accept", json={"edge_ids": ids}).status_code == 200
+
+
+def test_rate_limit_is_a_quiet_429_with_a_plain_message(monkeypatch):
+    monkeypatch.setenv("GW_RATE_LIMIT", "5/60")
+    c = TestClient(create_app(workspace=Workspace(None, demo_incidents=2), results_path="nope.json"))
+    codes = [c.post("/api/onboarding/accept", json={"edge_ids": []}).status_code for _ in range(8)]
+    assert 429 in codes and codes.index(429) == 5
+    r = c.post("/api/onboarding/accept", json={"edge_ids": []})
+    assert r.json()["detail"] == "Slow down, try again in a minute"

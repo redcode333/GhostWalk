@@ -12,7 +12,6 @@ hit@\d
 related@\d
 \bp\d\d\b
 \dxx
-\$49
 \d+-hop\b
 \d+ hops?\b
 \bv\d

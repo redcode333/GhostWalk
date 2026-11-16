@@ -47,14 +47,13 @@ Buttons:
 - Fully rounded on marketing pages, 12px radius in the app. Focus ring 2px violet.
 
 ## Landing sections (in order)
-1. Header: logo · LiquidNavbar (`components/ui/liquid-glass-navbar.tsx`, tone follows theme; items Product, Customers, How it works, Pricing, FAQ, GitHub; lucide icons) · theme toggle · Sign in · Start free.
-2. Hero, centred: "Open source · Root cause analysis on HydraDB" pill, H1 "The outage is never where the pager says." (84px), sub, Start free + Watch a live outage, and the fine print "Free for 25 services · No card needed · docker compose up". Below that, the globe as a horizon (cropped container 500px high, bottom fade to --bg).
+1. Header: logo · LiquidNavbar (`components/ui/liquid-glass-navbar.tsx`, tone follows theme; items Product, Customers, How it works, FAQ, GitHub; lucide icons) · theme toggle · Sign in · Get started.
+2. Hero, centred: "Open source · Root cause analysis on HydraDB" pill, H1 "The outage is never where the pager says." (84px), sub, Get started + Watch a live outage, and the fine print "Free and open source · MIT licensed · docker compose up". Below that, the globe as a horizon (cropped container 500px high, bottom fade to --bg).
 3. Globe (cobe, reusing the engine from the testimonial-globe component; no testimonials, no portraits): tours the outages in `src/data/outages.ts` (below). Every 4.8s, ease phi to −lng and tilt to lat−0.45 rad. A glass snippet card follows the projected pin. Amber arcs from the active pin to 2 others; a violet dashed arc to a third. Company chips below the globe are clickable and reset the timer. Caption: "Real outages from public postmortems. Each one spread through a dependency."
 4. Story: Cloudflare, 18 Nov 2025 (real; link https://blog.cloudflare.com/18-november-2025-outage/). Left card: the postmortem timeline in UTC (11:05 ClickHouse change, 11:20 5xx, DDoS suspected, Turnstile/login/KV/Access errors, 14:30 core recovered, 17:06 all restored) and 3h 10m core / 5h 46m total. Right card, labelled illustrative: how GhostWalk walks the 5 alerts → core proxy ⇢ bot feature file → ClickHouse.
 5. Bento (6 tiles): Walks the graph live (tier-coloured graph + legend), Explains itself, Learns from postmortems, Proves it gets better, Plugs into your alerts, No LLM in the hot path, Open source core.
 6. "From clone to first verdict in three commands": steps on the left; on the right a terminal whose lines fade in and whose bottom is masked to transparent. Proof stat strip below it (reads results.json).
-7. Pricing: Free $0 (25 services) / Team $500 / Business $2,000, tagged "Draft pricing".
-8. FAQ (8 questions) · final CTA · footer.
+7. FAQ (7 questions, including "Is it free?") · final CTA ("Free and open source. MIT licensed." with the Get started, Watch a live outage and GitHub buttons) · footer.
 
 ## outages.ts (verify every line against its postmortem and add a `source` URL before shipping)
 | company | when | lat,lng | hidden dependency |

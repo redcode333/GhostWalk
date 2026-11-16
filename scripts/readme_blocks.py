@@ -177,7 +177,7 @@ def honest_sentences():
         a, m = llm["arms"]["llm_plain"], llm["arms"]["llm_memory"]
         verdict = lambda k: ("ahead of" if llm["paired_ac1"][f"ghostwalk_minus_{k}"]["ci95"][0] > 0 else "not distinguishable from" if llm["paired_ac1"][f"ghostwalk_minus_{k}"]["ci95"][1] > 0 else "behind")
         rng = lambda k: f"{llm['paired_ac1'][f'ghostwalk_minus_{k}']['point'] * 100:+.1f} points, 95% CI {llm['paired_ac1'][f'ghostwalk_minus_{k}']['ci95'][0] * 100:+.1f} to {llm['paired_ac1'][f'ghostwalk_minus_{k}']['ci95'][1] * 100:+.1f}"
-        partial = f" (the first {llm['n_incidents']} of {llm['n_requested']} planned incidents, {llm['companies']} of the {META['companies']} companies: the run stopped at the free tier's daily token limit)" if llm["stopped_early"] else ""
+        partial = f" (the first {llm['n_incidents']} of {llm['n_requested']} planned incidents, {llm['companies']} of the {META['companies']} companies: the run stopped at the model API's daily token quota)" if llm["stopped_early"] else ""
         out.append(f"3. **The LLM costs tokens and seconds per verdict.** On the {llm['n_incidents']}-incident subset{partial} it used about {num(round(a['tokens_per_incident']['mean']))} tokens and {ms(a['latency_ms']['p50'])} p50 per verdict (GhostWalk: none, {ms(SW['hydradb']['verdict_ms_p50'])}). "
                    f"On the same incidents GhostWalk scored {pci(llm['arms']['ghostwalk']['ac1'])}: {verdict('llm_plain')} the plain LLM ({pci(a['ac1'])}; difference {rng('llm_plain')}) and {verdict('llm_memory')} the LLM given five past postmortems ({pci(m['ac1'])}; difference {rng('llm_memory')}). These intervals are wide: this is a comparison on a small, partly covered subset, not a verdict on LLMs.")
     else:

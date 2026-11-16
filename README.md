@@ -30,7 +30,7 @@
 | **Graph beats vector search** at ranking root causes | 76.4% vs 38.8% for vector search over the same postmortems; a 1-hop key-value store gets 62.9% |
 | **1.3 ms p50 / 1.8 ms p95 per verdict, HydraDB on MinIO, learning on, on the AWS m7i-flex.large (2 vCPU, 7.6 GB)** | laptop numbers and the load test are in [Performance](#performance-and-latency) |
 
-**Who pays and why.** Teams with an on-call rotation: $49 a month flat for the workspace. One avoided hour of a wrong first guess pays for it.
+**Free and open source.** GhostWalk is MIT licensed. Self-host it, or use the hosted version. One avoided hour of a wrong first guess is the return.
 
 > Honest limits, up front: the incidents are simulated (the knobs are in the evaluation section); Postgres with recursive queries gets the same accuracy as HydraDB and is faster on raw queries at our sizes; graph memory did not beat vector retrieval at finding similar past incidents; the LLM baseline ran on a 58-incident subset, not the full set; the real-outage replays are illustrations, not an accuracy measurement.
 
@@ -220,7 +220,7 @@ Same incidents, same engine and learner, only the store changes (for the store r
 
 1. **Graph traversal is what matters.** Replacing it with a 1-hop key-value store costs 13.5 points of top-1 accuracy and vector search over the same postmortems costs 37.6.
 2. **Postgres ties on accuracy** (difference +0.0 points, 95% CI +0.0 to +0.0): the gain comes from multi-hop graph walks, not from which product stores the graph; Postgres is faster on raw path queries at our sizes (HydraDB 3.2 ms vs Postgres 0.48 ms for 5 hops at 5000 services).
-3. **The LLM costs tokens and seconds per verdict.** On the 58-incident subset (the first 58 of 100 planned incidents, 17 of the 30 companies: the run stopped at the free tier's daily token limit) it used about 2,068 tokens and 1,537 ms p50 per verdict (GhostWalk: none, 2.3 ms). On the same incidents GhostWalk scored 72.4% [63.8, 81.4]: ahead of the plain LLM (56.9% [42.1, 71.7]; difference +15.5 points, 95% CI +3.4 to +27.3) and not distinguishable from the LLM given five past postmortems (67.2% [53.4, 81.0]; difference +5.2 points, 95% CI -5.2 to +15.3). These intervals are wide: this is a comparison on a small, partly covered subset, not a verdict on LLMs.
+3. **The LLM costs tokens and seconds per verdict.** On the 58-incident subset (the first 58 of 100 planned incidents, 17 of the 30 companies: the run stopped at the model API's daily token quota) it used about 2,068 tokens and 1,537 ms p50 per verdict (GhostWalk: none, 2.3 ms). On the same incidents GhostWalk scored 72.4% [63.8, 81.4]: ahead of the plain LLM (56.9% [42.1, 71.7]; difference +15.5 points, 95% CI +3.4 to +27.3) and not distinguishable from the LLM given five past postmortems (67.2% [53.4, 81.0]; difference +5.2 points, 95% CI -5.2 to +15.3). These intervals are wide: this is a comparison on a small, partly covered subset, not a verdict on LLMs.
 4. **GhostWalk's learning lives in HydraDB**: every lesson is a node linked to the postmortem that taught it and the incident that confirmed it, and it survives restarts (durability demo, async write queue with replay).
 
 **The LLM, on the same incidents.** Every method on the 58-incident subset:
@@ -687,7 +687,7 @@ Short version here; full method in [docs/EVALUATION.md](docs/EVALUATION.md).
 - **Multi-path reach** (top-k paths), **cross-company learned priors** for a cold start, and a **temporal graph** ("what did we believe at incident time").
 - **External validation** on RCAEval recorded faults, as a CI job.
 - **Integrations:** a Slack and Teams verdict bot, native PagerDuty, Grafana and Datadog apps, the GitHub App and the `gw diff` PR check to general availability.
-- **Production:** object storage on AWS S3, SSO and SAML, payments, a SOC 2 path.
+- **Production:** object storage on AWS S3, SSO and SAML, a SOC 2 path.
 - **Upstream:** the HydraDB restart bug ([docs/hydradb-issue.md](docs/hydradb-issue.md)); the filed issue will be linked here.
 
 ## Project structure

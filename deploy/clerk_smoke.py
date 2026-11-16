@@ -71,7 +71,7 @@ def main():
         step("no session -> 401", lambda: need(c.get(f"{api}/api/summary", headers={"Origin": fe}).status_code == 401))
         step("a forged token -> 401", lambda: need(c.get(f"{api}/api/summary", headers={"Authorization": "Bearer " + tokens["a"][:-4] + "AAAA", "Origin": fe}).status_code == 401))
         step("account A: a fresh, empty workspace", lambda: need(c.get(f"{api}/api/summary", headers=h("a")).json()["services"] == 0) or "0 services")
-        step("account A: load the sample company (fits the free plan)", lambda: str(c.post(f"{api}/api/onboarding/load-sample", headers=h("a")).raise_for_status().json()))
+        step("account A: load the sample company (a small sample company)", lambda: str(c.post(f"{api}/api/onboarding/load-sample", headers=h("a")).raise_for_status().json()))
         st = {}
 
         def verdict():
