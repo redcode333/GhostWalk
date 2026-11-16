@@ -1,0 +1,40 @@
+{
+ "llm": {
+  "aws-us-east-1-2025-10-20": {
+   "provider": "gemini",
+   "model": "gemini-3.6-flash",
+   "ranking": [
+    "dynamodb",
+    "lambda",
+    "ec2-dwfm",
+    "ec2-launch",
+    "sts"
+   ],
+   "top1": "dynamodb",
+   "top1_is_root": false,
+   "root_rank": null,
+   "reason": "DynamoDB is the deepest shared dependency in the topology and triggered the initial error_rate alert at +0s. All subsequent alerts in dependent services like lambda, ec2-dwfm, sts, and ec2-launch are downstream symptoms of the DynamoDB failure.",
+   "invalid": false,
+   "tokens": 504,
+   "latency_ms": 1684.12559999706
+  },
+  "cloudflare-2025-11-18": {
+   "provider": "groq",
+   "model": "openai/gpt-oss-120b",
+   "ranking": [
+    "core-proxy",
+    "workers-kv",
+    "access",
+    "turnstile",
+    "dashboard-login"
+   ],
+   "top1": "core-proxy",
+   "top1_is_root": false,
+   "root_rank": null,
+   "reason": "core-proxy is upstream of most failing services and its error_rate spikes before downstream services, indicating it as the primary source of the cascade.",
+   "invalid": false,
+   "tokens": 551,
+   "latency_ms": 949.9056999993627
+  }
+ }
+}

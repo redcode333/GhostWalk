@@ -2,6 +2,7 @@ import { useState } from "react"
 import { Link } from "react-router-dom"
 import { api, ago } from "@/lib/api"
 import { Err, Muted, useLoad } from "@/components/common"
+import { ReplayButtons } from "@/components/Replay"
 import { H1, Page } from "@/components/AppShell"
 
 export const Stat = ({ label, value, sub }: { label: string; value: string; sub?: string }) => (
@@ -28,6 +29,7 @@ export default function Incidents() {
           <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className={`chip${tab === t ? " on" : ""}`}>{t}</button>
         ))}
       </div>
+      <ReplayButtons />
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12 }}>
         <Stat label="Open now" value={s ? String(s.open) : "…"} />
         <Stat label="Top-1 correct, last 30" value={s?.top1_last_30 == null ? "—" : `${Math.round(s.top1_last_30 * 100)}%`} sub={s ? `${s.scored} scored` : undefined} />

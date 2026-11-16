@@ -1,0 +1,57 @@
+{
+  "id": "cloudflare-2025-11-18",
+  "short": "Cloudflare, 18 Nov 2025",
+  "title": "Cloudflare outage, 18 November 2025",
+  "source": {
+    "title": "Cloudflare outage on November 18, 2025 (Cloudflare blog)",
+    "url": "https://blog.cloudflare.com/18-november-2025-outage/"
+  },
+  "label": "Replay built from the public postmortem; illustrative, not an accuracy measurement.",
+  "what_happened": [
+    "A change to database access controls in a ClickHouse cluster made a query that builds the Bot Management 'feature file' return duplicate rows, so the file roughly doubled in size (paraphrased from the postmortem).",
+    "The core proxy's Bot Management module had a limit on the file size that the doubled file exceeded; the proxy failed and customers saw HTTP 5xx errors.",
+    "Workers KV (its front-end gateway runs on the proxy), Access, Turnstile and dashboard login failed as a consequence; the status page also went down at the same time, which the postmortem says was a coincidence."
+  ],
+  "assumptions": [
+    "Dependencies are the ones the postmortem describes; the 'official map' is our construction of what a service catalog would list.",
+    "The invisible dependency is the generated feature file: the proxy's Bot Management module loads a file that a separate job builds from a ClickHouse query and distributes network-wide. A service catalog lists the job's query on ClickHouse, not the file the proxy loads.",
+    "Alerts are in the order the postmortem describes the failures; their spacing is normalised (the real gaps were minutes)."
+  ],
+  "services": [
+    {"name": "customer-sites", "kind": "service", "tier": 0},
+    {"name": "core-proxy", "kind": "service", "tier": 1},
+    {"name": "bot-management", "kind": "service", "tier": 1},
+    {"name": "feature-file-generator", "kind": "service", "tier": 1},
+    {"name": "clickhouse-db", "kind": "datastore", "tier": 2},
+    {"name": "workers-kv", "kind": "service", "tier": 1},
+    {"name": "access", "kind": "service", "tier": 1},
+    {"name": "turnstile", "kind": "service", "tier": 1},
+    {"name": "dashboard-login", "kind": "service", "tier": 0},
+    {"name": "status-page", "kind": "external", "tier": 3}
+  ],
+  "official_edges": [
+    ["customer-sites", "core-proxy"],
+    ["core-proxy", "bot-management"],
+    ["workers-kv", "core-proxy"],
+    ["access", "core-proxy"],
+    ["turnstile", "core-proxy"],
+    ["dashboard-login", "turnstile"],
+    ["dashboard-login", "workers-kv"],
+    ["feature-file-generator", "clickhouse-db"]
+  ],
+  "hidden_edge": ["bot-management", "feature-file-generator"],
+  "root": "clickhouse-db",
+  "alerts": [
+    {"name": "customer-sites", "signal": "error_rate", "t": 0},
+    {"name": "core-proxy", "signal": "error_rate", "t": 20},
+    {"name": "workers-kv", "signal": "error_rate", "t": 40},
+    {"name": "access", "signal": "error_rate", "t": 60},
+    {"name": "turnstile", "signal": "error_rate", "t": 80},
+    {"name": "dashboard-login", "signal": "error_rate", "t": 100},
+    {"name": "status-page", "signal": "saturation", "t": 120}
+  ],
+  "postmortem": {
+    "root": "clickhouse-db",
+    "chain": [["bot-management", "feature-file-generator"], ["feature-file-generator", "clickhouse-db"]]
+  }
+}

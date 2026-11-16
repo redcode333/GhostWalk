@@ -58,6 +58,76 @@ function MemorySchema() {
     </svg>)
 }
 
+
+const ci2 = (c: CI) => `${(c.point * 100).toFixed(1)}% [${(c.ci95[0] * 100).toFixed(1)}, ${(c.ci95[1] * 100).toFixed(1)}]`
+const dpts = (c: { point: number; ci95?: [number, number] }) => `${c.point >= 0 ? "+" : "−"}${Math.abs(c.point * 100).toFixed(1)} pts${c.ci95 ? ` (${(c.ci95[0] * 100).toFixed(1)} to ${(c.ci95[1] * 100).toFixed(1)})` : ""}`.replace("+-", "−")
+
+/** One table, same incidents: every store and baseline, the controls, and the LLM on its marked subset. Everything is read from results.json. */
+function CompareTable({ r }: { r: any }) {
+  const sw = r.store_swap?.backends ?? {}, M = r.methods ?? {}, P = r.paired?.ac1 ?? {}, ops = r.ops ?? {}, llm = r.llm_baseline
+  const lat = (b: any) => (b ? `${ms(b.verdict_ms_p50)} / ${ms(b.verdict_ms_p95)} ms` : "")
+  const neg = (c: any) => ({ point: -c.point, ci95: [-c.ci95[1], -c.ci95[0]] as [number, number] })
+  const rows: [string, string, string, string, string, string][] = []
+  const add = (name: string, ac: CI | undefined, delta: string, latency: string, tokens: string, learns: string) => ac && rows.push([name, ci2(ac), delta, latency, tokens, learns])
+  add("GhostWalk on HydraDB", sw.hydradb?.ac1, "reference", lat(sw.hydradb), "0", "yes")
+  add("Same engine on Postgres (recursive CTE)", sw.pg_cte?.ac1, dpts(sw.pg_cte?.delta_vs_reference ?? { point: 0 }), lat(sw.pg_cte), "0", "yes")
+  add("Key-value store, 1 hop", sw.kv_1hop?.ac1, dpts(sw.kv_1hop?.delta_vs_reference ?? { point: 0 }), lat(sw.kv_1hop), "0", "yes (1 hop only)")
+  add("Vector search over postmortems (pgvector)", sw.pgvector?.ac1, dpts(sw.pgvector?.delta_vs_reference ?? { point: 0 }), lat(sw.pgvector), "0", "adds text, no graph")
+  add("TF-IDF retrieval of past postmortems", M.retrieval?.ac1, P["ghostwalk - retrieval"] ? dpts(neg(P["ghostwalk - retrieval"])) : "", ops.retrieval ? `${ms(ops.retrieval.verdict_ms_p50)} / ${ms(ops.retrieval.verdict_ms_p95)} ms` : "", "0", "adds text, no graph")
+  add("Deepest alerting service", M.deepest?.ac1, P["ghostwalk - deepest"] ? dpts(neg(P["ghostwalk - deepest"])) : "", ops.deepest ? `${ms(ops.deepest.verdict_ms_p50)} / ${ms(ops.deepest.verdict_ms_p95)} ms` : "", "0", "no")
+  add("Personalized PageRank (tuned on DEV)", M.pagerank?.ac1, P["ghostwalk - pagerank"] ? dpts(neg(P["ghostwalk - pagerank"])) : "", ops.pagerank ? `${ms(ops.pagerank.verdict_ms_p50)} / ${ms(ops.pagerank.verdict_ms_p95)} ms` : "", "0", "no")
+  add("Random", M.random?.ac1, M.random && M.ghostwalk ? dpts({ point: M.random.ac1.point - M.ghostwalk.ac1.point }) : "", ops.random ? `${ms(ops.random.verdict_ms_p50)} / ${ms(ops.random.verdict_ms_p95)} ms` : "", "0", "no")
+  add("GhostWalk with learning off", M.learning_off?.ac1, P["ghostwalk - learning_off"] ? dpts(neg(P["ghostwalk - learning_off"])) : "", "", "0", "no")
+  add("GhostWalk with placebo postmortems", M.placebo?.ac1, P["ghostwalk - placebo"] ? dpts(neg(P["ghostwalk - placebo"])) : "", "", "0", "learns noise")
+  if (llm) {
+    for (const [k, label] of [["llm_plain", "LLM plain"], ["llm_memory", "LLM + memory (5 past postmortems)"]] as const) {
+      const a = llm.arms?.[k]
+      if (a) rows.push([`${label} (n=${llm.n_incidents} subset)`, ci2(a.ac1), llm.paired_ac1?.[`ghostwalk_minus_${k}`] ? dpts(neg(llm.paired_ac1[`ghostwalk_minus_${k}`])) + " (on the subset)" : "", `${ms(a.latency_ms.p50)} / ${ms(a.latency_ms.p95)} ms`, `${Math.round(a.tokens_per_incident.mean).toLocaleString()}`, "no"])
+    }
+  }
+  return (
+    <section className="card" style={{ padding: 18, overflowX: "auto" }} aria-label="How GhostWalk compares">
+      <h2 style={{ margin: 0, fontSize: 16 }}>How GhostWalk compares</h2>
+      <p style={{ margin: "2px 0 10px", fontSize: 13, color: "var(--text-4)" }}>Same held-out incidents, top-1 accuracy with 95% intervals. Store rows change only the store; the LLM rows are marked with their subset size (same incidents, GhostWalk's own accuracy on that subset is in the paired difference).</p>
+      <table className="mono" style={{ fontSize: 12.5, borderCollapse: "collapse", minWidth: 760 }}>
+        <thead><tr style={{ color: "var(--text-4)", textAlign: "left" }}>{["approach", "AC@1 [95% CI]", "Δ vs GhostWalk", "verdict p50 / p95", "tokens per verdict", "learns from postmortems?"].map((h) => <th key={h} style={{ padding: "6px 12px 6px 0", fontFamily: "Geist", fontWeight: 500 }}>{h}</th>)}</tr></thead>
+        <tbody>{rows.map((row, i) => <tr key={row[0]} style={{ borderTop: "1px solid var(--line)", fontWeight: i === 0 ? 600 : 400 }}>{row.map((c, j) => <td key={j} style={{ padding: "7px 12px 7px 0", fontFamily: j === 0 || j === 5 ? "Geist" : undefined }}>{c}</td>)}</tr>)}</tbody>
+      </table>
+      <p style={{ margin: "10px 0 0", fontSize: 13, color: "var(--text-3)" }}>
+        {sw.kv_1hop && sw.pgvector ? `Graph traversal is what matters: a 1-hop key-value store scores ${dpts(sw.kv_1hop.delta_vs_reference)} and vector search over the same postmortems ${dpts(sw.pgvector.delta_vs_reference)}. ` : ""}
+        {sw.pg_cte ? `Postgres with recursive queries ties on accuracy (${dpts(sw.pg_cte.delta_vs_reference)}), so the gain comes from multi-hop walks, not the store, and Postgres is faster on raw path queries at our sizes. ` : ""}
+        {llm ? `The LLM costs about ${Math.round(llm.arms.llm_plain.tokens_per_incident.mean).toLocaleString()} tokens and ${ms(llm.arms.llm_plain.latency_ms.p50)} ms per verdict (${llm.arms.llm_plain.invalid_output_rate > 0 ? `${(llm.arms.llm_plain.invalid_output_rate * 100).toFixed(0)}% invalid outputs; ` : ""}${(llm.arms.llm_plain.provider_share.gemini * 100).toFixed(0)}% Gemini, ${(llm.arms.llm_plain.provider_share.groq * 100).toFixed(0)}% Groq): ${ci2(llm.arms.llm_plain.ac1)} AC@1. ` : ""}
+        GhostWalk's learning lives in HydraDB: lessons are linked to the postmortems and incidents that taught them, and they survive restarts.
+      </p>
+      {llm && <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--text-4)" }}>{llm.label} Subset: {llm.n_incidents} incidents across {llm.companies} companies, chosen with a fixed seed before any call.</p>}
+    </section>
+  )
+}
+
+function ReplayCards({ r }: { r: any }) {
+  const rp = r.replays
+  if (!rp) return null
+  return (
+    <section className="card" style={{ padding: 18 }} aria-label="Real-outage replays">
+      <h2 style={{ margin: 0, fontSize: 16 }}>Real-outage replays</h2>
+      <p style={{ margin: "2px 0 10px", fontSize: 13, color: "var(--text-4)" }}>{rp.label} Two scenarios, one run each: not a sample, not an accuracy number. Run them live from Incidents (the Replay buttons).</p>
+      <div style={{ overflowX: "auto" }}>
+        <table className="mono" style={{ fontSize: 12.5, borderCollapse: "collapse", minWidth: 700 }}>
+          <thead><tr style={{ color: "var(--text-4)", textAlign: "left" }}>{["scenario", "official map", "after one tentative edge", "after it is confirmed", "deepest alert", "LLM"].map((h) => <th key={h} style={{ padding: "6px 12px 6px 0", fontFamily: "Geist", fontWeight: 500 }}>{h}</th>)}</tr></thead>
+          <tbody>{rp.scenarios.map((s: any) => (
+            <tr key={s.id} style={{ borderTop: "1px solid var(--line)" }}>
+              <td style={{ padding: "7px 12px 7px 0", fontFamily: "Geist" }}><a href={s.source.url} target="_blank" rel="noreferrer" style={{ color: "var(--accent-text)" }}>{s.short}</a><div style={{ color: "var(--text-4)" }}>real root: {s.root}</div></td>
+              {s.stages.map((st: any) => <td key={st.stage} style={{ padding: "7px 12px 7px 0" }}>{st.top1} {st.confidence.toFixed(2)}<div style={{ color: "var(--text-4)" }}>root: {st.root_rank == null ? "not ranked" : `rank ${st.root_rank}`}</div></td>)}
+              <td style={{ padding: "7px 12px 7px 0" }}>{s.deepest_alert.top1}<div style={{ color: "var(--text-4)" }}>root: {s.deepest_alert.root_rank == null ? "not ranked" : `rank ${s.deepest_alert.root_rank}`}</div></td>
+              <td style={{ padding: "7px 12px 7px 0" }}>{s.llm ? s.llm.top1 : "not run"}{s.llm && <div style={{ color: "var(--text-4)" }}>root: {s.llm.root_rank == null ? "not ranked" : `rank ${s.llm.root_rank}`}</div>}</td>
+            </tr>))}</tbody>
+        </table>
+      </div>
+      <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--text-3)" }}>With the hidden dependency missing from the map, GhostWalk is confidently wrong, as the responders were. After one learned edge the real root enters the ranking but is not first. We do not claim GhostWalk would have prevented either outage.</p>
+    </section>
+  )
+}
+
 export default function Proof() {
   const { data: r, error } = useLoad(loadResults, [])
   if (error) return <Page><Err>{error}</Err></Page>
@@ -92,6 +162,8 @@ export default function Proof() {
       <p style={{ margin: 0, padding: "14px 18px", border: "1px solid var(--accent)", borderRadius: 14, fontSize: 17, fontWeight: 500, background: "rgba(var(--lrgb), .03)" }}>
         Evaluated on {r.meta.companies} held-out companies never used for development or tuning; learning starts from zero at each company.
       </p>
+      <CompareTable r={r} />
+      <ReplayCards r={r} />
       {gv && (
         <section className="card" style={{ padding: 18 }} aria-label="Graph vs vector search">
           <h2 style={{ margin: 0, fontSize: 16 }}>Graph vs vector search</h2>

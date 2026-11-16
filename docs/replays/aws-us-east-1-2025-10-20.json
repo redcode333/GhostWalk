@@ -1,0 +1,60 @@
+{
+  "id": "aws-us-east-1-2025-10-20",
+  "short": "AWS us-east-1, 20 Oct 2025",
+  "title": "AWS us-east-1 DynamoDB disruption, 19 to 20 October 2025",
+  "source": {
+    "title": "Summary of the Amazon DynamoDB Service Disruption in the Northern Virginia (US-EAST-1) Region (AWS)",
+    "url": "https://aws.amazon.com/message/101925/"
+  },
+  "label": "Replay built from the public postmortem; illustrative, not an accuracy measurement.",
+  "what_happened": [
+    "A race between DynamoDB's DNS automation components (a planner that produces DNS plans and enactors that apply them to Route 53) left the regional DynamoDB endpoint with an empty DNS record (paraphrased from the post-event summary).",
+    "DynamoDB API calls failed; services that depend on DynamoDB (EC2's droplet workflow manager, Lambda, STS, IAM sign-in) degraded.",
+    "Later, EC2 launches, network configuration propagation and Network Load Balancer health checks were affected as a consequence."
+  ],
+  "assumptions": [
+    "Dependencies are the ones the summary describes; the 'official map' is our construction of what a service catalog would list.",
+    "The invisible dependency is the control plane: a runtime dependency map shows services calling DynamoDB, not the automation that keeps DynamoDB's DNS record correct.",
+    "Alerts are in the order the summary describes the impact; their spacing is normalised (the real gaps were minutes to hours)."
+  ],
+  "services": [
+    {"name": "customer-apps", "kind": "service", "tier": 0},
+    {"name": "dynamodb", "kind": "datastore", "tier": 2},
+    {"name": "dynamodb-dns-automation", "kind": "shared", "tier": 3},
+    {"name": "ec2-dwfm", "kind": "service", "tier": 1},
+    {"name": "ec2-launch", "kind": "service", "tier": 1},
+    {"name": "network-manager", "kind": "service", "tier": 1},
+    {"name": "nlb", "kind": "service", "tier": 1},
+    {"name": "lambda", "kind": "service", "tier": 1},
+    {"name": "sts", "kind": "service", "tier": 1},
+    {"name": "iam-signin", "kind": "service", "tier": 1}
+  ],
+  "official_edges": [
+    ["customer-apps", "dynamodb"],
+    ["customer-apps", "ec2-launch"],
+    ["customer-apps", "lambda"],
+    ["ec2-dwfm", "dynamodb"],
+    ["ec2-launch", "ec2-dwfm"],
+    ["network-manager", "ec2-dwfm"],
+    ["nlb", "network-manager"],
+    ["lambda", "dynamodb"],
+    ["sts", "dynamodb"],
+    ["iam-signin", "dynamodb"]
+  ],
+  "hidden_edge": ["dynamodb", "dynamodb-dns-automation"],
+  "root": "dynamodb-dns-automation",
+  "alerts": [
+    {"name": "dynamodb", "signal": "error_rate", "t": 0},
+    {"name": "lambda", "signal": "error_rate", "t": 20},
+    {"name": "ec2-dwfm", "signal": "latency_p99", "t": 40},
+    {"name": "iam-signin", "signal": "error_rate", "t": 60},
+    {"name": "sts", "signal": "error_rate", "t": 80},
+    {"name": "ec2-launch", "signal": "error_rate", "t": 100},
+    {"name": "network-manager", "signal": "latency_p99", "t": 120},
+    {"name": "nlb", "signal": "error_rate", "t": 140}
+  ],
+  "postmortem": {
+    "root": "dynamodb-dns-automation",
+    "chain": [["dynamodb", "dynamodb-dns-automation"]]
+  }
+}

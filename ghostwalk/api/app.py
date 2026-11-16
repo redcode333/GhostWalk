@@ -106,7 +106,7 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
                     hits.pop(k, None)
         return await call_next(request)
 
-    PUBLIC = ("/api/health", "/api/config", "/api/proof", "/api/demo/inside", "/api/docs", "/api/openapi.json", "/api/demo/reset")
+    PUBLIC = ("/api/health", "/api/config", "/api/proof", "/api/demo/inside", "/api/replays", "/api/docs", "/api/openapi.json", "/api/demo/reset")
 
     def resolve_workspace(request: Request):
         """-> (workspace, kind, claims). Raises HTTPException. kind is "user" (a verified Clerk session or a workspace token) or "demo" (the public sandbox)."""
@@ -213,6 +213,21 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
         return FileResponse(results_file, media_type="application/json", filename="results.json")
 
     demo_cache = {}
+
+    @app.get("/api/replays")
+    def replay_list():
+        """Real-outage replays (illustrative, built from public postmortems). Read-only computation: nothing is written to any workspace."""
+        from .. import replays
+        return [{"id": i, "short": replays.load(i)["short"], "title": replays.load(i)["title"]} for i in replays.ids()]
+
+    @app.get("/api/replays/{sid}")
+    def replay_run(sid: str):
+        from .. import replays
+        if sid not in replays.ids():
+            raise HTTPException(404, f"no replay {sid}")
+        r = replays.run(sid)                                   # the real engine and learner, run now
+        r["llm"] = replays.cached_llm(sid)                     # the LLM's answer on the same input was recorded once and cached
+        return r
 
     @app.get("/api/demo/inside")
     def inside():
