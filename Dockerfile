@@ -13,6 +13,7 @@ COPY gwsim gwsim
 COPY baselines baselines
 COPY eval eval
 COPY results.json ./
+COPY docs/replays docs/replays
 RUN pip install --no-cache-dir -e .
 COPY --from=web /web/dist web/dist
 ENV GW_STATE=/data/state.json AUTH_MODE=none
