@@ -287,7 +287,10 @@ claude mcp add ghostwalk -- gw mcp
 ```json
 { "mcpServers": { "ghostwalk": { "command": "gw", "args": ["mcp"] } } }
 ```
+The default Docker setup starts GhostWalk with HydraDB as its graph
+and learning-memory backend. No manual storage configuration is needed.
 
+The demo workspace needs no sign-in.
 ## Self-hosting
 
 `deploy/setup.sh` brings up the production stack on a Linux host: HydraDB, MinIO, the API and Caddy with HTTPS (see [docs/deploy.md](docs/deploy.md)). Everything is open and unmetered. Rate limiting is off by default; for a public deployment set `GW_RATE_LIMIT=60/60` (requests per seconds, per client) in `deploy/.env`. The hosted demo does, and a blocked client gets a plain `429`. `/health` reports the commit the stack was built from.
