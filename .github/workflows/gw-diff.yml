@@ -1,0 +1,28 @@
+name: gw-diff
+# On every pull request: the blast radius of the dependencies the change adds or removes, posted as one comment (updated in place on each push).
+# The graph comes from the example's map (gw export); the action is the local one, installed from this checkout (the package is not on PyPI).
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+  pull-requests: write
+jobs:
+  diff:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: the map at this change (for the blast radius)
+        run: |
+          python -m pip install --quiet -e .
+          gw map import examples/shopfront
+          gw export > graph.json
+      - uses: ./.github/actions/ghostwalk-diff
+        with:
+          spec: ${{ github.workspace }}
+          graph: graph.json
