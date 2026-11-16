@@ -1,6 +1,6 @@
 # Evaluation method
 
-Generated from [`results.json`](../results.json) by `scripts/update_readme_numbers.py`. The short version is in the README; this is the full method.
+Generated from [`results.json`](../results.json) by `scripts/update_readme_numbers.py`. The short version is in the README; this is the full method and every table.
 
 ## What is measured
 
@@ -11,6 +11,22 @@ For each incident of a company, in order: the verdict is computed from the alert
 `gwsim` generates companies from three families: **hub** (a few shared services everything leans on), **layered** (tiers from edge to infrastructure), and **real** (topologies shaped like published microservice systems; two of the three follow RCAEval's systems, no RCAEval data is used). Each company has an official map that is missing edges (hidden dependencies: generated files, shared config, permissions), aliases (alerts name a service differently from the map), silent services, and postmortems that are sometimes wrong. Defaults of every knob:
 
 {{simulator_knobs}}
+
+## Main results
+
+{{table_main}}
+
+Learning starts from zero at each company. Intervals are paired cluster bootstraps over companies ({{boot}} draws). Against the best baseline, GhostWalk is {{gain_vs_best}} ahead and closes {{gap_closed}} of the gap to the perfect-map oracle.
+
+![What learning adds](learning-curve.png)
+
+## How GhostWalk compares
+
+Same incidents, same engine and learner; only the store changes for the store rows.
+
+{{table_compare}}
+
+{{honest_sentences}}
 
 ## Splits and rules
 
@@ -59,9 +75,17 @@ For each incident of a company, in order: the verdict is computed from the alert
 
 {{change_helps}}
 
+## What did not win
+
+**Graph memory did not beat ordinary retrieval at finding similar past incidents.** {{memory_sentence}} Looking up similar past incidents is easy in this setting: a repeat incident usually alerts on the same services, so a bag-of-words match finds it and the graph adds nothing. The graph matters for root-cause ranking, which is a different job: {{gw_ac1}} for the walk against {{tfidf_ac1}} for TF-IDF retrieval and {{vec_ac1}} for vector search. The retrieval table is in [PERFORMANCE.md](PERFORMANCE.md#graph-memory-retrieval).
+
 ## Real-outage replays
 
 {{table_replays}}
+
+## Checklist
+
+{{table_checklist}}
 
 ## Limitations
 

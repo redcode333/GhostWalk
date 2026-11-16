@@ -1,8 +1,16 @@
 # Architecture
 
-The README has the picture; this is the reasoning behind it. Generated from `docs/templates/ARCHITECTURE.tpl.md` and `results.json`.
+High-level design first, then the low-level design of each part, then the decisions behind them. Generated from `docs/templates/ARCHITECTURE.tpl.md` and `results.json`.
+
+## High-level design
+
+![GhostWalk architecture](architecture.png)
+
+Alerts come from Grafana, Alertmanager, PagerDuty and Datadog webhooks, the `gw` CLI and MCP clients. Caddy terminates TLS in front of the GhostWalk API on an AWS EC2 host running Docker Compose. The API holds the engine, the learner and the write-through cache, and keeps the graph and the memory in HydraDB, whose data is on MinIO. The React app on Vercel calls the same API; Clerk issues the sessions. GitHub is a source of postmortem issues. The picture is built by `scripts/render_architecture.py` (Graphviz and the `diagrams` library, with HydraDB as a custom node).
 
 ## Components
+
+The same system as a flow:
 
 ```mermaid
 {{mermaid_architecture}}
@@ -12,6 +20,46 @@ The README has the picture; this is the reasoning behind it. Generated from `doc
 - **Learner** (`ghostwalk/learn/`): turns a postmortem (root, causal chain, aliases) into a list of plain graph operations: add a tentative edge, confirm it, reweight, drop, alias, count a root, record a shortcut. The same operations are shown for review, applied in memory, or written to HydraDB.
 - **Graph adapter** (`ghostwalk/graph/hydra.py`): the only code that speaks HydraDB. It writes the graph and the learner's memory, and serves the engine a cached `GraphState`.
 - **API** (`ghostwalk/api/`): FastAPI. A workspace holds the graph cache, incidents and pending proposals; in multi-user mode every signed-in user has their own workspace and the public demo is one more.
+
+## Low-level design
+
+### The engine
+
+```mermaid
+{{mermaid_engine}}
+```
+
+Alert names are resolved to services through aliases; anything that does not resolve is reported as unresolved, not guessed. For each candidate root the engine takes the best reach to every alerting service within five hops, where a path's cost is the sum of `-ln w` over its edges (the product of weights, as a shortest path). The score is a noisy-OR likelihood: a candidate is rewarded for every alert it would explain and penalised for the ones it should have caused but did not, with the onset order of the alerts and priors for roots seen before added in. Scores are normalised to a confidence. Below the abstain threshold the verdict says it is not sure and still lists the ranked candidates.
+
+### The learner
+
+```mermaid
+{{mermaid_learner}}
+```
+
+A postmortem, a GitHub issue or the importer produces proposals (add an edge, confirm one, reweight, drop, alias). A person reviews them. Approved changes go to one ordered background queue; each is written to HydraDB, the revision bumps, and the write-through cache applies the identical change, so the next verdict already uses the lesson.
+
+### One incident, end to end
+
+```mermaid
+{{mermaid_sequence}}
+```
+
+### The schema in HydraDB
+
+```mermaid
+{{mermaid_er}}
+```
+
+Services carry `DEPENDS_ON` edges with a weight and a cost. An incident `RAISED` alerts that are `ON` services. A postmortem is `ABOUT` an incident. A lesson was `TAUGHT_BY` a postmortem and is `CONFIRMED_BY` the incidents that confirmed it. `gw why-edge` walks Lesson to Postmortem to Incident.
+
+### Lesson lifecycle
+
+```mermaid
+{{mermaid_lifecycle}}
+```
+
+{{poison_sentence}} {{guard_sentence}}
 
 ## Where HydraDB sits
 

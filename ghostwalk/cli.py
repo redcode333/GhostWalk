@@ -61,7 +61,7 @@ def prompt_line(cmd):
 
 def ok(msg):
     t = Text("  ")
-    t.append("✓ ", style=TEAL)
+    t.append("ok ", style=TEAL)
     t.append(msg)
     console.print(t)
 
@@ -221,14 +221,14 @@ def doctor(url: Optional[str] = typer.Option(None, "--url", help="the GhostWalk 
         try:
             detail = fn()
             t = Text("  ")
-            t.append("✓ ", style=TEAL)
+            t.append("ok ", style=TEAL)
             t.append(f"{label:<22}")
             t.append(str(detail or ""), style=DIM)
             console.print(t)
             return True
         except Exception as e:                        # noqa: BLE001  (a doctor reports everything)
             t = Text("  ")
-            t.append("✗ ", style=RED)
+            t.append("x  ", style=RED)
             t.append(f"{label:<22}")
             t.append(str(e)[:120], style=RED)
             console.print(t)
@@ -301,7 +301,7 @@ def why_edge_cmd(src: str = typer.Argument(..., help="the service that depends o
         for x in les["confirmed_by"]:
             t = Text("  ")
             t.append("  confirmed   ", style=DIM)
-            t.append("✓ ", style=TEAL)
+            t.append("ok ", style=TEAL)
             t.append(x["incident"], style=INK)
             console.print(t)
         if not les["confirmed_by"]:
@@ -408,7 +408,7 @@ def eval_(split: str = typer.Option("test", "--split", help="dev or test"),
     console.print()
     g, c = r["headline"]["gain_vs_best"], r["headline"]["gap_closed"]
     t = Text("  ")
-    t.append("✓ ", style=TEAL)
+    t.append("ok ", style=TEAL)
     t.append("gain vs best baseline ")
     t.append(f"{g['point'] * 100:+.1f} pts", style=INK)
     t.append(f" ({g['baseline']})   gap closed ")

@@ -50,6 +50,10 @@ Reproduce: `make loadtest URL=http://127.0.0.1:8000` against a server started wi
 
 Also fixed: {{transport_also_fixed}}. Raw data: `docs/measurements/`. The adapter sends each request in one write over a persistent connection (`ghostwalk/graph/fasthttp.py`).
 
+## The HydraDB restart bug
+
+HydraDB 0.4.0 rejected every HTTP write after a restart (`409 mutation_conflict`), because HTTP requests are numbered from one at the start of every process and writes are deduplicated durably by that number. It is fixed on our side by sending a unique `query_id` with every request (regression test: `tests/test_hydra_restart.py`). Root cause from the source and a curl reproduction: [hydradb-issue.md](hydradb-issue.md). Not filed upstream yet.
+
 ## Reproduce
 
 | what | command |

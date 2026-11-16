@@ -13,7 +13,7 @@ sys.path.insert(0, str(HERE.parent))
 import readme_blocks as B
 
 ROOT = B.ROOT
-TEMPLATES = {"README.md": "README.tpl.md", "docs/ARCHITECTURE.md": "ARCHITECTURE.tpl.md", "docs/PERFORMANCE.md": "PERFORMANCE.tpl.md", "docs/EVALUATION.md": "EVALUATION.tpl.md"}
+TEMPLATES = {"README.md": "README.tpl.md", "docs/REFERENCE.md": "REFERENCE.tpl.md", "docs/ARCHITECTURE.md": "ARCHITECTURE.tpl.md", "docs/PERFORMANCE.md": "PERFORMANCE.tpl.md", "docs/EVALUATION.md": "EVALUATION.tpl.md"}
 
 ENV_ROWS = [("AUTH_MODE", "none or clerk", "no", "`clerk`: `/app` needs a Clerk session and every user gets their own workspace; `/demo` stays public."),
             ("CLERK_PUBLISHABLE_KEY, VITE_CLERK_PUBLISHABLE_KEY", "Clerk publishable key", "no (public)", "The browser's Clerk SDK; the second name is the build-time variable on Vercel."),
@@ -180,7 +180,7 @@ def blocks():
         "table_learning_main": lp1, "table_learning_ablation": lp2, "table_depth": dep, "table_poison": B.table_poison(),
         "novel_definition": nr_def, "share_repeat": nr_share, "table_novel_repeat": nr, "table_selective": B.table_selective(),
         "table_memory": tm, "memory_sentence": ms_sent, "table_change": tc, "change_main": change_main, "change_helps": change_helps,
-        "table_replays": B.table_replays(), "table_checklist": B.table_checklist(),
+        "table_replays": B.table_replays(), "results_lines": B.results_lines(), "table_results8": B.table_results8(), "replay_lines": B.replay_lines(), "gw_why_example": B.gw_why_example(), "mermaid_engine": B.mermaid_engine(), "mermaid_learner": B.mermaid_learner(), "table_checklist": B.table_checklist(),
         "table_machines": B.table_machines(), "table_queries": B.table_queries(), "table_verdicts": B.table_verdicts(), "table_scale": B.table_scale(), "table_load": B.table_load(),
         "env_table": env_table(), "cli_reference": cli_reference(), "transport_cause": d["cause"], "transport_also_fixed": "; ".join(d["also_fixed"]),
         "transport_evidence": transport_evidence(d), "engine_gate": B.R["latency"]["gate"]["rule"], "simulator_knobs": simulator_knobs(), "pagerank_grid": pagerank_grid(),
@@ -242,7 +242,7 @@ def main():
                 stale.append(out)
         else:
             path.write_text(text, encoding="utf8")
-    svg = B.learning_curve_svg()
+    svg = B.paired_gain_svg()
     sp = ROOT / "docs" / "learning-curve.svg"
     if check:
         if not sp.exists() or sp.read_text(encoding="utf8").replace("\r\n", "\n") != svg:

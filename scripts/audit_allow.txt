@@ -19,3 +19,6 @@ related@\d
 \bL\d+\b
 http-query-\d
 x \d
+\b(18 November|20 October) 2025
+\bEC2\b
+License 2\.0

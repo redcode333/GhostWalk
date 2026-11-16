@@ -20,25 +20,25 @@
  {
   "title": "teach it what the postmortem found",
   "cmd": "gw learn INC-1030 --root session-svc --path session-svc -> redis-sessions --yes",
-  "output": "$ gw learn INC-1030 --root session-svc\n\n  reading postmortem \u00b7 3 fields\n\n  + redis-sessions \u21e2 session-svc      new \u00b7 tentative 0.35\n  \u2212 edge-gateway \u2192 inventory-api      reweight \u00b7 0.79 \u2192 0.67\n  \u2212 inventory-api \u2192 redis-sessions    reweight \u00b7 0.85 \u2192 0.72\n\n  \u2713 graph updated \u00b7 revision 31",
+  "output": "$ gw learn INC-1030 --root session-svc\n\n  reading postmortem \u00b7 3 fields\n\n  + redis-sessions \u21e2 session-svc      new \u00b7 tentative 0.35\n  \u2212 edge-gateway \u2192 inventory-api      reweight \u00b7 0.79 \u2192 0.67\n  \u2212 inventory-api \u2192 redis-sessions    reweight \u00b7 0.85 \u2192 0.72\n\n  ok graph updated \u00b7 revision 31",
   "exit": 0
  },
  {
   "title": "import a dependency map from repos",
   "cmd": "gw map import D:\\Temp\\tmp9kkgb7ot\\acme",
-  "output": "$ gw map import /tmp/gw\\acme\n\n  scanning 3 repos \u2026\n\n  docker-compose.yml          9 edges\n  k8s/*.yaml                  2 edges\n  Helm values                 2 edges\n  env vars  *_URL             6 edges\n\n  \u2713 15 services \u00b7 17 dependencies\n\n    \u25cf edge 1   \u25cf service 9   \u25cf data 4   \u25cf infra 1\n  2 low-confidence edges left out (use --all to include)",
+  "output": "$ gw map import /tmp/gw\\acme\n\n  scanning 3 repos \u2026\n\n  docker-compose.yml          9 edges\n  k8s/*.yaml                  2 edges\n  Helm values                 2 edges\n  env vars  *_URL             6 edges\n\n  ok 15 services \u00b7 17 dependencies\n\n    \u25cf edge 1   \u25cf service 9   \u25cf data 4   \u25cf infra 1\n  2 low-confidence edges left out (use --all to include)",
   "exit": 0
  },
  {
   "title": "record a deploy the verdict can use",
   "cmd": "gw change add redis-sessions --kind deploy --ref #482",
-  "output": "$ gw change add redis-sessions --ref #482\n\n  \u2713 redis-sessions \u00b7 deploy #482",
+  "output": "$ gw change add redis-sessions --ref #482\n\n  ok redis-sessions \u00b7 deploy #482",
   "exit": 0
  },
  {
   "title": "the held-out numbers",
   "cmd": "gw eval --split test",
-  "output": "$ gw eval --split test\n\n  30 held-out companies \u00b7 95% bootstrap CI\n\n  method           AC@1   95% CI\n  perfect map      0.829  0.807\u20130.852  \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\n  ghostwalk        0.764  0.745\u20130.786  \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\n  pagerank (tuned) 0.699  0.667\u20130.730  \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\n  placebo          0.682  0.647\u20130.717  \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\n  learning off     0.676  0.636\u20130.715  \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\n  deepest alert    0.658  0.628\u20130.687  \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\n  tf-idf retrieval 0.419  0.374\u20130.468  \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\n  random           0.212  0.186\u20130.240  \u2588\u2588\u2588\u2588\n\n  \u2713 gain vs best baseline +6.5 pts (pagerank)   gap closed 58%\n  \u2713 results.json read \u00b7 c116282 \u00b7 2026-11-15",
+  "output": "$ gw eval --split test\n\n  30 held-out companies \u00b7 95% bootstrap CI\n\n  method           AC@1   95% CI\n  perfect map      0.829  0.807\u20130.852  \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\n  ghostwalk        0.764  0.745\u20130.786  \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\n  pagerank (tuned) 0.699  0.667\u20130.730  \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\n  placebo          0.682  0.647\u20130.717  \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\n  learning off     0.676  0.636\u20130.715  \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\n  deepest alert    0.658  0.628\u20130.687  \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\n  tf-idf retrieval 0.419  0.374\u20130.468  \u2588\u2588\u2588\u2588\u2588\u2588\u2588\u2588\n  random           0.212  0.186\u20130.240  \u2588\u2588\u2588\u2588\n\n  ok gain vs best baseline +6.5 pts (pagerank)   gap closed 58%\n  ok results.json read \u00b7 c116282 \u00b7 2026-11-15",
   "exit": 0
  },
  {
@@ -62,13 +62,13 @@
  {
   "title": "check a running stack",
   "cmd": "gw doctor --url https://api.13-51-194-36.sslip.io",
-  "output": "$ gw doctor\n\n  \u2713 api                   https://api.13-51-194-36.sslip.io {'ok': True, 'services': 80, 'store':\n'hydradb', 'revision': 31, 'saving': 0, 'public_demo': True, 'writer_error': None}\n  \u2713 workspace             80 services, 8 learned edges, revision 31\n  \u2713 store                 HydraDB graph (memory in the graph) (hydradb)\n  \u2713 learning queue        saving 0\n  \u2713 hydradb               ready (http://127.0.0.1:9090/readyz)\n  \u2713 results.json          30 held-out companies\n\n  \u2713 all checks passed",
+  "output": "$ gw doctor\n\n  ok api                   https://api.13-51-194-36.sslip.io {'ok': True, 'services': 80, 'store':\n'hydradb', 'revision': 31, 'saving': 0, 'public_demo': True, 'writer_error': None}\n  ok workspace             80 services, 8 learned edges, revision 31\n  ok store                 HydraDB graph (memory in the graph) (hydradb)\n  ok learning queue        saving 0\n  ok hydradb               ready (http://127.0.0.1:9090/readyz)\n  ok results.json          30 held-out companies\n\n  ok all checks passed",
   "exit": 0
  },
  {
   "title": "why does the map say this?",
   "cmd": "GW_URL=https://<your-api> gw why-edge experiment-svc ledger-db",
-  "output": "$ gw why-edge experiment-svc ledger-db\n\n  experiment-svc -> ledger-db   w 0.79  learned  2 confirmations\n\n  lesson L153  confirmed  w 0.79  created at revision 4\n    taught by   INC-1004  root ledger-db  path experiment-svc -> ledger-db\n    confirmed   \u2713 INC-1018\n\n  gw why-edge answers by traversal: Lesson -> Postmortem -> Incident, in HydraDB",
+  "output": "$ gw why-edge experiment-svc ledger-db\n\n  experiment-svc -> ledger-db   w 0.79  learned  2 confirmations\n\n  lesson L153  confirmed  w 0.79  created at revision 4\n    taught by   INC-1004  root ledger-db  path experiment-svc -> ledger-db\n    confirmed   ok INC-1018\n\n  gw why-edge answers by traversal: Lesson -> Postmortem -> Incident, in HydraDB",
   "exit": 0
  }
 ]

@@ -370,15 +370,15 @@ def mermaid_lifecycle():
 
 def table_checklist():
     rows = [
-        ["Works end to end on a live deployment", f"[live demo]({values()['live_demo']}), [smoke test](deploy/smoke.py), [`docs/deploy.md`](docs/deploy.md)"],
-        ["Measured on unseen data, not claimed", "30 held-out companies, test split used for declared runs only: [Proof](#proof), [`results.json`](results.json)"],
+        ["Works end to end on a live deployment", f"[live demo]({values()['live_demo']}), [smoke test](../deploy/smoke.py), [`deploy.md`](deploy.md)"],
+        ["Measured on unseen data, not claimed", "30 held-out companies, test split used for declared runs only: [main results](#main-results), [`results.json`](../results.json)"],
         ["Learning is real, not an artefact", "[learning off and placebo controls, ablations, poisoning](#learning-proof)"],
-        ["Honest about what did not win", "[What didn't win](#what-didnt-win), [Postgres ties on accuracy](#how-ghostwalk-compares)"],
-        ["Uses HydraDB for more than a cache", "graph, weights and the learner's memory in HydraDB: [memory schema](#how-it-works), [`ghostwalk/graph/hydra.py`](ghostwalk/graph/hydra.py), [parity tests](tests/test_parity.py)"],
-        ["Found and reported a HydraDB bug", "[`docs/hydradb-issue.md`](docs/hydradb-issue.md) (root cause from the source, curl reproduction, fix and regression test)"],
-        ["Survives restarts", "[durability demo](docs/measurements/durability_demo_vm.txt), [async write queue with replay](tests/test_async_learning.py)"],
+        ["Honest about what did not win", "[what did not win](#what-did-not-win), [Postgres ties on accuracy](#how-ghostwalk-compares)"],
+        ["Uses HydraDB for more than a cache", "graph, weights and the learner's memory in HydraDB: [memory schema](ARCHITECTURE.md#the-schema-in-hydradb), [`ghostwalk/graph/hydra.py`](../ghostwalk/graph/hydra.py), [parity tests](../tests/test_parity.py)"],
+        ["Found and reported a HydraDB bug", "[`hydradb-issue.md`](hydradb-issue.md) (root cause from the source, curl reproduction, fix and regression test)"],
+        ["Survives restarts", "[durability demo](measurements/durability_demo_vm.txt), [async write queue with replay](../tests/test_async_learning.py)"],
         ["Reproducible", "`make eval-quick`, `make bench`, `make loadtest`; seeds, commit and engine settings are recorded in `results.json`"],
-        ["Tested", "unit, parity (HydraDB against in-memory), memory, tenancy and isolation, async-write replay, restart and replay tests: [`tests/`](tests), run in CI"],
+        ["Tested", "unit, parity (HydraDB against in-memory), memory, tenancy and isolation, async-write replay, restart and replay tests: [`tests/`](../tests), run in CI"],
     ]
     return md_table(["what a reviewer would ask", "evidence"], rows)
 
@@ -417,3 +417,124 @@ def learning_curve_svg():
         lx += 28 + 7 * len(label) + 18
     out.append("</svg>")
     return "\n".join(out)
+
+
+def paired_gain_svg():
+    """Chart (a), 'What learning adds': AC@1 gain over learning off per five-incident bin, in points, for GhostWalk and for the placebo, with the zero line.
+    Drawn from results.json learning_curve.paired_gain; the whole-run paired 95% interval is printed as text because the per-bin band needs per-company data that was not stored."""
+    pg = R["learning_curve"]["paired_gain"]
+    gw, pl = pg["series"]["ghostwalk_minus_learning_off"], pg["series"]["placebo_minus_learning_off"]
+    ref = pg["reference_paired_ci"]["ghostwalk_minus_learning_off"]["overall"]
+    W, H, L, Bm, T, Rr = 760, 360, 56, 62, 34, 92
+    vals = [p["gain"] * 100 for p in gw + pl]
+    lo, hi = min(-4.0, (int(min(vals) / 4) - 1) * 4.0), (int(max(vals) / 4) + 1) * 4.0
+    n = len(gw)
+    x = lambda i: L + i * (W - L - Rr) / (n - 1)
+    y = lambda v: T + (hi - v) * (H - T - Bm) / (hi - lo)
+    out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" role="img" aria-label="What learning adds: accuracy gain over learning off by incident number, GhostWalk against placebo postmortems" font-family="system-ui, sans-serif">',
+           f'<rect width="{W}" height="{H}" rx="12" fill="#ffffff"/>',
+           f'<text x="{L}" y="20" font-size="14" font-weight="600" fill="#1B1A24">What learning adds</text>']
+    t = lo
+    while t <= hi + 1e-9:
+        zero = abs(t) < 1e-9
+        out.append(f'<line x1="{L}" x2="{W - Rr}" y1="{y(t):.1f}" y2="{y(t):.1f}" stroke="{"#3A3A44" if zero else "#E6E6EC"}" stroke-width="{1.4 if zero else 1}"/><text x="{L - 8}" y="{y(t) + 4:.1f}" text-anchor="end" font-size="11" fill="#6B6B76">{t:+.0f}</text>')
+        t += 4
+    out.append(f'<text transform="translate(14 {(T + H - Bm) / 2:.0f}) rotate(-90)" text-anchor="middle" font-size="12" fill="#3A3A44">AC@1 gain over learning off (points)</text>')
+    for i, p in enumerate(gw):
+        if i % 2 == 0 or i == n - 1:
+            out.append(f'<text x="{x(i):.1f}" y="{H - Bm + 18}" text-anchor="middle" font-size="11" fill="#6B6B76">{p["from"] + 1}-{p["to"] + 1}</text>')
+    out.append(f'<text x="{(L + W - Rr) / 2:.0f}" y="{H - Bm + 38}" text-anchor="middle" font-size="12" fill="#3A3A44">incident number at each company (bins of five)</text>')
+    for series, col, dash, sw in ((gw, "#6A4BFF", "", 3.2), (pl, "#D98A00", "2 5", 2.4)):
+        d = " ".join(f"{'M' if i == 0 else 'L'}{x(i):.1f},{y(p['gain'] * 100):.1f}" for i, p in enumerate(series))
+        out.append(f'<path d="{d}" fill="none" stroke="{col}" stroke-width="{sw}" stroke-linecap="round" stroke-linejoin="round"' + (f' stroke-dasharray="{dash}"' if dash else "") + "/>")
+        last = series[-1]["gain"] * 100
+        out.append(f'<text x="{x(n - 1) + 8:.1f}" y="{y(last) + 4:.1f}" font-size="12.5" font-weight="600" fill="{col}">{last:+.1f} pts</text>')
+    out.append(f'<line x1="{L}" x2="{L + 24}" y1="{H - 10}" y2="{H - 10}" stroke="#6A4BFF" stroke-width="3.2"/><text x="{L + 30}" y="{H - 6}" font-size="11.5" fill="#3A3A44">GhostWalk minus learning off</text>')
+    out.append(f'<line x1="{L + 218}" x2="{L + 242}" y1="{H - 10}" y2="{H - 10}" stroke="#D98A00" stroke-width="2.4" stroke-dasharray="2 5" stroke-linecap="round"/><text x="{L + 248}" y="{H - 6}" font-size="11.5" fill="#3A3A44">placebo minus learning off</text>')
+    out.append(f'<text x="{W - 12}" y="20" text-anchor="end" font-size="11.5" fill="#6B6B76">whole run: {ref["gain"] * 100:+.1f} pts, 95% CI {ref["ci95"][0] * 100:+.1f} to {ref["ci95"][1] * 100:+.1f}</text>')
+    out.append("</svg>")
+    return "\n".join(out)
+
+
+# ---------------------------------------------------------------------------------------------- the short README
+def results_lines():
+    v, llm = values(), R.get("llm_baseline")
+    vm = R["ops"].get("vm", {}).get("minio")
+    q = vm["warm"].get("one_hop_query_ms") if vm else None
+    out = [
+        f"- **{v['gw_ac1']}** top-1 root cause on {v['companies']} companies never used for development or tuning ({v['incidents']} incidents), 95% CI {v['gw_ac1_ci']}.",
+        f"- Learning adds **{v['learn_gain']}** over learning off. Placebo postmortems add {v['placebo_gain']} over the whole run.",
+        f"- The graph walk is what matters. Remove the graph and accuracy collapses: **{v['hydra_ac1']}** for the walk against {v['vec_ac1']} for vector search and {v['kv_ac1']} for a 1-hop key-value store.",
+        f"- **{v['gain_vs_best']}** over the best baseline ({v['best_baseline']}, {v['best_baseline_ac1']}).",
+    ]
+    if vm and q:
+        out.append(f"- **{ms(q['p50'])}** p50 for a HydraDB 1-hop query and **{ms(vm['online_loop']['verdict_ms']['p50'])}** p50 per verdict, on the {v['vm_name']}, HydraDB on MinIO.")
+    if llm:
+        a, b = llm["arms"]["llm_plain"], llm["arms"]["llm_memory"]
+        out.append(f"- An LLM given the same alerts and map gets {pct(a['ac1']['point'])} (plain) and {pct(b['ac1']['point'])} (with past postmortems) against {pct(llm['arms']['ghostwalk']['ac1']['point'])} for GhostWalk, on a {llm['n_incidents']}-incident subset; it costs about {num(round(a['tokens_per_incident']['mean']))} tokens and {ms(a['latency_ms']['p50'])} per verdict.")
+    out.append("- Lessons persist in HydraDB across restarts, each linked to the postmortem that taught it and the incidents that confirmed it.")
+    return "\n".join(out)
+
+
+def table_results8():
+    llm = R.get("llm_baseline")
+    rows = [
+        ["**GhostWalk**", pci(M["ghostwalk"]["ac1"]), "The reference."],
+        ["Learning off", pci(M["learning_off"]["ac1"]), "Same engine, no postmortem learning: the gap is what learning adds."],
+        ["Placebo postmortems", pci(M["placebo"]["ac1"]), "Random root and edges: learning from noise adds nothing."],
+        ["Best baseline (tuned PageRank)", pci(M["pagerank"]["ac1"]), "A graph method with no learning."],
+        ["Key-value store, 1 hop", pci(SW["kv_1hop"]["ac1"]), "Direct neighbours only: it misses multi-hop dependencies."],
+        ["Vector search (pgvector)", pci(SW["pgvector"]["ac1"]), "Similar text is not a causal path."],
+    ]
+    if llm:
+        a = llm["arms"]["llm_plain"]
+        rows.append([f"LLM, plain (n={llm['n_incidents']} subset)", pci(a["ac1"]), "Costs tokens and seconds per verdict, with no graph path behind the answer."])
+    rows.append(["Perfect map (oracle)", pci(M["oracle"]["ac1"]), "The ceiling if every dependency were known."])
+    return md_table(["approach", "AC@1 (95% CI)", "takeaway"], rows)
+
+
+def replay_lines():
+    rp = R.get("replays")
+    if not rp:
+        return "Not run yet."
+    lines = []
+    rank = lambda x: "first" if x["root_rank"] == 1 else "not ranked" if x["root_rank"] is None else f"rank {x['root_rank']}"
+    for s in rp["scenarios"]:
+        a, b = s["stages"][0], s["stages"][1]
+        lines.append(f"- **{s['short']}.** Official map without the hidden dependency: top-1 `{a['top1']}` ({a['confidence']:.2f}), real root {rank(a)}. After one learned edge: top-1 `{b['top1']}` ({b['confidence']:.2f}), real root {rank(b)}.")
+    return "\n".join(lines) + f"\n\n*{rp['label']}* The scenarios are in [`docs/replays/`](docs/replays)."
+
+
+def gw_why_example():
+    ex = json.loads((ROOT / "docs" / "cli-examples" / "examples.json").read_text(encoding="utf8"))
+    for e in ex:
+        if e["title"] == "who broke it":
+            out = e["output"]
+            return out if out.startswith("$") else f"$ {e['cmd']}\n\n{out}"
+    return ""
+
+
+def mermaid_engine():
+    return """flowchart TD
+    A[Alerts] --> B[Resolve aliases to services]
+    B --> C[Candidate roots: alerting services and what they depend on]
+    C --> D["Reach: limited Bellman-Ford, up to 5 hops, cost = -ln w"]
+    D --> E["Score each candidate: noisy-OR over every alert it would explain"]
+    E --> F[Add onset order and priors]
+    F --> G[Normalise to a confidence]
+    G --> H{Confidence above the abstain threshold?}
+    H -- yes --> I[Verdict: ranked roots, path, explanation]
+    H -- no --> J[Verdict: not sure, with the ranked candidates]"""
+
+
+def mermaid_learner():
+    return """flowchart TD
+    A[Postmortem: three fields] --> D[Proposals]
+    B[GitHub postmortem issue] --> D
+    C[Importer: reads a postmortem text] --> D
+    D --> E["Review: a person approves or edits"]
+    E --> F[Background write queue: ordered and journalled]
+    F --> G[HydraDB writes: Lesson, Postmortem, Incident]
+    G --> H[Revision bump]
+    H --> I[Write-through cache applies the same change]
+    I --> J[Next verdict uses the learned edge]"""
