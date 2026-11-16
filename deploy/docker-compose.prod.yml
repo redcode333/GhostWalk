@@ -70,7 +70,10 @@ services:
     restart: unless-stopped
     depends_on: {hydradb: {condition: service_healthy}}
     environment:
-      AUTH_MODE: none
+      AUTH_MODE: ${AUTH_MODE:-none}               # clerk: /app needs a Clerk session (one workspace per user); /demo stays public
+      CLERK_JWKS_URL: ${CLERK_JWKS_URL:-}          # session tokens are verified against these keys (cached); the Clerk secret key is not needed by the API and is not passed in
+      CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY:-}
+      CLERK_AUTHORIZED_PARTIES: ${GW_CORS_ORIGINS:-}
       GW_STORE: hydradb
       HYDRA_URL: http://hydradb:8443
       HYDRA_READY: http://hydradb:9090/readyz

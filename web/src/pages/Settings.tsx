@@ -51,9 +51,9 @@ export default function Settings() {
         <h2 style={{ margin: "0 0 10px", fontSize: 17 }}>API token</h2>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <code className="mono" style={{ flex: 1, minWidth: 240, fontSize: 13 }}>{tok ?? s.token_masked}</code>
-          <Btn variant="glass" onClick={async () => setTok(tok ? null : (await api("/api/settings/token/reveal", { method: "POST" })).token)}>{tok ? "Hide" : "Reveal"}</Btn>
-          <Btn variant="glass" onClick={async () => { if (confirm("Rotate the token? Anything using the old one stops working.")) { setTok((await api("/api/settings/token/rotate", { method: "POST" })).token); reload() } }}>Rotate</Btn>
+          <Btn variant="glass" onClick={async () => { if (confirm(s.token_masked.startsWith("no token") ? "Create an API token?" : "Create a new token? Anything using the old one stops working.")) { setTok((await api("/api/settings/token/rotate", { method: "POST" })).token); reload() } }}>{s.token_masked.startsWith("no token") ? "Create token" : "Rotate"}</Btn>
         </div>
+        {tok && <p role="status" style={{ margin: "8px 0 0", fontSize: 13, color: "var(--ok)" }}>Copy it now: it is shown once and only a hash is kept.</p>}
         <p style={{ margin: "8px 0 0", fontSize: 12, color: "var(--text-4)" }}>Send it as <span className="mono">Authorization: Bearer …</span>. Required when sign-in is on ({s.auth_mode}).</p>
       </section>
       <section className="card" style={{ padding: 20 }}>

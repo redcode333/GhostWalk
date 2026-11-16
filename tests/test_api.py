@@ -68,9 +68,11 @@ def test_alert_webhook_creates_incident_and_needs_token_when_required(client, mo
     assert r.status_code == 200 and r.json()["incident"].startswith("INC-")
     monkeypatch.setenv("GW_REQUIRE_TOKEN", "1")
     assert client.post("/v1/alerts/acme", json=body).status_code == 401
-    ok = client.post("/v1/alerts/acme", json=body, headers={"Authorization": "Bearer " + client.app.state.ws.token})
+    tok = client.app.state.ws.issue_token()                       # only a hash is stored: the token is shown once, when it is issued
+    ok = client.post("/v1/alerts/acme", json=body, headers={"Authorization": "Bearer " + tok})
     assert ok.status_code == 200
-    assert client.post("/v1/alerts/acme", json={"alerts": []}, headers={"x-gw-token": client.app.state.ws.token}).status_code == 422
+    assert client.post("/v1/alerts/acme", json={"alerts": []}, headers={"x-gw-token": tok}).status_code == 422
+    assert client.post("/v1/alerts/acme", json=body, headers={"Authorization": "Bearer " + tok[:-1] + "0"}).status_code == 401
 
 
 def test_learn_preview_then_apply_changes_the_graph(client):
@@ -93,8 +95,11 @@ def test_learn_preview_then_apply_changes_the_graph(client):
 def test_settings_token_flow(client):
     s = client.get("/api/settings").json()
     assert s["webhook_url"].endswith("/v1/alerts/acme") and "•" in s["token_masked"]
-    old = client.post("/api/settings/token/reveal").json()["token"]
-    assert client.post("/api/settings/token/rotate").json()["token"] != old
+    assert client.post("/api/settings/token/reveal").status_code == 410         # a stored token cannot be shown again
+    first = client.post("/api/settings/token/rotate").json()
+    second = client.post("/api/settings/token/rotate").json()
+    assert first["shown_once"] and first["token"].startswith("gw_live_") and second["token"] != first["token"]
+    assert not client.app.state.ws.token_ok(first["token"]) and client.app.state.ws.token_ok(second["token"])
 
 
 def test_onboarding_scan_accept_replaces_map_and_test_alert_works():
@@ -148,7 +153,7 @@ def test_state_survives_restart(tmp_path):
     a.reset_learned()
     a.test_alert()
     b = Workspace(p)
-    assert len(b.incidents) == len(a.incidents) and b.token == a.token and b.g.edges.keys() == a.g.edges.keys()
+    assert len(b.incidents) == len(a.incidents) and b.token_hash == a.token_hash and b.g.edges.keys() == a.g.edges.keys()
 
 
 def test_inside_demo_is_computed_by_the_engine(client):

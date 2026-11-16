@@ -92,6 +92,7 @@ export default function Onboarding() {
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <Btn onClick={installGithub} disabled={busy || !cfg?.github?.configured}>Install the GitHub App</Btn>
                 <Btn variant="glass" onClick={() => scan("sample")} disabled={busy}>Scan the sample acme repos</Btn>
+                <Btn variant="glass" onClick={() => run(async () => { await api("/api/onboarding/load-sample", { method: "POST" }); window.location.assign("/app/incidents") })} disabled={busy}>Load a sample company</Btn>
               </div>
               {cfg && !cfg.github.configured && <Muted>This server has no GitHub App configured (GITHUB_APP_ID, GITHUB_APP_PRIVATE_KEY), so only the sample repos can be scanned.</Muted>}
             </div>

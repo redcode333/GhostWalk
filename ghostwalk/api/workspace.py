@@ -14,6 +14,10 @@ from ..engine.walk import walk, resolve, _limited_best, changes_before, change_n
 from ..graph.state import GraphState, Edge, W0_OFFICIAL, W_TENTATIVE
 from ..learn import update
 from ..integrations import issues
+from .auth import new_token, split_token, secret_matches
+
+FREE_SERVICES = 25
+SAMPLE_SERVICES = 24          # the sample company loaded into a user's workspace fits the free plan
 
 UI_KIND = {"datastore": "data", "cache": "data", "queue": "data", "shared": "infra", "external": "infra", "service": "service"}
 TIER_OF = {"edge": 0, "service": 1, "data": 2, "infra": 3}
@@ -25,7 +29,7 @@ def ui_kind(c):
 
 
 class Workspace:
-    def __init__(self, state_path=None, demo_incidents=30, seed=7777, demo=True, use_changes=None, store=None, hydra=None, worker=True):
+    def __init__(self, state_path=None, demo_incidents=30, seed=7777, demo=True, use_changes=None, store=None, hydra=None, worker=True, wsid="default"):
         self.lock = threading.RLock()
         self.jobs: list[dict] = []                # learning writes accepted but not yet in HydraDB (journalled in the state file, replayed on restart)
         self._q: queue.Queue = queue.Queue()
@@ -44,7 +48,9 @@ class Workspace:
         self.rng = random.Random(seed)
         self.mode = "demo"                       # demo | imported
         self.revision = 0
-        self.token = "gw_live_" + secrets.token_hex(16)
+        self.wsid = wsid
+        self.token_hash, self.token_tail = None, ""      # only a hash of the API token is kept; the token itself is shown once, when it is issued
+        self.sample = None                               # {"seed", "size"} when a sample company was loaded into this workspace
         self.g: GraphState | None = None
         self.company = None
         self.next_sim = 0
@@ -73,6 +79,10 @@ class Workspace:
                 self._seed_demo(seed, demo_incidents)
             else:
                 self.g, self.mode = GraphState(components={}), "imported"
+            self.save()
+        if self.token_hash is None:
+            new, self.token_hash = new_token(self.wsid)
+            self.token_tail = new[-4:]
             self.save()
         if self.hy is not None and worker:
             self.start_worker()
@@ -223,10 +233,10 @@ class Workspace:
         self._sync()
         return self.hy.lesson_impact(lesson_id)
 
-    def _seed_demo(self, seed, n_history):
+    def _seed_demo(self, seed, n_history, size=80, name="acme-demo"):
         from gwsim.cli import make
-        co = json.loads(make("hub", seed, 80).to_json())
-        co["name"] = "acme-demo"
+        co = json.loads(make("hub", seed, size).to_json())
+        co["name"] = name
         self.company = co
         self.mode = "demo"
         self.g = GraphState.from_official({"components": [{k: c[k] for k in ("id", "name", "kind", "tier")} for c in co["components"]],
@@ -522,10 +532,39 @@ class Workspace:
                 "store": {"name": self.store, "label": "HydraDB graph (memory in the graph)" if self.hy is not None else "In-memory graph"},
                 "pending": len(self.pending), "saving": len(self.jobs), "onboarding": self.onboarding, "demo_outages_left": (len(self.company["incidents"]) - self.next_sim) if self.company else 0}
 
+    # ---- API token (hashed) ----------------------------------------------------------------
+    def issue_token(self) -> str:
+        """A new token for this workspace. The caller shows it once; only its hash is stored."""
+        tok, h = new_token(self.wsid)
+        with self.lock:
+            self.token_hash, self.token_tail = h, tok[-4:]
+            self.save()
+        return tok
+
+    def token_ok(self, presented: str) -> bool:
+        wsid, secret = split_token(presented or "")
+        return (wsid is None or wsid == self.wsid) and secret_matches(secret, self.token_hash)
+
+    @property
+    def token_masked(self) -> str:
+        return f"gw_live_{self.wsid}_" + "•" * 24 + self.token_tail if self.token_hash else "no token yet: rotate to create one"
+
+    # ---- a sample company in a user's own workspace -----------------------------------------
+    def load_sample(self, seed=4242, history=8):
+        """Replace this workspace's graph with a small sample company (it fits the free plan), learned from a few past incidents, so a first verdict works at once."""
+        self.wait_saved()
+        with self.lock:
+            self.sample = {"seed": seed, "size": SAMPLE_SERVICES}
+            self._seed_demo(seed, history, size=SAMPLE_SERVICES, name="your-sample")
+            self.mode = "sample"
+            self.onboarding.update(map=True)
+            self.save()
+            return {"services": len(self.g.components), "dependencies": len(self.g.edges), "incidents": len(self.incidents)}
+
     # ---- persistence -----------------------------------------------------------------------
     def dump(self):
         g = self.g
-        return {"mode": self.mode, "revision": self.revision, "token": self.token, "next_sim": self.next_sim, "onboarding": self.onboarding,
+        return {"mode": self.mode, "revision": self.revision, "token_hash": self.token_hash, "token_tail": self.token_tail, "wsid": self.wsid, "sample": self.sample, "next_sim": self.next_sim, "onboarding": self.onboarding,
                 "changes": self.changes, "installation": self.installation, "repo_for_template": self.repo_for_template, "map_proposals": self.map_proposals,
                 "components": {str(i): c for i, c in g.components.items()}, "names": g.names,
                 "edges": [[u, v, e.w, e.origin, e.confirmations, e.learned_from, e.created_seq] for (u, v), e in g.edges.items()],
@@ -553,7 +592,14 @@ class Workspace:
             g.shortcuts = {(a, b): n for a, b, n in d["shortcuts"]}
             g.seq = d["seq"]
             self.learned_by = {int(k): v for k, v in d.get("learned_by", {}).items()}
-            self.g, self.mode, self.revision, self.token = g, d["mode"], d["revision"], d["token"]
+            self.g, self.mode, self.revision = g, d["mode"], d["revision"]
+            if d.get("token_hash"):
+                self.token_hash, self.token_tail = d["token_hash"], d.get("token_tail", "")
+            elif d.get("token"):                                                      # a state file from before tokens were hashed
+                import hashlib
+                secret = d["token"].removeprefix("gw_live_")
+                self.token_hash, self.token_tail = hashlib.sha256(secret.encode()).hexdigest(), d["token"][-4:]
+            self.sample = d.get("sample")
             self.changes = d.get("changes", [])
             self.next_sim, self.onboarding, self.installation = d["next_sim"], d["onboarding"], d.get("installation")
             self.repo_for_template, self.map_proposals = d.get("repo_for_template"), d.get("map_proposals")
@@ -562,6 +608,10 @@ class Workspace:
             if self.mode == "demo":
                 from gwsim.cli import make
                 self.company = json.loads(make("hub", 7777, 80).to_json())
+            elif self.mode == "sample" and self.sample:
+                from gwsim.cli import make
+                self.company = json.loads(make("hub", self.sample["seed"], self.sample["size"]).to_json())
+                self.company["name"] = "your-sample"
             return True
         except Exception as e:                        # a corrupt state file must not brick the app
             self.log.append(f"state file ignored: {e}")

@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client"
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom"
 import "./styles.css"
 import { AppShell } from "@/components/AppShell"
-import { AuthProvider, RequireAuth, SignInPage, SignUpPage } from "@/pages/Auth"
+import { AuthProvider, DemoEntry, RequireAuth, SignInPage, SignUpPage } from "@/pages/Auth"
 import Landing from "@/pages/Landing"
 import Incidents from "@/pages/Incidents"
 import Incident from "@/pages/Incident"
@@ -19,7 +19,7 @@ createRoot(document.getElementById("root")!).render(
       <AuthProvider>
         <Routes>
           <Route path="/" element={<Landing />} />
-          <Route path="/demo" element={<Navigate to="/app/incidents" replace />} />
+          <Route path="/demo" element={<DemoEntry />} />
           <Route path="/signin/*" element={<SignInPage />} />
           <Route path="/signup/*" element={<SignUpPage />} />
           <Route path="/app" element={<RequireAuth><AppShell /></RequireAuth>}>

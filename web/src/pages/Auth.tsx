@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import { Link, Navigate, useNavigate } from "react-router-dom"
 import { GitBranch, Globe } from "lucide-react"
 import { ClerkProvider, SignIn, SignUp, useAuth } from "@clerk/react"
-import { api } from "@/lib/api"
+import { api, demoMode, setDemoMode } from "@/lib/api"
 import { Btn, Logo, ThemeToggle, useLoad } from "@/components/common"
 import { loadResults, verdictLatency } from "@/lib/results"
 
@@ -13,7 +13,7 @@ export const useCfg = () => useContext(Ctx)
 /** Loads /api/config. AUTH_MODE=none opens the demo workspace; AUTH_MODE=clerk wraps the app in Clerk. */
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [cfg, setCfg] = useState<Cfg | null>(null)
-  useEffect(() => { api<Cfg>("/api/config").then(setCfg).catch(() => setCfg({ auth_mode: "none", clerk_publishable_key: null })) }, [])
+  useEffect(() => { api<Cfg>("/api/config").then((c) => setCfg({ ...c, clerk_publishable_key: (import.meta as any).env?.VITE_CLERK_PUBLISHABLE_KEY || c.clerk_publishable_key })).catch(() => setCfg({ auth_mode: "none", clerk_publishable_key: null })) }, [])
   if (!cfg) return null
   if (cfg.auth_mode === "clerk" && cfg.clerk_publishable_key) {
     return <ClerkProvider publishableKey={cfg.clerk_publishable_key}><Ctx.Provider value={cfg}><TokenBridge>{children}</TokenBridge></Ctx.Provider></ClerkProvider>
@@ -35,6 +35,7 @@ function ClerkGate({ children }: { children: ReactNode }) {
 
 export function RequireAuth({ children }: { children: ReactNode }) {
   const cfg = useCfg()
+  if (demoMode()) return <>{children}</>                                   // /demo is public: no sign-in
   return cfg?.auth_mode === "clerk" ? <ClerkGate>{children}</ClerkGate> : <>{children}</>
 }
 
@@ -112,7 +113,13 @@ function DemoForm({ up }: { up: boolean }) {
   )
 }
 
+export function DemoEntry() {
+  setDemoMode(true)
+  return <Navigate to="/app/incidents" replace />
+}
+
 export function SignInPage() {
+  setDemoMode(false)
   const cfg = useCfg()
   const clerk = cfg?.auth_mode === "clerk" && cfg.clerk_publishable_key
   return (
@@ -124,6 +131,7 @@ export function SignInPage() {
 }
 
 export function SignUpPage() {
+  setDemoMode(false)
   const cfg = useCfg()
   const clerk = cfg?.auth_mode === "clerk" && cfg.clerk_publishable_key
   return (

@@ -4,14 +4,16 @@ AUTH_MODE=none (default)  no sign-in; opens the demo workspace.
 AUTH_MODE=clerk           /api/* needs a Clerk session JWT (CLERK_JWKS_URL, CLERK_ISSUER); webhooks use their own secrets.
 """
 from __future__ import annotations
-import collections, datetime, json, os, pathlib, secrets, threading, time
+import collections, contextvars, datetime, json, os, pathlib, secrets, threading, time
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .alerts import normalize
 from .samples import SAMPLE_FILES
-from .workspace import Workspace
+from .workspace import Workspace, FREE_SERVICES
+from .auth import AuthError, ClerkVerifier
+from .tenancy import Tenancy
 from .demo import demo_inside
 from .. import mcp_tools
 from ..discover.scan import scan_texts, proposals
@@ -19,12 +21,28 @@ from ..integrations import github as gh, issues
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 AUTH_MODE = lambda: os.environ.get("AUTH_MODE", "none")
-FREE_SERVICES = 25
+_current_ws: contextvars.ContextVar = contextvars.ContextVar("gw_workspace")
+
+
+class WsProxy:
+    """Every handler talks to `ws`. In multi-user mode `ws` is this proxy: it forwards to the workspace the middleware resolved for the request (the demo workspace when none)."""
+    def __init__(self, default):
+        object.__setattr__(self, "_default", default)
+
+    def __getattr__(self, name):
+        return getattr(_current_ws.get(self._default), name)
+
+    def __setattr__(self, name, value):
+        setattr(_current_ws.get(self._default), name, value)
 
 
 def clerk_user(request: Request):
     if AUTH_MODE() != "clerk":
         return {"id": "demo"}
+    if getattr(request.state, "gw_kind", None) == "demo":
+        return {"id": "demo"}
+    if getattr(request.state, "user", None):
+        return request.state.user
     import jwt
     tok = (request.headers.get("authorization") or "").removeprefix("Bearer ").strip()
     if not tok:
@@ -38,17 +56,30 @@ def clerk_user(request: Request):
 
 def create_app(state_path=None, results_path=None, workspace: Workspace | None = None):
     app = FastAPI(title="GhostWalk", docs_url="/api/docs", openapi_url="/api/openapi.json")
-    ws = workspace or Workspace(state_path if state_path is not None else os.environ.get("GW_STATE", str(ROOT / "var" / "state.json")),
-                                demo_incidents=int(os.environ.get("GW_DEMO_INCIDENTS", "30")))
+    multi = AUTH_MODE() == "clerk" and workspace is None            # signed-in users each get their own workspace; the demo workspace is public
+    demo_path = state_path if state_path is not None else os.environ.get("GW_STATE", str(ROOT / "var" / "state.json"))
+    ws = workspace or Workspace(demo_path, demo_incidents=int(os.environ.get("GW_DEMO_INCIDENTS", "30")), wsid="demo" if multi else "default")
+    tenancy = verifier = None
+    if multi:
+        def make_user_workspace(wsid, run, path):
+            hydra = None
+            if ws.store == "hydradb":
+                from ..graph.hydra import HydraGraph
+                hydra = HydraGraph(os.environ.get("HYDRA_URL", "http://127.0.0.1:8443"), os.environ.get("HYDRA_TOKEN", "local-development-token-32-bytes"), run_id=run, mode="cached")
+            return Workspace(path, demo=False, store=ws.store, hydra=hydra, wsid=wsid)
+        tenancy = Tenancy(pathlib.Path(demo_path).parent, make_user_workspace, ws)
+        verifier = ClerkVerifier.from_env()
+        ws = WsProxy(ws)
     results_file = pathlib.Path(results_path or os.environ.get("GW_RESULTS", ROOT / "results.json"))
     app.state.ws = ws
+    app.state.tenancy = tenancy
     user = Depends(clerk_user)
 
     # ---- public deployment: CORS for the frontend origin(s), a rate limit on /v1/* and on writes, a sandbox that cannot change settings ----------
     origins = [o.strip() for o in os.environ.get("GW_CORS_ORIGINS", "").split(",") if o.strip()]
     if origins:
         from fastapi.middleware.cors import CORSMiddleware
-        app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["GET", "POST", "DELETE", "OPTIONS"], allow_headers=["authorization", "content-type", "x-gw-token"],
+        app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["GET", "POST", "DELETE", "OPTIONS"], allow_headers=["authorization", "content-type", "x-gw-token", "x-gw-demo"],
                            allow_credentials=False, max_age=600)
     limit_n, _, limit_s = os.environ.get("GW_RATE_LIMIT", "0/60").partition("/")
     limit_n, limit_s = int(limit_n or 0), int(limit_s or 60)
@@ -59,7 +90,8 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
     @app.middleware("http")
     async def guard(request: Request, call_next):
         path, method = request.url.path, request.method
-        if method != "OPTIONS" and public_demo and method not in ("GET", "HEAD") and path.startswith(sandbox_blocked) and path != "/api/demo/reset":
+        in_sandbox = (getattr(request.state, "gw_kind", None) == "demo") if tenancy else public_demo
+        if method != "OPTIONS" and in_sandbox and method not in ("GET", "HEAD") and path.startswith(sandbox_blocked) and path != "/api/demo/reset":
             return JSONResponse({"detail": "this is the public demo: settings, onboarding and webhooks are read-only here"}, status_code=403)
         if limit_n and method != "OPTIONS" and (path.startswith("/v1/") or (method == "POST" and path.startswith("/api/"))):
             ip = (request.headers.get("x-forwarded-for") or (request.client.host if request.client else "?")).split(",")[0].strip()
@@ -74,6 +106,51 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
                     hits.pop(k, None)
         return await call_next(request)
 
+    PUBLIC = ("/api/health", "/api/config", "/api/proof", "/api/demo/inside", "/api/docs", "/api/openapi.json", "/api/demo/reset")
+
+    def resolve_workspace(request: Request):
+        """-> (workspace, kind, claims). Raises HTTPException. kind is "user" (a verified Clerk session or a workspace token) or "demo" (the public sandbox)."""
+        path = request.url.path
+        raw = (request.headers.get("authorization") or "").removeprefix("Bearer ").strip() or request.headers.get("x-gw-token") or request.query_params.get("token") or ""
+        if raw.startswith("gw_live_"):
+            w = tenancy.by_token(raw)
+            if w is None:
+                raise HTTPException(401, "bad workspace token")
+            return w, "user", None
+        if path.startswith("/api/mcp/"):
+            raise HTTPException(401, "bad or missing GW_TOKEN")
+        if path.startswith("/v1/"):
+            demo_ok = (path.startswith("/v1/alerts/demo") and request.method == "POST") or (request.method == "GET" and path.startswith(("/v1/edges/", "/v1/lessons/")))
+            if demo_ok and not raw:
+                return tenancy.demo, "demo", None
+            raise HTTPException(401, "a workspace token is required (Authorization: Bearer gw_live_...)")
+        if raw:
+            try:
+                claims = verifier.verify(raw)
+            except AuthError as e:
+                raise HTTPException(401, str(e))
+            return tenancy.for_user(claims["sub"]), "user", claims
+        if request.headers.get("x-gw-demo") == "1":
+            return tenancy.demo, "demo", None
+        raise HTTPException(401, "sign in required")
+
+    if tenancy is not None:
+        @app.middleware("http")
+        async def tenant(request: Request, call_next):
+            path = request.url.path
+            if not path.startswith(("/api/", "/v1/")) or path.startswith(PUBLIC) or request.method == "OPTIONS":
+                return await call_next(request)
+            try:
+                w, kind, claims = resolve_workspace(request)
+            except HTTPException as e:
+                return JSONResponse({"detail": e.detail}, status_code=e.status_code)
+            request.state.gw_kind, request.state.user = kind, claims
+            tok = _current_ws.set(w)
+            try:
+                return await call_next(request)
+            finally:
+                _current_ws.reset(tok)
+
     if public_demo:                                                # the sandbox is rebuilt every night at 03:00 UTC
         def nightly():
             while True:
@@ -83,7 +160,7 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
                     nxt += datetime.timedelta(days=1)
                 time.sleep((nxt - now).total_seconds())
                 try:
-                    ws.reset_demo()
+                    (tenancy.demo if tenancy else ws).reset_demo()
                 except Exception as e:                             # noqa: BLE001
                     ws.log.append(f"nightly reset failed: {e}")
         threading.Thread(target=nightly, name="gw-nightly-reset", daemon=True).start()
@@ -115,7 +192,7 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
     @app.get("/api/config")
     def config():
         c = gh.env_config()
-        return {"auth_mode": AUTH_MODE(), "clerk_publishable_key": os.environ.get("CLERK_PUBLISHABLE_KEY"),
+        return {"auth_mode": AUTH_MODE(), "clerk_publishable_key": os.environ.get("CLERK_PUBLISHABLE_KEY") or os.environ.get("VITE_CLERK_PUBLISHABLE_KEY"),
                 "github": {"configured": bool(c["app_id"] and c["private_key"]), "slug": c["slug"], "pr_token": bool(c["pr_token"])}}
 
     results_cache = {"mtime": None, "doc": None}
@@ -146,7 +223,7 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
     # ---- hosted MCP (the same six tools over HTTP; `gw mcp` with GW_URL + GW_TOKEN proxies here) --------------------------
     def check_mcp_token(request: Request):
         got = (request.headers.get("authorization") or "").removeprefix("Bearer ").strip()
-        if not got or not secrets.compare_digest(got, ws.token):
+        if not got or not ws.token_ok(got):                                  # (in multi-user mode the middleware already chose the workspace by this token)
             raise HTTPException(401, "bad or missing GW_TOKEN")
 
     @app.post("/api/mcp/{tool}")
@@ -169,7 +246,9 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
             return
         got = (request.headers.get("authorization") or "").removeprefix("Bearer ").strip() or request.headers.get("x-gw-token") \
             or request.query_params.get("token")
-        if not got or not secrets.compare_digest(got, ws.token):
+        if tenancy is not None and getattr(request.state, "gw_kind", None) in ("user", "demo"):
+            return                                                          # authenticated (or the public demo) by the middleware
+        if not got or not ws.token_ok(got):
             raise HTTPException(401, "bad or missing token")
 
     @app.post("/v1/alerts/{workspace_name}")
@@ -292,20 +371,18 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
     @app.get("/api/settings")
     def settings(request: Request, u=user):
         s = ws.summary()
-        return {"webhook_url": f"{public_url(request)}/v1/alerts/acme", "token_masked": ws.token[:8] + "•" * 12 + ws.token[-4:],
+        return {"webhook_url": f"{public_url(request)}/v1/alerts/acme", "token_masked": ws.token_masked,
                 "receiving": bool(ws.onboarding["first_alert_at"]), "store": s["store"],
                 "graph": {"nodes": s["services"], "edges": s["official_edges"] + s["learned_edges"], "learned": s["learned_edges"]},
                 "version": "0.1.0", "auth_mode": AUTH_MODE()}
 
     @app.post("/api/settings/token/reveal")
     def reveal(u=user):
-        return {"token": ws.token}
+        raise HTTPException(410, "API tokens are shown once, when they are created. Rotate to get a new one.")
 
     @app.post("/api/settings/token/rotate")
     def rotate(u=user):
-        ws.token = "gw_live_" + secrets.token_hex(16)
-        ws.save()
-        return {"token": ws.token}
+        return {"token": ws.issue_token(), "shown_once": True}
 
     @app.post("/api/settings/reset-learned")
     def reset(u=user):
@@ -359,7 +436,7 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
     @app.post("/api/onboarding/accept")
     async def accept(request: Request, u=user):
         body = await request.json()
-        if AUTH_MODE() == "clerk" and ws.map_proposals:
+        if AUTH_MODE() == "clerk" and ws.map_proposals and getattr(request.state, "gw_kind", None) != "demo":
             ids = set(body.get("edge_ids", []))
             names = {n for e in ws.map_proposals["edges"] if e["id"] in ids for n in (e["src"], e["dst"])}
             if len(names) > FREE_SERVICES:
@@ -369,6 +446,11 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
             return ws.accept_map(body.get("edge_ids", []))
         except ValueError as e:
             raise HTTPException(400, str(e))
+
+    @app.post("/api/onboarding/load-sample")
+    def load_sample(u=user):
+        """A small sample company (it fits the free plan) with a few past incidents, in this user's own workspace."""
+        return ws.load_sample()
 
     @app.post("/api/onboarding/postmortem-pr")
     async def postmortem_pr(request: Request, u=user):
