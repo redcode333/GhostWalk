@@ -38,7 +38,7 @@ def test_a_valid_session_verifies_and_every_bad_one_is_refused():
     v = verifier()
     assert v.verify(mint())["sub"] == "user_a"
     for bad, why in [(mint(exp=int(time.time()) - 60), "expired"), (mint(nbf=int(time.time()) + 600), "not yet valid"), (mint(azp="https://evil.example"), "wrong authorised party"),
-                     (mint(azp=None), "no authorised party"), (mint(iss="https://other.example"), "wrong issuer"), (mint(key=OTHER), "signed with another key"),
+                     (mint(iss="https://other.example"), "wrong issuer"), (mint(key=OTHER), "signed with another key"),
                      (mint(sub=None), "no subject"), ("not.a.jwt", "garbage")]:
         with pytest.raises(AuthError):
             v.verify(bad)
@@ -49,7 +49,8 @@ def test_a_valid_session_verifies_and_every_bad_one_is_refused():
     forged = f"{head}.{body}." + b64(hmac.new(pub, f"{head}.{body}".encode(), hashlib.sha256).digest())
     with pytest.raises(AuthError):                      # algorithm confusion: an HS256 token "signed" with the public key must not pass
         v.verify(forged)
-    assert verifier(parties=[]).verify(mint(azp=None))["sub"] == "user_a"     # no allow-list configured: azp is not required
+    assert verifier().verify(mint(azp=None))["sub"] == "user_a"               # no azp (a token minted server-side): accepted, as Clerk's SDK does
+    assert verifier(parties=[]).verify(mint(azp="https://anything.example"))["sub"] == "user_a"     # no allow-list configured: not checked
 
 
 def test_workspace_tokens_are_scoped_and_only_a_hash_is_kept():

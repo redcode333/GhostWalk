@@ -37,7 +37,7 @@ class ClerkVerifier:
             raise AuthError(f"invalid session: {type(e).__name__}") from e
         if self.parties:
             azp = claims.get("azp")
-            if not azp or azp.rstrip("/") not in self.parties:
+            if azp and azp.rstrip("/") not in self.parties:           # as Clerk's own SDK does: checked when present (a browser session always carries it; a token minted server-side with the secret key does not)
                 raise AuthError("invalid session: unauthorised party")
         return claims
 
