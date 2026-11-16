@@ -1,13 +1,86 @@
-# Default profile: the app (api + web). `--profile eval`: real stores + the store-swap run.
+
 name: ghostwalk
+
 services:
-  hydradb:
-    # HydraDB's own published image (the one charts/hydradb references; appVersion 0.4.0).
-    image: ${HYDRADB_IMAGE:-ghcr.io/hydra-db/hydradb:0.4.0}
-    entrypoint: ["/bin/sh", "-c", "mkdir -p /var/cache/slatedb/store /var/cache/slatedb/cache && echo local-development-token-32-bytes > /tmp/graph/auth-token && exec graph-node"]
+  # S3-compatible object storage for HydraDB
+  minio:
+    build:
+      context: ./deploy/minio
+    image: ghostwalk-minio:2025-09-07
+    restart: unless-stopped
+    command:
+      - server
+      - /data
+      - --address
+      - ":9000"
+      - --console-address
+      - ":9001"
     environment:
-      CLOUD_PROVIDER: local
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env}
+      MINIO_BROWSER: "on"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test:
+        - CMD
+        - curl
+        - -fsS
+        - http://127.0.0.1:9000/minio/health/ready
+      interval: 3s
+      timeout: 3s
+      retries: 40
+
+  # Creates the bucket and restricted HydraDB S3 credentials
+  minio-init:
+    image: ghostwalk-minio:2025-09-07
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: "no"
+    entrypoint:
+      - /bin/sh
+      - /init.sh
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?Set MINIO_ROOT_USER in .env}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?Set MINIO_ROOT_PASSWORD in .env}
+      HYDRA_S3_KEY: ${HYDRA_S3_KEY:?Set HYDRA_S3_KEY in .env}
+      HYDRA_S3_SECRET: ${HYDRA_S3_SECRET:?Set HYDRA_S3_SECRET in .env}
+      BUCKET: ${HYDRA_BUCKET:-ghostwalk}
+    volumes:
+      - ./deploy/minio/init.sh:/init.sh:ro
+
+  # HydraDB using MinIO-backed S3 storage
+  hydradb:
+    image: ghcr.io/hydra-db/hydradb@sha256:ab71d651fefee13ebb23eb56d72316065bdca563ff7587442e07be663f2bf880
+    restart: "no"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        mkdir -p /var/cache/slatedb/store /var/cache/slatedb/cache
+        echo "$$HYDRA_TOKEN" > /tmp/graph/auth-token
+        if [ "$$CLOUD_PROVIDER" = local ]; then
+          unset AWS_ENDPOINT AWS_BUCKET_NAME AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_ALLOW_HTTP AWS_DEFAULT_REGION
+        fi
+        exec graph-node
+    depends_on:
+      minio-init:
+        condition: service_completed_successfully
+    environment:
+      CLOUD_PROVIDER: ${HYDRA_CLOUD_PROVIDER:-aws}
       LOCAL_PATH: /var/cache/slatedb/store
+
+      AWS_BUCKET_NAME: ${HYDRA_BUCKET:-ghostwalk}
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_ENDPOINT: http://minio:9000
+      AWS_ALLOW_HTTP: "true"
+      AWS_ACCESS_KEY_ID: ${HYDRA_S3_KEY:-unused}
+      AWS_SECRET_ACCESS_KEY: ${HYDRA_S3_SECRET:-unused}
+
       GRAPH_NAMESPACE: default
       GRAPH_ID: default
       GRAPH_CELL_ID: cell-0
@@ -20,49 +93,117 @@ services:
       GRAPH_ALLOW_PLAINTEXT: "true"
       RUST_MIN_STACK: "33554432"
       GRAPH_USAGE_REPORT_ENABLED: "false"
-    ports: ["8443:8443", "9090:9090", "7687:7687"]
-    volumes: ["hydradb-data:/var/cache/slatedb"]
-    healthcheck: {test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/9090"], interval: 3s, timeout: 3s, retries: 40}
+      HYDRA_TOKEN: ${HYDRA_TOKEN:?Set HYDRA_TOKEN in .env}
+    ports:
+      - "8443:8443"
+      - "9090:9090"
+      - "7687:7687"
+    volumes:
+      - hydradb-data:/var/cache/slatedb
+    healthcheck:
+      test:
+        - CMD
+        - bash
+        - -c
+        - exec 3<>/dev/tcp/127.0.0.1/9090
+      interval: 3s
+      timeout: 3s
+      retries: 60
+
+  # GhostWalk API
   app:
-    build: .
-    ports: ["8000:8000"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      hydradb:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
     environment:
       AUTH_MODE: ${AUTH_MODE:-none}
       GW_PUBLIC_URL: ${GW_PUBLIC_URL:-http://localhost:8000}
+
       CLERK_PUBLISHABLE_KEY: ${CLERK_PUBLISHABLE_KEY:-}
       CLERK_JWKS_URL: ${CLERK_JWKS_URL:-}
+      CLERK_AUTHORIZED_PARTIES: ${GW_CORS_ORIGINS:-}
+
       GITHUB_APP_ID: ${GITHUB_APP_ID:-}
       GITHUB_APP_PRIVATE_KEY: ${GITHUB_APP_PRIVATE_KEY:-}
       GITHUB_APP_SLUG: ${GITHUB_APP_SLUG:-ghostwalk}
       GITHUB_WEBHOOK_SECRET: ${GITHUB_WEBHOOK_SECRET:-}
       GITHUB_PR_TOKEN: ${GITHUB_PR_TOKEN:-}
-      GW_STORE: ${GW_STORE:-memory}            # hydradb: the graph and the learner's memory live in HydraDB (start it too: docker compose up -d hydradb app)
-      HYDRA_URL: ${HYDRA_URL:-http://hydradb:8443}
+
+      GW_STORE: hydradb
+      HYDRA_URL: http://hydradb:8443
       HYDRA_READY: http://hydradb:9090/readyz
+      HYDRA_TOKEN: ${HYDRA_TOKEN:?Set HYDRA_TOKEN in .env}
+
       GW_DEMO_INCIDENTS: ${GW_DEMO_INCIDENTS:-30}
-    volumes: ["gw-data:/data"]
+    volumes:
+      - gw-data:/data
+
+  # Evaluation services
   redis:
     image: redis:7-alpine
-    profiles: [eval]
-    ports: ["6380:6379"]
-    healthcheck: {test: ["CMD", "redis-cli", "ping"], interval: 2s, timeout: 2s, retries: 20}
+    profiles:
+      - eval
+    ports:
+      - "6380:6379"
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      interval: 2s
+      timeout: 2s
+      retries: 20
+
   postgres:
     image: pgvector/pgvector:pg16
-    profiles: [eval]
-    environment: {POSTGRES_USER: gw, POSTGRES_PASSWORD: gw, POSTGRES_DB: gw}
-    ports: ["5433:5432"]
-    healthcheck: {test: ["CMD-SHELL", "pg_isready -U gw -d gw"], interval: 2s, timeout: 2s, retries: 30}
+    profiles:
+      - eval
+    environment:
+      POSTGRES_USER: gw
+      POSTGRES_PASSWORD: gw
+      POSTGRES_DB: gw
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U gw -d gw
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
   eval:
-    profiles: [eval]
-    build: {context: ., dockerfile: Dockerfile.eval}
+    profiles:
+      - eval
+    build:
+      context: .
+      dockerfile: Dockerfile.eval
     depends_on:
-      redis: {condition: service_healthy}
-      postgres: {condition: service_healthy}
-      hydradb: {condition: service_healthy}
-    environment: {REDIS_URL: "redis://redis:6379/0", PG_URL: "postgresql://gw:gw@postgres:5432/gw", HYDRA_URL: "http://hydradb:8443", HYDRA_READY: "http://hydradb:9090/readyz"}
-    volumes: [".:/app"]
-    command: ["python", "eval/store_swap.py", "--split", "test"]
+      redis:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      hydradb:
+        condition: service_healthy
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      PG_URL: postgresql://gw:gw@postgres:5432/gw
+      HYDRA_URL: http://hydradb:8443
+      HYDRA_READY: http://hydradb:9090/readyz
+    volumes:
+      - .:/app
+    command:
+      - python
+      - eval/store_swap.py
+      - --split
+      - test
 
 volumes:
-  gw-data:
+  minio-data:
   hydradb-data:
+  gw-data:
