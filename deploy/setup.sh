@@ -28,7 +28,7 @@ ensure API_DOMAIN "${API_DOMAIN:-api.${ip}.sslip.io}"
 ensure GW_CORS_ORIGINS "${FRONTEND_ORIGIN:-}"
 ensure HYDRA_TOKEN "$(openssl rand -hex 16)"
 ensure GW_ADMIN_TOKEN "$(openssl rand -hex 24)"
-ensure GW_RATE_LIMIT "60/60"
+ensure GW_RATE_LIMIT "60/60"        # the public VM only: the code default is off
 # object storage for HydraDB: STORAGE=minio (default) keeps the graph in MinIO on this VM; STORAGE=local keeps it on a docker volume
 STORAGE="${STORAGE:-$(grep '^STORAGE=' "$ENVF" | cut -d= -f2 || true)}"; STORAGE="${STORAGE:-minio}"
 ensure STORAGE "$STORAGE"
@@ -43,6 +43,7 @@ echo "storage: $STORAGE (secrets are in $ENVF, not printed)"
 if command -v ufw >/dev/null; then sudo ufw allow 80/tcp >/dev/null 2>&1 || true; sudo ufw allow 443/tcp >/dev/null 2>&1 || true; fi
 
 DC="docker compose --env-file $DEPLOY/.env -f $DEPLOY/docker-compose.prod.yml"
+export GW_VERSION="$(git rev-parse --short HEAD 2>/dev/null || echo dev)"     # shown in /health
 $DC up -d --build
 set -a; . "$DEPLOY/.env"; set +a
 echo "waiting for https://$API_DOMAIN ..."

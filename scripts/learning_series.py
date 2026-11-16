@@ -51,6 +51,13 @@ def replay_tables(res):
         for b, s in enumerate(stored[lab]):
             if abs(arr[:, b, 0].sum() / arr[:, b, 1].sum() - s["ac1"]) > 1e-12:
                 raise SystemExit(f"replay differs from the stored curve ({lab}, bin {b}); nothing written")
+    n_all = res["meta"]["incidents"]
+    for lab, key in (("ghostwalk", "ghostwalk"), ("learning_off", "learning_off"), ("placebo", "placebo"), ("oracle", "oracle")):
+        hits = sum(1 for c in names for r in runs[lab][c] if r["rank"] == 1)
+        want = round(res["methods"][key]["ac1"]["point"] * n_all)
+        print(f"replay {lab}: {hits} of {n_all} top-1 (results.json: {want})")
+        if hits != want:
+            raise SystemExit(f"replay top-1 hits for {lab} ({hits}) differ from results.json ({want}); nothing written")
     total = sum(1 for c in names for r in runs["ghostwalk"][c] if r["rank"] == 1)
     if total != res["meta"]["ac1_history"][-1]["hits"]:
         raise SystemExit("replay top-1 hits differ from the stored total; nothing written")

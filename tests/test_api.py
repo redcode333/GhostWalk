@@ -185,3 +185,15 @@ def test_rate_limit_is_a_quiet_429_with_a_plain_message(monkeypatch):
     assert 429 in codes and codes.index(429) == 5
     r = c.post("/api/onboarding/accept", json={"edge_ids": []})
     assert r.json()["detail"] == "Slow down, try again in a minute"
+
+
+def test_rate_limit_is_off_unless_configured(monkeypatch):
+    monkeypatch.delenv("GW_RATE_LIMIT", raising=False)
+    c = TestClient(create_app(workspace=Workspace(None, demo_incidents=2), results_path="nope.json"))
+    assert all(c.post("/api/onboarding/accept", json={"edge_ids": []}).status_code != 429 for _ in range(120))
+
+
+def test_health_reports_the_version(monkeypatch):
+    monkeypatch.setenv("GW_VERSION", "abc1234")
+    c = TestClient(create_app(workspace=Workspace(None, demo_incidents=2), results_path="nope.json"))
+    assert c.get("/api/health").json()["version"] == "abc1234" and c.get("/health").json()["version"] == "abc1234"

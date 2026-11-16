@@ -49,6 +49,8 @@ Same incidents, same engine and learner; only the store changes for the store ro
 
 {{table_learning_main}}
 
+{{placebo_late}}
+
 {{table_learning_ablation}}
 
 ## Other results

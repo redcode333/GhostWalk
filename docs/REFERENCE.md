@@ -17,7 +17,7 @@ Copy `.env.example` to `.env`. Secrets are never committed.
 | GW_DEMO_INCIDENTS | past incidents in the demo workspace | no | The seeded history the demo starts with. |
 | GW_PUBLIC_DEMO | 0 or 1 | no | `1`: settings, onboarding and webhooks are read-only in the demo sandbox, and it is rebuilt every night. |
 | GW_ADMIN_TOKEN | admin token | **yes** | Lets `POST /api/demo/reset` rebuild the demo on demand. |
-| GW_RATE_LIMIT | requests/seconds, e.g. 60/60 | no | Per client, on `/v1/*` and on POSTs. `0` turns it off (load tests). |
+| GW_RATE_LIMIT | requests/seconds, e.g. 60/60 | no | Off by default (`0`). An abuse guard for a public deployment, per client, on `/v1/*` and on POSTs; it answers 429 "Slow down, try again in a minute". The hosted demo sets `60/60` in `deploy/.env`. |
 | GW_CORS_ORIGINS | comma-separated origins | no | The frontend origin(s) allowed to call the API; also the authorised parties for Clerk sessions. |
 | GW_HOME | folder | no | Where the `gw` CLI keeps its workspace. |
 | GW_URL, GW_TOKEN | API address and a workspace token | token: **yes** | Point `gw` and `gw mcp` at a hosted GhostWalk. Tokens look like `gw_live_<workspace>_<secret>`; only a hash is stored and the token is shown once. |

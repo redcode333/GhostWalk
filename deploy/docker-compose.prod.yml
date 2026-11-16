@@ -80,9 +80,10 @@ services:
       HYDRA_TOKEN: ${HYDRA_TOKEN:?run setup.sh}
       GW_PUBLIC_DEMO: "1"                       # sandbox: settings / onboarding / webhooks are read-only, everything else works, rebuilt at 03:00 UTC
       GW_ADMIN_TOKEN: ${GW_ADMIN_TOKEN:?run setup.sh}
-      GW_RATE_LIMIT: ${GW_RATE_LIMIT:-60/60}    # requests per window (seconds) per client, on /v1/* and on POSTs
+      GW_RATE_LIMIT: ${GW_RATE_LIMIT:-0}    # off unless set in deploy/.env (setup.sh sets 60/60 for the public VM): requests per window (seconds) per client, on /v1/* and on POSTs
       GW_CORS_ORIGINS: ${GW_CORS_ORIGINS:-}     # the Vercel origin(s), comma separated
       GW_PUBLIC_URL: https://${API_DOMAIN:?run setup.sh}
+      GW_VERSION: ${GW_VERSION:-dev}            # the commit this stack was built from (setup.sh sets it); shown in /health
       GW_DEMO_INCIDENTS: "30"
     volumes: ["gw-data:/data"]
     healthcheck: {test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=4).status == 200 else 1)"], interval: 10s, timeout: 6s, retries: 12, start_period: 60s}

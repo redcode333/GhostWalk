@@ -24,7 +24,7 @@ ENV_ROWS = [("AUTH_MODE", "none or clerk", "no", "`clerk`: `/app` needs a Clerk 
             ("GW_DEMO_INCIDENTS", "past incidents in the demo workspace", "no", "The seeded history the demo starts with."),
             ("GW_PUBLIC_DEMO", "0 or 1", "no", "`1`: settings, onboarding and webhooks are read-only in the demo sandbox, and it is rebuilt every night."),
             ("GW_ADMIN_TOKEN", "admin token", "**yes**", "Lets `POST /api/demo/reset` rebuild the demo on demand."),
-            ("GW_RATE_LIMIT", "requests/seconds, e.g. 60/60", "no", "Per client, on `/v1/*` and on POSTs. `0` turns it off (load tests)."),
+            ("GW_RATE_LIMIT", "requests/seconds, e.g. 60/60", "no", "Off by default (`0`). An abuse guard for a public deployment, per client, on `/v1/*` and on POSTs; it answers 429 \"Slow down, try again in a minute\". The hosted demo sets `60/60` in `deploy/.env`."),
             ("GW_CORS_ORIGINS", "comma-separated origins", "no", "The frontend origin(s) allowed to call the API; also the authorised parties for Clerk sessions."),
             ("GW_HOME", "folder", "no", "Where the `gw` CLI keeps its workspace."),
             ("GW_URL, GW_TOKEN", "API address and a workspace token", "token: **yes**", "Point `gw` and `gw mcp` at a hosted GhostWalk. Tokens look like `gw_live_<workspace>_<secret>`; only a hash is stored and the token is shown once."),
@@ -156,6 +156,18 @@ def pagerank_grid():
     return f"{pr['grid_budget']} settings on DEV (restart {pr['grid']['restart']}, direction {pr['grid']['direction']}, weighted {pr['grid']['weighted']}, onset {pr['grid']['onset']}); chosen {pr['settings']}; DEV AC@1 {B.pct(pr['dev_ac1_tuned'])} tuned against {B.pct(pr['dev_ac1_untuned_default'])} untuned."
 
 
+def placebo_late():
+    pg = B.R["learning_curve"]["paired_gain"]
+    p, g = pg["series"]["placebo_minus_learning_off"], pg["series"]["ghostwalk_minus_learning_off"]
+    if not all(x["ci95"] for x in p):
+        return ""
+    last = p[-1]
+    return (f"Over the whole run the placebo is {B.v_placebo_gain()} against learning off. By incident number it is not flat everywhere: in the last bin of five (incidents {last['from'] + 1} to {last['to'] + 1}) the placebo is "
+            f"{B.pts(last['gain'])} against learning off (95% CI {last['ci95'][0] * 100:+.1f} to {last['ci95'][1] * 100:+.1f}), so by then learning from random postmortems has hurt; we did not isolate why. "
+            f"GhostWalk's gain in the same bin is {B.pts(g[-1]['gain'])} (95% CI {g[-1]['ci95'][0] * 100:+.1f} to {g[-1]['ci95'][1] * 100:+.1f}). "
+            "The per-bin bands are paired company bootstraps over the per-company tables stored under `learning_curve.paired_gain.tables`.")
+
+
 def blocks():
     v = B.values()
     arch, seq, er = mermaid()
@@ -186,7 +198,7 @@ def blocks():
         "transport_evidence": transport_evidence(d), "engine_gate": B.R["latency"]["gate"]["rule"], "simulator_knobs": simulator_knobs(), "pagerank_grid": pagerank_grid(),
         "history_table": B.md_table(["engine", "top-1 hits"], [[h["engine"], f"{h['hits']} of {B.num(h['of'])}"] for h in B.META["ac1_history"]]),
         "scale_engine_note": B.R["latency"]["generator"], "timed": str(B.R["ops"]["hydradb_latency"]["warm"]["per_query"]["one_hop"]["n"]), "warmup": str(B.R["ops"]["hydradb_latency"]["warm"]["per_query"]["one_hop"]["warmup"]),
-        "scale_sizes": ", ".join(f"{int(k):,}" for k in sorted(B.R["scale"]["path_query"]["sizes"], key=int)), "machine_note": B.R["latency"]["meta"]["platform"],
+        "placebo_late": placebo_late(), "scale_sizes": ", ".join(f"{int(k):,}" for k in sorted(B.R["scale"]["path_query"]["sizes"], key=int)), "machine_note": B.R["latency"]["meta"]["platform"],
     })
     return v
 
@@ -242,14 +254,15 @@ def main():
                 stale.append(out)
         else:
             path.write_text(text, encoding="utf8")
-    svg = B.paired_gain_svg()
-    sp = ROOT / "docs" / "learning-curve.svg"
-    if check:
-        if not sp.exists() or sp.read_text(encoding="utf8").replace("\r\n", "\n") != svg:
-            stale.append("docs/learning-curve.svg")
-    else:
-        sp.write_text(svg, encoding="utf8")
-        print("wrote", ", ".join(TEMPLATES), "and docs/learning-curve.svg")
+    for name, theme in (("learning-curve.svg", "light"), ("learning-curve-dark.svg", "dark")):
+        svg, sp = B.paired_gain_svg(theme), ROOT / "docs" / name
+        if check:
+            if not sp.exists() or sp.read_text(encoding="utf8").replace("\r\n", "\n") != svg:
+                stale.append("docs/" + name)
+        else:
+            sp.write_text(svg, encoding="utf8")
+    if not check:
+        print("wrote", ", ".join(TEMPLATES), "and docs/learning-curve(-dark).svg (the PNGs: cd web && node ../scripts/render_png.mjs)")
     if problems:
         print("CLAIM AUDIT FAILED: typed numbers in prose (generate them from results.json instead):")
         print("\n".join("  " + p for p in problems))

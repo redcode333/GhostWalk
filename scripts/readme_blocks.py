@@ -419,39 +419,48 @@ def learning_curve_svg():
     return "\n".join(out)
 
 
-def paired_gain_svg():
-    """Chart (a), 'What learning adds': AC@1 gain over learning off per five-incident bin, in points, for GhostWalk and for the placebo, with the zero line.
-    Drawn from results.json learning_curve.paired_gain; the whole-run paired 95% interval is printed as text because the per-bin band needs per-company data that was not stored."""
+def paired_gain_svg(theme="light"):
+    """Chart (a), 'What learning adds': AC@1 gain over learning off per five-incident bin, in points, for GhostWalk (with its 95% paired company-bootstrap band) and for the placebo, with the zero line.
+    Drawn from results.json learning_curve.paired_gain. theme is "light" or "dark"."""
     pg = R["learning_curve"]["paired_gain"]
     gw, pl = pg["series"]["ghostwalk_minus_learning_off"], pg["series"]["placebo_minus_learning_off"]
     ref = pg["reference_paired_ci"]["ghostwalk_minus_learning_off"]["overall"]
+    dark = theme == "dark"
+    bg, ink, muted, grid, zero = ("#14131C", "#ECEBF4", "#A6A5B4", "#2B2A38", "#ECEBF4") if dark else ("#FFFFFF", "#1B1A24", "#6B6B76", "#E6E6EC", "#3A3A44")
+    violet, amber = ("#9C86FF", "#F0A93B") if dark else ("#6A4BFF", "#D98A00")
     W, H, L, Bm, T, Rr = 760, 360, 56, 62, 34, 92
-    vals = [p["gain"] * 100 for p in gw + pl]
+    has_band = all(p["ci95"] for p in gw)
+    vals = [p["gain"] * 100 for p in gw + pl] + ([c * 100 for p in gw for c in p["ci95"]] if has_band else [])
     lo, hi = min(-4.0, (int(min(vals) / 4) - 1) * 4.0), (int(max(vals) / 4) + 1) * 4.0
     n = len(gw)
     x = lambda i: L + i * (W - L - Rr) / (n - 1)
     y = lambda v: T + (hi - v) * (H - T - Bm) / (hi - lo)
-    out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" role="img" aria-label="What learning adds: accuracy gain over learning off by incident number, GhostWalk against placebo postmortems" font-family="system-ui, sans-serif">',
-           f'<rect width="{W}" height="{H}" rx="12" fill="#ffffff"/>',
-           f'<text x="{L}" y="20" font-size="14" font-weight="600" fill="#1B1A24">What learning adds</text>']
+    out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" role="img" aria-label="What learning adds: accuracy gain over learning off by incident number, GhostWalk with its 95 percent band against placebo postmortems" font-family="system-ui, sans-serif">',
+           f'<rect width="{W}" height="{H}" rx="12" fill="{bg}"/>',
+           f'<text x="{L}" y="20" font-size="14" font-weight="600" fill="{ink}">What learning adds</text>']
     t = lo
     while t <= hi + 1e-9:
-        zero = abs(t) < 1e-9
-        out.append(f'<line x1="{L}" x2="{W - Rr}" y1="{y(t):.1f}" y2="{y(t):.1f}" stroke="{"#3A3A44" if zero else "#E6E6EC"}" stroke-width="{1.4 if zero else 1}"/><text x="{L - 8}" y="{y(t) + 4:.1f}" text-anchor="end" font-size="11" fill="#6B6B76">{t:+.0f}</text>')
+        z = abs(t) < 1e-9
+        out.append(f'<line x1="{L}" x2="{W - Rr}" y1="{y(t):.1f}" y2="{y(t):.1f}" stroke="{zero if z else grid}" stroke-width="{1.4 if z else 1}"/><text x="{L - 8}" y="{y(t) + 4:.1f}" text-anchor="end" font-size="11" fill="{muted}">{t:+.0f}</text>')
         t += 4
-    out.append(f'<text transform="translate(14 {(T + H - Bm) / 2:.0f}) rotate(-90)" text-anchor="middle" font-size="12" fill="#3A3A44">AC@1 gain over learning off (points)</text>')
+    out.append(f'<text transform="translate(14 {(T + H - Bm) / 2:.0f}) rotate(-90)" text-anchor="middle" font-size="12" fill="{muted}">AC@1 gain over learning off (points)</text>')
     for i, p in enumerate(gw):
         if i % 2 == 0 or i == n - 1:
-            out.append(f'<text x="{x(i):.1f}" y="{H - Bm + 18}" text-anchor="middle" font-size="11" fill="#6B6B76">{p["from"] + 1}-{p["to"] + 1}</text>')
-    out.append(f'<text x="{(L + W - Rr) / 2:.0f}" y="{H - Bm + 38}" text-anchor="middle" font-size="12" fill="#3A3A44">incident number at each company (bins of five)</text>')
-    for series, col, dash, sw in ((gw, "#6A4BFF", "", 3.2), (pl, "#D98A00", "2 5", 2.4)):
+            out.append(f'<text x="{x(i):.1f}" y="{H - Bm + 18}" text-anchor="middle" font-size="11" fill="{muted}">{p["from"] + 1}-{p["to"] + 1}</text>')
+    out.append(f'<text x="{(L + W - Rr) / 2:.0f}" y="{H - Bm + 38}" text-anchor="middle" font-size="12" fill="{muted}">incident number at each company (bins of five)</text>')
+    if has_band:
+        up = " ".join(f"{x(i):.1f},{y(p['ci95'][1] * 100):.1f}" for i, p in enumerate(gw))
+        dn = " ".join(f"{x(i):.1f},{y(p['ci95'][0] * 100):.1f}" for i, p in reversed(list(enumerate(gw))))
+        out.append(f'<polygon points="{up} {dn}" fill="{violet}" opacity="0.16"/>')
+    for series, col, dash, sw in ((gw, violet, "", 3.2), (pl, amber, "2 5", 2.4)):
         d = " ".join(f"{'M' if i == 0 else 'L'}{x(i):.1f},{y(p['gain'] * 100):.1f}" for i, p in enumerate(series))
         out.append(f'<path d="{d}" fill="none" stroke="{col}" stroke-width="{sw}" stroke-linecap="round" stroke-linejoin="round"' + (f' stroke-dasharray="{dash}"' if dash else "") + "/>")
         last = series[-1]["gain"] * 100
         out.append(f'<text x="{x(n - 1) + 8:.1f}" y="{y(last) + 4:.1f}" font-size="12.5" font-weight="600" fill="{col}">{last:+.1f} pts</text>')
-    out.append(f'<line x1="{L}" x2="{L + 24}" y1="{H - 10}" y2="{H - 10}" stroke="#6A4BFF" stroke-width="3.2"/><text x="{L + 30}" y="{H - 6}" font-size="11.5" fill="#3A3A44">GhostWalk minus learning off</text>')
-    out.append(f'<line x1="{L + 218}" x2="{L + 242}" y1="{H - 10}" y2="{H - 10}" stroke="#D98A00" stroke-width="2.4" stroke-dasharray="2 5" stroke-linecap="round"/><text x="{L + 248}" y="{H - 6}" font-size="11.5" fill="#3A3A44">placebo minus learning off</text>')
-    out.append(f'<text x="{W - 12}" y="20" text-anchor="end" font-size="11.5" fill="#6B6B76">whole run: {ref["gain"] * 100:+.1f} pts, 95% CI {ref["ci95"][0] * 100:+.1f} to {ref["ci95"][1] * 100:+.1f}</text>')
+    out.append(f'<line x1="{L}" x2="{L + 24}" y1="{H - 10}" y2="{H - 10}" stroke="{violet}" stroke-width="3.2"/><text x="{L + 30}" y="{H - 6}" font-size="11.5" fill="{muted}">GhostWalk minus learning off{" (shaded: 95% band)" if has_band else ""}</text>')
+    lx = L + (330 if has_band else 218)
+    out.append(f'<line x1="{lx}" x2="{lx + 24}" y1="{H - 10}" y2="{H - 10}" stroke="{amber}" stroke-width="2.4" stroke-dasharray="2 5" stroke-linecap="round"/><text x="{lx + 30}" y="{H - 6}" font-size="11.5" fill="{muted}">placebo minus learning off</text>')
+    out.append(f'<text x="{W - 12}" y="20" text-anchor="end" font-size="11.5" fill="{muted}">whole run: {ref["gain"] * 100:+.1f} pts, 95% CI {ref["ci95"][0] * 100:+.1f} to {ref["ci95"][1] * 100:+.1f}</text>')
     out.append("</svg>")
     return "\n".join(out)
 
@@ -538,3 +547,7 @@ def mermaid_learner():
     G --> H[Revision bump]
     H --> I[Write-through cache applies the same change]
     I --> J[Next verdict uses the learned edge]"""
+
+
+def v_placebo_gain():
+    return pts(M['placebo']['ac1']['point'] - M['learning_off']['ac1']['point'])

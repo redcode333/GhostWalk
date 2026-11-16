@@ -108,6 +108,8 @@ LLM baseline: Gemini with Groq fallback on rate limits (model recorded per incid
 
 Learning gain over learning off: +8.9 pts (95% CI +5.7 to +12.4). Placebo postmortems (a random root and random edges, same shape, no information) move accuracy by +0.7 pts: the gain is the content of the postmortems, not the act of learning.
 
+Over the whole run the placebo is +0.7 pts against learning off. By incident number it is not flat everywhere: in the last bin of five (incidents 56 to 60) the placebo is −8.0 pts against learning off (95% CI -14.7 to -2.0), so by then learning from random postmortems has hurt; we did not isolate why. GhostWalk's gain in the same bin is +9.3 pts (95% CI +2.0 to +16.7). The per-bin bands are paired company bootstraps over the per-company tables stored under `learning_curve.paired_gain.tables`.
+
 | learning step removed | AC@1 [95% CI] | change vs full learner |
 |---|---|---|
 | hidden-edge discovery | 74.0% [71.6, 76.6] | −2.4 pts |

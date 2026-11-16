@@ -468,7 +468,7 @@ export default function Landing() {
       <Section>
         <div style={{ textAlign: "center", padding: "56px 24px", borderRadius: 28, border: "1px solid var(--line)", background: "var(--surface)" }}>
           <h2 style={{ margin: 0, fontSize: "clamp(28px, 4vw, 44px)", letterSpacing: "-0.03em", fontWeight: 600 }}>Your next outage is already on its way. Meet it with a map.</h2>
-          <p style={{ color: "var(--text-3)", fontSize: 18 }}>Free and open source. MIT licensed.</p>
+          <p style={{ color: "var(--text-3)", fontSize: 18, margin: "20px 0 28px" }}>Free and open source. MIT licensed.</p>
           <div style={{ display: "flex", gap: 12, justifyContent: "center", flexWrap: "wrap" }}><Btn to="/signup">Get started</Btn><Btn to="/demo" variant="glass">Watch a live outage</Btn><Btn href={GITHUB} variant="glass">GitHub</Btn></div>
         </div>
       </Section>

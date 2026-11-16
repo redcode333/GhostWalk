@@ -81,7 +81,7 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
         from fastapi.middleware.cors import CORSMiddleware
         app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["GET", "POST", "DELETE", "OPTIONS"], allow_headers=["authorization", "content-type", "x-gw-token", "x-gw-demo"],
                            allow_credentials=False, max_age=600)
-    limit_n, _, limit_s = os.environ.get("GW_RATE_LIMIT", "60/60").partition("/")
+    limit_n, _, limit_s = os.environ.get("GW_RATE_LIMIT", "0").partition("/")
     limit_n, limit_s = int(limit_n or 0), int(limit_s or 60)
     hits: dict[str, collections.deque] = collections.defaultdict(collections.deque)
     public_demo = os.environ.get("GW_PUBLIC_DEMO") == "1"
@@ -175,9 +175,10 @@ def create_app(state_path=None, results_path=None, workspace: Workspace | None =
         return inc
 
     # ---- public ---------------------------------------------------------------------------
+    @app.get("/health")
     @app.get("/api/health")
     def health():
-        return {"ok": True, "services": len(ws.g.components), "store": ws.store, "revision": ws.revision, "saving": len(ws.jobs),
+        return {"ok": True, "version": os.environ.get("GW_VERSION", "dev"), "services": len(ws.g.components), "store": ws.store, "revision": ws.revision, "saving": len(ws.jobs),
                 "public_demo": public_demo, "writer_error": ws.worker_error}
 
     @app.post("/api/demo/reset")

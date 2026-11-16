@@ -198,7 +198,7 @@ stateDiagram-v2
 | LLM, plain (n=58 subset) | 56.9% [42.1, 71.7] | Costs tokens and seconds per verdict, with no graph path behind the answer. |
 | Perfect map (oracle) | 82.9% [80.7, 85.2] | The ceiling if every dependency were known. |
 
-![What learning adds: accuracy gain over learning off by incident number for GhostWalk and for placebo postmortems](docs/learning-curve.png)
+<p align="center"><picture><source media="(prefers-color-scheme: dark)" srcset="docs/learning-curve-dark.png"><img src="docs/learning-curve.png" alt="What learning adds: accuracy gain over learning off by incident number for GhostWalk, with its 95 percent band, and for placebo postmortems" width="760"></picture></p>
 
 Learning starts from zero at each company. Intervals are paired cluster bootstraps over companies. The incidents are simulated; the claim is the comparison between methods on the same incidents. Every table, the ablations and the limits: [docs/EVALUATION.md](docs/EVALUATION.md).
 
@@ -285,6 +285,10 @@ claude mcp add ghostwalk -- gw mcp
 ```json
 { "mcpServers": { "ghostwalk": { "command": "gw", "args": ["mcp"] } } }
 ```
+
+## Self-hosting
+
+`deploy/setup.sh` brings up the production stack on a Linux host: HydraDB, MinIO, the API and Caddy with HTTPS (see [docs/deploy.md](docs/deploy.md)). Everything is open and unmetered. Rate limiting is off by default; for a public deployment set `GW_RATE_LIMIT=60/60` (requests per seconds, per client) in `deploy/.env`. The hosted demo does, and a blocked client gets a plain `429`. `/health` reports the commit the stack was built from.
 
 Settings are in [`.env.example`](.env.example). The environment table, the CLI reference with real output, and the MCP tools: [docs/REFERENCE.md](docs/REFERENCE.md).
 
