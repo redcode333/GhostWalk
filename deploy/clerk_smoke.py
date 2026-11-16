@@ -104,7 +104,7 @@ def main():
             body = {"alerts": [{"name": n, "signal": "error_rate", "t": i * 5} for i, n in enumerate(names)]}
             r = c.post(f"{api}/v1/alerts/mine", json=body, headers={"Authorization": "Bearer " + ta})
             need(r.status_code == 200, r.status_code)
-            need(c.post(f"{api}/v1/alerts/mine", json=body, headers={"Authorization": "Bearer " + ta[:-1] + "0"}).status_code == 401)
+            need(c.post(f"{api}/v1/alerts/mine", json=body, headers={"Authorization": "Bearer " + ta[:-1] + ("1" if ta[-1] == "0" else "0")}).status_code == 401)
             need(c.post(f"{api}/v1/alerts/mine", json=body).status_code == 401)
             need(c.get(f"{api}/api/incidents", headers=h("b")).json() == [])
             return "A's token reaches A only; tampered or missing token -> 401"

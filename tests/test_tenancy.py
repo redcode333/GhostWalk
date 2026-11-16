@@ -103,7 +103,7 @@ def test_two_accounts_cannot_see_each_other(app_env):
     body = {"alerts": [{"name": n, "signal": "error_rate", "t": i * 5} for i, n in enumerate(names)]}
     n0 = len(c.get("/api/incidents", headers=a).json())
     assert c.post("/v1/alerts/mine", json=body, headers={"Authorization": "Bearer " + ta}).status_code == 200
-    assert c.post("/v1/alerts/mine", json=body, headers={"Authorization": "Bearer " + ta[:-1] + "0"}).status_code == 401
+    assert c.post("/v1/alerts/mine", json=body, headers={"Authorization": "Bearer " + ta[:-1] + ("1" if ta[-1] == "0" else "0")}).status_code == 401
     assert c.post("/v1/alerts/mine", json=body).status_code == 401
     assert len(c.get("/api/incidents", headers=a).json()) == n0 + 1 and c.get("/api/incidents", headers=b).json() == []
     tb = c.post("/api/settings/token/rotate", headers=b).json()["token"]
