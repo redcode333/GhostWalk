@@ -128,7 +128,8 @@ export default function Onboarding() {
 
         <aside style={{ flex: "2 1 min(320px, 100%)", minWidth: 0, display: "flex", flexDirection: "column", gap: 16 }}>
           <section aria-labelledby="al-h" className="card" style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}><span className="mono" style={{ fontSize: 12, color: "var(--text-4)" }}>Next</span><h2 id="al-h" style={{ margin: 0, fontSize: 16 }}>Send alerts</h2></div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}><span className="mono" style={{ fontSize: 12, color: "var(--text-4)" }}>Next</span><h2 id="al-h" style={{ margin: 0, fontSize: 16 }}>Connect an alert webhook</h2></div>
+            <p style={{ margin: 0, fontSize: 13, color: "var(--text-3)" }}>These examples use payload formats GhostWalk can normalize. There is no vendor account connection or automatic configuration; point your alert source at this URL.</p>
             <div role="tablist" aria-label="Alert source" style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
               {TABS.map((t) => <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)} style={{ minHeight: 30, padding: "0 10px", borderRadius: 7, border: 0, background: tab === t ? "var(--muted)" : "transparent", color: tab === t ? "var(--ink)" : "var(--text-3)", font: "500 13px Geist", cursor: "pointer" }}>{t}</button>)}
             </div>

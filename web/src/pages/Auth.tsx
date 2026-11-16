@@ -1,6 +1,5 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react"
-import { Link, Navigate, useLocation, useNavigate } from "react-router-dom"
-import { GitBranch, Globe } from "lucide-react"
+import { Link, Navigate, useLocation } from "react-router-dom"
 import { ClerkProvider, SignIn, SignUp, useAuth } from "@clerk/react"
 import { api, demoMode, setDemoMode } from "@/lib/api"
 import { Btn, Logo, ThemeToggle, useLoad } from "@/components/common"
@@ -79,37 +78,18 @@ function Shell({ children, headline }: { children: ReactNode; headline: string }
   )
 }
 
-const input = { padding: "11px 12px", borderRadius: 12, border: "1px solid var(--line)", background: "var(--surface-2)", color: "var(--ink)", font: "15px Geist, sans-serif", minHeight: 44, boxSizing: "border-box" } as const
-const Field = ({ label, children, right }: { label: string; children: ReactNode; right?: ReactNode }) => (
-  <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 14 }}>
-    <span style={{ display: "flex", justifyContent: "space-between" }}>{label}{right}</span>{children}
-  </label>
-)
-const Oauth = () => (
-  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-    <Btn variant="glass" to="/app/incidents"><GitBranch size={16} /> GitHub</Btn>
-    <Btn variant="glass" to="/app/incidents"><Globe size={16} /> Google</Btn>
-  </div>
-)
-const Or = () => <div style={{ display: "flex", alignItems: "center", gap: 12, color: "var(--text-4)", fontSize: 13 }}><span style={{ flex: 1, borderTop: "1px solid var(--line)" }} />or with email<span style={{ flex: 1, borderTop: "1px solid var(--line)" }} /></div>
-
-/** AUTH_MODE=none: the form is the real layout, and submitting opens the demo workspace (there is no account behind it). */
+/** AUTH_MODE=none has no accounts: explain the shared workspace and offer an honest demo entry. */
 function DemoForm({ up }: { up: boolean }) {
-  const nav = useNavigate()
   return (
-    <form onSubmit={(e) => { e.preventDefault(); nav(up ? "/app/onboarding" : "/app/incidents") }} className="card" style={{ width: "min(420px, 100%)", padding: 28, display: "flex", flexDirection: "column", gap: 14 }}>
-      <div><h1 style={{ margin: 0, fontSize: 26, fontWeight: 600 }}>{up ? "Create your account" : "Welcome back"}</h1>
-        <p style={{ margin: "4px 0 0", color: "var(--text-3)", fontSize: 15 }}>{up ? "Free and open source. No card needed." : "Sign in to your workspace."}</p></div>
-      <Oauth /><Or />
-      {up && <Field label="Full name"><input style={input} placeholder="Priya Raman" autoComplete="name" /></Field>}
-      <Field label="Work email"><input style={input} type="email" autoComplete="email" placeholder="you@company.com" /></Field>
-      <Field label="Password" right={!up && <a href="#" style={{ color: "var(--accent-text)" }}>Forgot password?</a>}><input style={input} type="password" autoComplete={up ? "new-password" : "current-password"} /></Field>
-      {!up && <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 14 }}><input type="checkbox" defaultChecked style={{ accentColor: "var(--accent)" }} /> Keep me signed in</label>}
-      <Btn type="submit">{up ? "Create account" : "Sign in"}</Btn>
-      {!up && <Btn variant="glass" to="/app/incidents">Sign in with SSO</Btn>}
-      {up && <p style={{ margin: 0, fontSize: 13, color: "var(--text-4)" }}>By continuing you agree to the <a href="#" style={{ textDecoration: "underline" }}>Terms</a> and <a href="#" style={{ textDecoration: "underline" }}>Privacy Policy</a>.</p>}
-      <p style={{ margin: 0, fontSize: 12, color: "var(--text-4)" }}>Sign-in is off on this server (<span className="mono">AUTH_MODE=none</span>), so this opens the demo workspace.</p>
-    </form>
+    <section className="card" aria-labelledby="demo-entry-title" style={{ width: "min(420px, 100%)", padding: 28, display: "flex", flexDirection: "column", gap: 14 }}>
+      <div><h1 id="demo-entry-title" style={{ margin: 0, fontSize: 26, fontWeight: 600 }}>{up ? "Explore GhostWalk" : "Open the demo workspace"}</h1>
+        <p style={{ margin: "4px 0 0", color: "var(--text-3)", fontSize: 15 }}>This server has sign-in disabled. No account or password is created.</p></div>
+      <div role="note" style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 12, fontSize: 13, color: "var(--text-3)" }}>
+        <strong style={{ color: "var(--ink)" }}>Shared workspace.</strong> This self-hosted server uses <span className="mono">AUTH_MODE=none</span>; anyone with access to it shares the same workspace and its data. This is not an isolated customer account.
+      </div>
+      <Btn to="/demo">{up ? "Explore the sample workspace" : "Continue to the workspace"}</Btn>
+      <p style={{ margin: 0, fontSize: 12, color: "var(--text-4)" }}>For isolated user workspaces, configure Clerk and set <span className="mono">AUTH_MODE=clerk</span>.</p>
+    </section>
   )
 }
 

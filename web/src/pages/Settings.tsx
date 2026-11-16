@@ -38,7 +38,7 @@ export default function Settings() {
             <span className={s.receiving ? "" : "live"} style={{ width: 8, height: 8, borderRadius: 99, background: s.receiving ? "var(--ok)" : "var(--amber)" }} />{s.receiving ? "Receiving" : "Waiting for the first alert"}
           </span>
         </div>
-        <p style={{ margin: 0, fontSize: 14, color: "var(--text-3)" }}>Point Alertmanager, PagerDuty or any tool that can POST JSON here.</p>
+        <p style={{ margin: 0, fontSize: 14, color: "var(--text-3)" }}>Send a JSON webhook here. GhostWalk normalizes generic alerts and common Alertmanager, Grafana, UptimeRobot, and PagerDuty-style payloads. These are payload formats; GhostWalk does not create vendor connections or configure those services for you.</p>
         <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
           <code className="mono" style={{ flex: 1, minWidth: 240, background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 8, padding: "10px 12px", fontSize: 13, overflowX: "auto", whiteSpace: "nowrap" }}>{s.webhook_url}</code>
           <Btn variant="glass" onClick={() => navigator.clipboard?.writeText(s.webhook_url).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1200) })}>{copied ? "Copied" : "Copy"}</Btn>

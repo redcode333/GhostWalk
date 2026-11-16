@@ -1,5 +1,11 @@
 # Developer quickstart: the flow on the shopfront example
 
+## Web app and workspace modes
+
+The web app supports two workspace modes. With `AUTH_MODE=clerk`, each verified Clerk user gets a separate workspace and HydraDB run identity; the public `/demo` route uses a separate sample workspace, with workspace setup and external webhook writes restricted. With `AUTH_MODE=none`, sign-in is disabled and the app uses one shared default workspace. That mode is useful for local development, but it does not isolate customer data and must not be exposed as multi-customer hosting.
+
+The onboarding alert examples are JSON payload formats normalized by GhostWalk's webhook endpoint. They do not establish native Grafana, Alertmanager, UptimeRobot, or PagerDuty connections. GitHub repository scanning requires a configured GitHub App; sample repository files can be scanned without external credentials.
+
 This walks the CLI on `examples/shopfront/`, a 12-service storefront. The map is built from its compose file, which does not show every dependency. The postmortems in `examples/shopfront/postmortems/` describe the ones it misses.
 
 Install the CLI from this repo, then run the steps from inside the example:
